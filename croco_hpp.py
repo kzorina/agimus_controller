@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 class CrocoHppConnection:
     def __init__(self, ps, robot_name, vf, ball_init_pose):
         self.ball_init_pose = ball_init_pose
-        self.v = vf.createViewer()
+        if vf is not None:
+            self.v = vf.createViewer()
         self.prob = Problem(ps, robot_name)
         self.robot = example_robot_data.load(robot_name)
         self.nq = self.robot.nq
@@ -16,7 +17,8 @@ class CrocoHppConnection:
     def plot_traj(self, terminal_idx):
         """Plot both trajectories of hpp and crocoddyl for the gripper pose."""
         pose_croco, pose_hpp = self.get_cartesian_trajectory(terminal_idx)
-        t = np.linspace(0, self.prob.p.length(), len(self.croco_xs))
+        path_time = self.get_path_length(terminal_idx)
+        t = np.linspace(0, path_time, len(self.croco_xs))
         axis_string = ["x", "y", "z"]
         for idx in range(3):
             plt.subplot(2, 2, idx + 1)
@@ -30,7 +32,8 @@ class CrocoHppConnection:
     def plot_traj_configuration(self, terminal_idx):
         """Plot both trajectories of hpp and crocoddyl in configuration space."""
         q_crocos, q_hpp = self.get_configuration_trajectory(terminal_idx)
-        t = np.linspace(0, self.prob.p.length(), len(self.croco_xs))
+        path_time = self.get_path_length(terminal_idx)
+        t = np.linspace(0, path_time, len(self.croco_xs))
         for idx in range(self.nq):
             plt.subplot(3, 2, idx + 1)
             plt.plot(t, q_crocos[idx])
@@ -40,10 +43,11 @@ class CrocoHppConnection:
             plt.legend(["crocoddyl", "hpp warm start"], loc="best")
         plt.show()
 
-    def plot_control(self):
+    def plot_control(self, terminal_idx):
         """Plot control for each joint."""
         us = self.get_configuration_control()
-        t = np.linspace(0, self.prob.p.length(), len(self.prob.solver.us))
+        path_time = self.get_path_length(terminal_idx)
+        t = np.linspace(0, path_time, len(self.prob.solver.us))
         for idx in range(self.nq):
             plt.subplot(3, 2, idx + 1)
             plt.plot(t, us[idx])
@@ -52,9 +56,10 @@ class CrocoHppConnection:
             # plt.legend(["crocoddyl", "hpp warm start"], loc="best")
         plt.show()
 
-    def display_path(self):
+    def display_path(self, terminal_idx):
         """Display in Gepetto Viewer the trajectory found with crocoddyl."""
-        DT = self.prob.p.length() / len(self.croco_xs)
+        path_time = self.get_path_length(terminal_idx)
+        DT = path_time / len(self.croco_xs)
         for x in self.croco_xs:
             self.v(list(x)[: self.nq] + self.ball_init_pose)
             time.sleep(DT)
@@ -78,6 +83,12 @@ class CrocoHppConnection:
             " translation ",
             croco_placement.translation,
         )
+
+    def get_path_length(self, terminal_idx):
+        length = 0
+        for idx in range(terminal_idx):
+            length += self.prob.hpp_paths[idx].path.length()
+        return length
 
     def get_trajectory_difference(self, terminal_idx, configuration_traj=True):
         """Compute at each node the absolute difference in position either in cartesian or configuration space and sum it."""
@@ -146,8 +157,8 @@ class CrocoHppConnection:
                         use_mim,
                     )
         else:
-            for grip_exponent in range(80, 100, 2):
-                for x_exponent in range(0, 20, 2):
+            for grip_exponent in range(80, 90, 2):
+                for x_exponent in range(10, 20, 2):
                     self.try_new_costs(
                         grip_exponent,
                         x_exponent,

@@ -1,4 +1,3 @@
-from hpp.corbaserver import wrap_delete
 import crocoddyl
 import pinocchio as pin
 import numpy as np
@@ -8,9 +7,10 @@ import mim_solvers
 
 class SubPath:
     def __init__(self, path):
-        self.path = path  # hpp path
-        self.T = int(20 * self.path.length())
-        self.x_plan = self.get_xplan()
+        if path is not None:
+            self.path = path  # hpp path
+            self.T = int(20 * self.path.length())
+            self.x_plan = self.get_xplan()
         self.u_ref = None
         self.running_models = None
         self.terminal_model = None
@@ -48,13 +48,14 @@ class Problem:
         self.nv = self.robot.nv
 
         self.hpp_paths = []
-        self.p = wrap_delete(ps.client.basic.problem.getPath(2))
-        for i in range(self.p.numberPaths()):
-            new_path = SubPath(self.p.pathAtRank(i))
-            if new_path.T > 0:
-                self.hpp_paths.append(new_path)
-        self.nb_paths = len(self.hpp_paths)  # number of sub paths
-        self.solver = None
+        if ps is not None:
+            self.p = ps.client.basic.problem.getPath(2)
+            for i in range(self.p.numberPaths()):
+                new_path = SubPath(self.p.pathAtRank(i))
+                if new_path.T > 0:
+                    self.hpp_paths.append(new_path)
+            self.nb_paths = len(self.hpp_paths)  # number of sub paths
+            self.solver = None
 
     def get_uref(self, path_idx):
         """Return the reference of control u_ref that compensates gravity."""
@@ -138,13 +139,11 @@ class Problem:
         """Return last model for a sub path with constraints for mim_solvers."""
         running_cost_model = crocoddyl.CostModelSum(self.state)
         residual = self.get_translation_residual(path_idx)
-        higher_bound = pin.SE3.Identity()
-        higher_bound.translation = np.array([1e-3, 1e-3, 1e-3])
         trans_constraint = crocoddyl.ConstraintModelResidual(
             self.state,
             residual,
-            np.array([0, 0, 0]),
-            higher_bound.translation,
+            np.array([0] * 12),
+            np.array([1e-3] * 12),
         )
         constraints = crocoddyl.ConstraintModelManager(self.state, self.nv)
         constraints.addConstraint("gripperPose", trans_constraint)
@@ -188,30 +187,19 @@ class Problem:
         """Return vector of tracking costs for each sub path."""
         goal_tracking_costs = []
         for path_idx in range(self.nb_paths):
-            q_final = self.hpp_paths[path_idx].x_plan[-1][: self.nq]
-            target = self.robot.placement(q_final, self.nq)
             goal_tracking_costs.append(
                 crocoddyl.CostModelResidual(
-                    self.state,
-                    crocoddyl.ResidualModelFramePlacement(
-                        self.state, self.robot.model.getFrameId("wrist_3_joint"), target
-                    ),
+                    self.state, self.get_translation_residual(path_idx)
                 )
             )
-        """goalTrackingCost = crocoddyl.CostModelResidual(
-            self.state,
-            crocoddyl.ResidualModelFrameTranslation(
-                self.state, self.robot.model.getFrameId("wrist_3_joint"), target.translation
-            ),
-        )"""
         return goal_tracking_costs
 
     def get_translation_residual(self, path_idx):
         """Return translation residual to the last position of the sub path."""
         q_final = self.hpp_paths[path_idx].x_plan[-1][: self.nq]
         target = self.robot.placement(q_final, self.nq)
-        return crocoddyl.ResidualModelFrameTranslation(
-            self.state, self.robot.model.getFrameId("wrist_3_joint"), target.translation
+        return crocoddyl.ResidualModelFramePlacement(
+            self.state, self.robot.model.getFrameId("wrist_3_joint"), target
         )
 
     def run_solver(self, start_idx, terminal_idx, use_mim=False, set_callback=False):
