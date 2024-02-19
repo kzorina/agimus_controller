@@ -43,7 +43,7 @@ class CrocoHppConnection:
     def plot_control(self):
         """Plot control for each joint."""
         us = self.get_configuration_control()
-        t = np.linspace(0, self.prob.p.length(), len(self.prob.ddp.us))
+        t = np.linspace(0, self.prob.p.length(), len(self.prob.solver.us))
         for idx in range(self.nq):
             plt.subplot(3, 2, idx + 1)
             plt.plot(t, us[idx])
@@ -124,38 +124,72 @@ class CrocoHppConnection:
     def get_configuration_control(self):
         """Return the vector of configuration for both trajectories found by hpp and crocoddyl."""
         us = [[] for _ in range(self.nq)]
-        for u in self.prob.ddp.us:
+        for u in self.prob.solver.us:
             for idx in range(self.nq):
                 us[idx].append(u[idx])
         return us
 
-    def search_best_costs(self, terminal_idx, configuration_traj=True):
+    def search_best_costs(self, terminal_idx, use_mim=False, configuration_traj=False):
         """Search costs that minimize the gap between hpp and crocoddyl trajectories."""
-        best_combination = None
-        best_diff = 1e6
-        best_ddp = None
-        for grip_exponent in range(80, 100, 2):
-            for x_exponent in range(0, 20, 2):
-                self.set_problem_run_ddp(
-                    10 ** (grip_exponent / 10),
-                    10 ** (x_exponent / 10),
-                    1e-3,
-                    terminal_idx,
-                )
-                diff = self.get_trajectory_difference(terminal_idx, configuration_traj)
-                if diff < best_diff:
-                    best_combination = [grip_exponent, x_exponent]
-                    best_diff = diff
-                    best_ddp = self.prob.ddp
-        self.prob.ddp = best_ddp
-        self.croco_xs = self.prob.ddp.xs
-        print("best diff ", best_diff)
-        print("best combination ", best_combination)
+        self.best_combination = None
+        self.best_diff = 1e6
+        self.best_solver = None
+        if use_mim:
+            for x_exponent in range(-4, 2, 2):
+                for u_exponent in range(-34, -28, 2):
+                    self.try_new_costs(
+                        0,
+                        x_exponent,
+                        u_exponent,
+                        terminal_idx,
+                        configuration_traj,
+                        use_mim,
+                    )
+        else:
+            for grip_exponent in range(80, 100, 2):
+                for x_exponent in range(0, 20, 2):
+                    self.try_new_costs(
+                        grip_exponent,
+                        x_exponent,
+                        -30,
+                        terminal_idx,
+                        configuration_traj,
+                        use_mim,
+                    )
+        self.prob.solver = self.best_solver
+        self.croco_xs = self.prob.solver.xs
+        print("best diff ", self.best_diff)
+        print("best combination ", self.best_combination)
 
-    def set_problem_run_ddp(self, grip_cost, x_cost, u_cost, terminal_idx):
-        """Set ddp problem with new costs then run ddp."""
+    def try_new_costs(
+        self,
+        grip_exponent,
+        x_exponent,
+        u_exponent,
+        terminal_idx,
+        configuration_traj,
+        use_mim,
+    ):
+        """Set problem, run solver and check if we found a better solution."""
+        self.set_problem_run_solver(
+            10 ** (grip_exponent / 10),
+            10 ** (x_exponent / 10),
+            10 ** (u_exponent / 10),
+            terminal_idx,
+            use_mim,
+        )
+        diff = self.get_trajectory_difference(terminal_idx, configuration_traj)
+        if diff < self.best_diff:
+            self.best_combination = [grip_exponent, x_exponent, u_exponent]
+            self.best_diff = diff
+            self.best_solver = self.prob.solver
+
+    def set_problem_run_solver(
+        self, grip_cost, x_cost, u_cost, terminal_idx, use_mim=False
+    ):
+        """Set OCP problem with new costs then run solver."""
         self.prob.set_costs(grip_cost, x_cost, u_cost)
-        self.prob.set_models([terminal_idx])
-        self.prob.run_ddp(0, terminal_idx)
-        self.croco_xs = self.prob.ddp.xs
+        self.prob.set_models([terminal_idx], use_mim=use_mim)
+        self.prob.run_solver(0, terminal_idx, use_mim=use_mim)
+        self.croco_xs = self.prob.solver.xs
         self.hpp_paths = self.prob.hpp_paths

@@ -3,19 +3,20 @@ import crocoddyl
 import pinocchio as pin
 import numpy as np
 import example_robot_data
+import mim_solvers
 
 
 class SubPath:
     def __init__(self, path):
-        self.path = path
+        self.path = path  # hpp path
         self.T = int(20 * self.path.length())
-        self.x_plan = self.set_xplan()
+        self.x_plan = self.get_xplan()
         self.u_ref = None
         self.running_models = None
         self.terminal_model = None
 
-    def set_xplan(self):
-        """Set x_plan, the state trajectory of hpp."""
+    def get_xplan(self):
+        """Return x_plan, the state trajectory of hpp."""
         x_plan = []
         total_time = self.path.length()
         if self.T == 0:
@@ -34,21 +35,26 @@ class Problem:
         self.x_cost = 1e-1
         self.u_cost = 1e-4
         self.grip_cost = 1e6
-        self.null_speed_path_idxs = [1, 4]
-        self.p = wrap_delete(ps.client.basic.problem.getPath(2))
+        self.null_speed_path_idxs = [
+            1,
+            4,
+        ]  # sub path indexes where we desire null speed at the last node
         self.robot = example_robot_data.load(robot_name)
         self.robot_data = self.robot.model.createData()
-        self.set_costs(1e1, 1e-3, 1e-5)
-        self.hpp_paths = []
+        self.state = crocoddyl.StateMultibody(self.robot.model)
+        self.actuation_model = crocoddyl.ActuationModelFull(self.state)
         self.DT = 1e-3
         self.nq = self.robot.nq
         self.nv = self.robot.nv
+
+        self.hpp_paths = []
+        self.p = wrap_delete(ps.client.basic.problem.getPath(2))
         for i in range(self.p.numberPaths()):
             new_path = SubPath(self.p.pathAtRank(i))
             if new_path.T > 0:
                 self.hpp_paths.append(new_path)
-        self.nb_paths = len(self.hpp_paths)
-        self.ddp = None
+        self.nb_paths = len(self.hpp_paths)  # number of sub paths
+        self.solver = None
 
     def get_uref(self, path_idx):
         """Return the reference of control u_ref that compensates gravity."""
@@ -68,70 +74,36 @@ class Problem:
         self.u_cost = u_cost
         self.grip_cost = grip_cost
 
-    def set_models(self, terminal_paths_idxs):
+    def set_models(self, terminal_paths_idxs, use_mim=False):
         """Set running models and terminal model of the ddp problem."""
-        state = crocoddyl.StateMultibody(self.robot.model)
-        actuation_model = crocoddyl.ActuationModelFull(state)
-        goal_tracking_costs = self.get_tracking_costs(state)
+        goal_tracking_costs = self.get_tracking_costs()
         for path_idx in range(self.nb_paths):
             self.hpp_paths[path_idx].u_ref = self.get_uref(path_idx)
-            self.set_sub_path_running_models(
-                path_idx,
-                terminal_paths_idxs,
-                state,
-                actuation_model,
-                goal_tracking_costs[path_idx],
+            self.set_sub_path_running_models(path_idx)
+            self.set_last_model(
+                terminal_paths_idxs, goal_tracking_costs[path_idx], path_idx, use_mim
             )
 
-        self.set_terminal_models(
-            terminal_paths_idxs, state, actuation_model, goal_tracking_costs
-        )
-
-    def get_tracking_costs(self, state):
-        """Return vector of tracking costs for each sub path."""
-        goal_tracking_costs = []
-        for path_idx in range(self.nb_paths):
-            q_final = self.hpp_paths[path_idx].x_plan[-1][: self.nq]
-            target = self.robot.placement(q_final, self.nq)
-            goal_tracking_costs.append(
-                crocoddyl.CostModelResidual(
-                    state,
-                    crocoddyl.ResidualModelFramePlacement(
-                        state, self.robot.model.getFrameId("wrist_3_joint"), target
-                    ),
-                )
-            )
-        """goalTrackingCost = crocoddyl.CostModelResidual(
-            state,
-            crocoddyl.ResidualModelFrameTranslation(
-                state, self.robot.model.getFrameId("wrist_3_joint"), target.translation
-            ),
-        )"""
-        return goal_tracking_costs
-
-    def set_sub_path_running_models(
-        self, path_idx, terminal_paths_idxs, state, actuation_model, goalTrackingCost
-    ):
+    def set_sub_path_running_models(self, path_idx):
         """Set running models for one sub path of the ddp problem."""
 
         running_models = []
-        xRegWeights = crocoddyl.ActivationModelWeightedQuad(
-            np.array([10] * self.nq + [1] * self.nv)
+        x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
+            np.array([1] * self.nq + [10] * self.nv) ** 2
         )
 
         for idx in range(self.hpp_paths[path_idx].T):
-            running_cost_model = crocoddyl.CostModelSum(state)
+            running_cost_model = crocoddyl.CostModelSum(self.state)
             x_reg_cost = crocoddyl.CostModelResidual(
-                state,
-                xRegWeights,
+                self.state,  # x_reg_weights,
                 crocoddyl.ResidualModelState(
-                    state, self.hpp_paths[path_idx].x_plan[idx]
+                    self.state, self.hpp_paths[path_idx].x_plan[idx]
                 ),
             )
             u_reg_cost = crocoddyl.CostModelResidual(
-                state,
+                self.state,
                 crocoddyl.ResidualModelControl(
-                    state, self.hpp_paths[path_idx].u_ref[idx]
+                    self.state, self.hpp_paths[path_idx].u_ref[idx]
                 ),
             )
             running_cost_model.addCost("xReg", x_reg_cost, self.x_cost)
@@ -139,75 +111,110 @@ class Problem:
             running_models.append(
                 crocoddyl.IntegratedActionModelEuler(
                     crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                        state, actuation_model, running_cost_model
+                        self.state, self.actuation_model, running_cost_model
                     ),
                     self.DT,
                 )
             )
-        if path_idx not in terminal_paths_idxs:
-            running_models = self.set_sub_path_last_running_model(
-                state, actuation_model, goalTrackingCost, running_models, path_idx
-            )
-
         self.hpp_paths[path_idx].running_models = running_models
 
-    def set_sub_path_last_running_model(
-        self, state, actuation_model, goalTrackingCost, running_models, path_idx
+    def set_last_model(
+        self, terminal_paths_idxs, goal_tracking_cost, path_idx, use_mim=False
     ):
-        """Set last running model for one sub path of the ddp problem."""
-        running_cost_model = crocoddyl.CostModelSum(state)
-        running_cost_model.addCost("gripperPose", goalTrackingCost, self.grip_cost)
-        if path_idx in self.null_speed_path_idxs:
+        """Set last model for a sub path."""
+        if use_mim:
+            last_model = self.get_last_model_with_mim(path_idx)
+        else:
+            last_model = self.get_last_model_without_mim(
+                terminal_paths_idxs, goal_tracking_cost, path_idx
+            )
+        if path_idx in terminal_paths_idxs:
+            self.hpp_paths[path_idx].u_ref.pop()
+            self.hpp_paths[path_idx].terminal_model = last_model
+        else:
+            self.hpp_paths[path_idx].running_models.append(last_model)
+
+    def get_last_model_with_mim(self, path_idx):
+        """Return last model for a sub path with constraints for mim_solvers."""
+        running_cost_model = crocoddyl.CostModelSum(self.state)
+        residual = self.get_translation_residual(path_idx)
+        higher_bound = pin.SE3.Identity()
+        higher_bound.translation = np.array([1e-3, 1e-3, 1e-3])
+        trans_constraint = crocoddyl.ConstraintModelResidual(
+            self.state,
+            residual,
+            np.array([0, 0, 0]),
+            higher_bound.translation,
+        )
+        constraints = crocoddyl.ConstraintModelManager(self.state, self.nv)
+        constraints.addConstraint("gripperPose", trans_constraint)
+
+        return crocoddyl.IntegratedActionModelEuler(
+            crocoddyl.DifferentialActionModelFreeFwdDynamics(
+                self.state, self.actuation_model, running_cost_model, constraints
+            ),
+            self.DT,
+        )
+
+    def get_last_model_without_mim(
+        self, terminal_paths_idxs, goal_tracking_cost, path_idx
+    ):
+        """Return last model without constraints."""
+        running_cost_model = crocoddyl.CostModelSum(self.state)
+        running_cost_model.addCost("gripperPose", goal_tracking_cost, self.grip_cost)
+        if path_idx in self.null_speed_path_idxs or path_idx in terminal_paths_idxs:
             vref = pin.Motion.Zero()
             for joint_name in self.robot.model.names:
                 vel_cost = crocoddyl.CostModelResidual(
-                    state,
+                    self.state,
                     crocoddyl.ResidualModelFrameVelocity(
-                        state, self.robot.model.getFrameId(joint_name), vref, pin.LOCAL
+                        self.state,
+                        self.robot.model.getFrameId(joint_name),
+                        vref,
+                        pin.LOCAL,
                     ),
                 )
                 running_cost_model.addCost(
                     f"vel_{joint_name}", vel_cost, self.grip_cost
                 )
-        running_models.append(
-            crocoddyl.IntegratedActionModelEuler(
-                crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                    state, actuation_model, running_cost_model
-                ),
-                self.DT,
-            )
+        return crocoddyl.IntegratedActionModelEuler(
+            crocoddyl.DifferentialActionModelFreeFwdDynamics(
+                self.state, self.actuation_model, running_cost_model
+            ),
+            self.DT,
         )
-        return running_models
 
-    def set_terminal_models(
-        self, terminal_paths_idxs, state, actuation_model, goal_tracking_costs
-    ):
-        """Set terminal models of the ddp problem."""
-        for path_idx in terminal_paths_idxs:
-            self.hpp_paths[path_idx].u_ref.pop()
-            terminal_cost_model = crocoddyl.CostModelSum(state)
-            terminal_cost_model.addCost(
-                "gripperPose", goal_tracking_costs[path_idx], self.grip_cost
-            )
-            vref = pin.Motion.Zero()
-            for joint_name in self.robot.model.names:
-                vel_cost = crocoddyl.CostModelResidual(
-                    state,
-                    crocoddyl.ResidualModelFrameVelocity(
-                        state, self.robot.model.getFrameId(joint_name), vref, pin.LOCAL
+    def get_tracking_costs(self):
+        """Return vector of tracking costs for each sub path."""
+        goal_tracking_costs = []
+        for path_idx in range(self.nb_paths):
+            q_final = self.hpp_paths[path_idx].x_plan[-1][: self.nq]
+            target = self.robot.placement(q_final, self.nq)
+            goal_tracking_costs.append(
+                crocoddyl.CostModelResidual(
+                    self.state,
+                    crocoddyl.ResidualModelFramePlacement(
+                        self.state, self.robot.model.getFrameId("wrist_3_joint"), target
                     ),
                 )
-                terminal_cost_model.addCost(
-                    f"vel_{joint_name}", vel_cost, self.grip_cost
-                )
-            terminal_model = crocoddyl.IntegratedActionModelEuler(
-                crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                    state, actuation_model, terminal_cost_model
-                )
             )
-            self.hpp_paths[path_idx].terminal_model = terminal_model
+        """goalTrackingCost = crocoddyl.CostModelResidual(
+            self.state,
+            crocoddyl.ResidualModelFrameTranslation(
+                self.state, self.robot.model.getFrameId("wrist_3_joint"), target.translation
+            ),
+        )"""
+        return goal_tracking_costs
 
-    def run_ddp(self, start_idx, terminal_idx, set_callback=False):
+    def get_translation_residual(self, path_idx):
+        """Return translation residual to the last position of the sub path."""
+        q_final = self.hpp_paths[path_idx].x_plan[-1][: self.nq]
+        target = self.robot.placement(q_final, self.nq)
+        return crocoddyl.ResidualModelFrameTranslation(
+            self.state, self.robot.model.getFrameId("wrist_3_joint"), target.translation
+        )
+
+    def run_solver(self, start_idx, terminal_idx, use_mim=False, set_callback=False):
         """
         Run ddp solver
         start_idx : hpp's sub path idx from which we start to run ddp on
@@ -225,12 +232,15 @@ class Problem:
         problem = crocoddyl.ShootingProblem(
             x0, final_running_model, self.hpp_paths[terminal_idx].terminal_model
         )
-        # Creating the DDP solver for this OC problem, defining a logger
-        ddp = crocoddyl.SolverDDP(problem)
-        if set_callback:
-            ddp.setCallbacks([crocoddyl.CallbackVerbose()])
+        # Creating the solver for this OC problem, defining a logger
+        if use_mim:
+            solver = mim_solvers.SolverCSQP(problem)
+        else:
+            solver = crocoddyl.SolverDDP(problem)
+            if set_callback:
+                solver.setCallbacks([crocoddyl.CallbackVerbose()])
 
-        ddp.setCandidate(final_x_plan, final_u_ref, False)
-        # Solving it with the DDP algorithm
-        ddp.solve()
-        self.ddp = ddp
+        # Warm start with hpp trajectory then solve
+        solver.setCandidate(final_x_plan, final_u_ref, False)
+        solver.solve()
+        self.solver = solver
