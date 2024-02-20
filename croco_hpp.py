@@ -146,8 +146,8 @@ class CrocoHppConnection:
         self.best_diff = 1e6
         self.best_solver = None
         if use_mim:
-            for x_exponent in range(-4, 2, 2):
-                for u_exponent in range(-34, -28, 2):
+            for x_exponent in range(-2, 4, 2):
+                for u_exponent in range(-32, -24, 2):
                     self.try_new_costs(
                         0,
                         x_exponent,
@@ -158,7 +158,7 @@ class CrocoHppConnection:
                     )
         else:
             for grip_exponent in range(80, 90, 2):
-                for x_exponent in range(10, 20, 2):
+                for x_exponent in range(0, 10, 2):
                     self.try_new_costs(
                         grip_exponent,
                         x_exponent,

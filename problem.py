@@ -135,26 +135,6 @@ class Problem:
         else:
             self.hpp_paths[path_idx].running_models.append(last_model)
 
-    def get_last_model_with_mim(self, path_idx):
-        """Return last model for a sub path with constraints for mim_solvers."""
-        running_cost_model = crocoddyl.CostModelSum(self.state)
-        residual = self.get_translation_residual(path_idx)
-        trans_constraint = crocoddyl.ConstraintModelResidual(
-            self.state,
-            residual,
-            np.array([0] * 12),
-            np.array([1e-3] * 12),
-        )
-        constraints = crocoddyl.ConstraintModelManager(self.state, self.nv)
-        constraints.addConstraint("gripperPose", trans_constraint)
-
-        return crocoddyl.IntegratedActionModelEuler(
-            crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self.state, self.actuation_model, running_cost_model, constraints
-            ),
-            self.DT,
-        )
-
     def get_last_model_without_mim(
         self, terminal_paths_idxs, goal_tracking_cost, path_idx
     ):
@@ -183,19 +163,70 @@ class Problem:
             self.DT,
         )
 
+    def get_last_model_with_mim(self, path_idx):
+        """Return last model for a sub path with constraints for mim_solvers."""
+        running_cost_model = crocoddyl.CostModelSum(self.state)
+        constraints = crocoddyl.ConstraintModelManager(self.state, self.nv)
+
+        # add placement constraint
+        placement_residual = self.get_placement_residual(path_idx)
+        trans_constraint = crocoddyl.ConstraintModelResidual(
+            self.state,
+            placement_residual,
+            np.array([0] * 12),
+            np.array([1e-3] * 12),
+        )
+        constraints.addConstraint("gripperPose", trans_constraint)
+
+        # add torque constraint
+        torque_residual = crocoddyl.ResidualModelJointEffort(
+            self.state, self.actuation_model, self.hpp_paths[path_idx].u_ref[-1]
+        )
+        torque_constraint = crocoddyl.ConstraintModelResidual(
+            self.state,
+            torque_residual,
+            np.array([-500] * self.nq),
+            np.array([500] * self.nq),
+        )
+        constraints.addConstraint("JointsEfforts", torque_constraint)
+
+        # add velocities constraints
+        vref = pin.Motion.Zero()
+        for joint_name in self.robot.model.names:
+            joint_vel_residual = crocoddyl.ResidualModelFrameVelocity(
+                self.state,
+                self.robot.model.getFrameId(joint_name),
+                vref,
+                pin.LOCAL,
+            )
+            joint_vel_constraint = crocoddyl.ConstraintModelResidual(
+                self.state,
+                joint_vel_residual,
+                np.array([0] * self.nv),
+                np.array([1e-3] * self.nv),
+            )
+            constraints.addConstraint(f"{joint_name}_velocity", joint_vel_constraint)
+
+        return crocoddyl.IntegratedActionModelEuler(
+            crocoddyl.DifferentialActionModelFreeFwdDynamics(
+                self.state, self.actuation_model, running_cost_model, constraints
+            ),
+            self.DT,
+        )
+
     def get_tracking_costs(self):
         """Return vector of tracking costs for each sub path."""
         goal_tracking_costs = []
         for path_idx in range(self.nb_paths):
             goal_tracking_costs.append(
                 crocoddyl.CostModelResidual(
-                    self.state, self.get_translation_residual(path_idx)
+                    self.state, self.get_placement_residual(path_idx)
                 )
             )
         return goal_tracking_costs
 
-    def get_translation_residual(self, path_idx):
-        """Return translation residual to the last position of the sub path."""
+    def get_placement_residual(self, path_idx):
+        """Return placement residual to the last position of the sub path."""
         q_final = self.hpp_paths[path_idx].x_plan[-1][: self.nq]
         target = self.robot.placement(q_final, self.nq)
         return crocoddyl.ResidualModelFramePlacement(
@@ -224,7 +255,7 @@ class Problem:
         if use_mim:
             solver = mim_solvers.SolverCSQP(problem)
         else:
-            solver = crocoddyl.SolverDDP(problem)
+            solver = crocoddyl.SolverFDDP(problem)
             if set_callback:
                 solver.setCallbacks([crocoddyl.CallbackVerbose()])
 
