@@ -1,5 +1,4 @@
 from problem import *
-import time
 import matplotlib.pyplot as plt
 
 
@@ -40,6 +39,20 @@ class CrocoHppConnection:
             plt.plot(t, q_hpp[idx])
             plt.xlabel("time (s)")
             plt.ylabel(f"q{idx} position")
+            plt.legend(["crocoddyl", "hpp warm start"], loc="best")
+        plt.show()
+
+    def plot_traj_velocity(self, terminal_idx):
+        """Plot both velocities of hpp and crocoddyl."""
+        v_crocos, v_hpp = self.get_velocity_trajectory(terminal_idx)
+        path_time = self.get_path_length(terminal_idx)
+        t = np.linspace(0, path_time, len(self.croco_xs))
+        for idx in range(self.nq):
+            plt.subplot(3, 2, idx + 1)
+            plt.plot(t, v_crocos[idx])
+            plt.plot(t, v_hpp[idx])
+            plt.xlabel("time (s)")
+            plt.ylabel(f"velocity q{idx}")
             plt.legend(["crocoddyl", "hpp warm start"], loc="best")
         plt.show()
 
@@ -132,6 +145,19 @@ class CrocoHppConnection:
                     q_hpp[idx].append(x[idx])
         return q_crocos, q_hpp
 
+    def get_velocity_trajectory(self, terminal_idx):
+        """Return the vector of velocity for both trajectories found by hpp and crocoddyl."""
+        v_crocos = [[] for _ in range(self.nq)]
+        v_hpp = [[] for _ in range(self.nq)]
+        for x in self.croco_xs:
+            for idx in range(self.nq):
+                v_crocos[idx].append(x[idx + self.nq])
+        for path_idx in range(terminal_idx + 1):
+            for x in self.hpp_paths[path_idx].x_plan:
+                for idx in range(self.nq):
+                    v_hpp[idx].append(x[idx + self.nq])
+        return v_crocos, v_hpp
+
     def get_configuration_control(self):
         """Return the vector of configuration for both trajectories found by hpp and crocoddyl."""
         us = [[] for _ in range(self.nq)]
@@ -144,33 +170,52 @@ class CrocoHppConnection:
         """Search costs that minimize the gap between hpp and crocoddyl trajectories."""
         self.best_combination = None
         self.best_diff = 1e6
+        self.max_control = 1e6
         self.best_solver = None
         if use_mim:
-            for x_exponent in range(-2, 4, 2):
-                for u_exponent in range(-32, -24, 2):
+            for x_exponent in range(0, 8, 2):
+                for u_exponent in range(-32, -26, 2):
                     self.try_new_costs(
                         0,
                         x_exponent,
                         u_exponent,
                         terminal_idx,
-                        configuration_traj,
                         use_mim,
+                        configuration_traj,
                     )
         else:
-            for grip_exponent in range(80, 90, 2):
-                for x_exponent in range(0, 10, 2):
+            for grip_exponent in range(50, 60, 2):
+                print("grip expo ", grip_exponent)
+                for x_exponent in range(-12, -6, 2):
+                    for u_exponent in range(-30, -26, 2):
+                        self.try_new_costs(
+                            grip_exponent,
+                            x_exponent,
+                            u_exponent,
+                            terminal_idx,
+                            use_mim=use_mim,
+                            configuration_traj=configuration_traj,
+                        )
+            self.max_control = np.max(self.prob.solver.us)
+            best_combination = self.best_combination
+            for vel_exponent in range(-40, -5, 5):
+                for xlim_exponent in range(-20, -5, 5):
                     self.try_new_costs(
-                        grip_exponent,
-                        x_exponent,
-                        -30,
+                        best_combination[0],
+                        best_combination[1],
+                        best_combination[2],
                         terminal_idx,
-                        configuration_traj,
+                        vel_exponent,
+                        xlim_exponent,
                         use_mim,
+                        configuration_traj,
                     )
+
         self.prob.solver = self.best_solver
         self.croco_xs = self.prob.solver.xs
         print("best diff ", self.best_diff)
         print("best combination ", self.best_combination)
+        print("max u ", np.max(self.prob.solver.us))
 
     def try_new_costs(
         self,
@@ -178,28 +223,45 @@ class CrocoHppConnection:
         x_exponent,
         u_exponent,
         terminal_idx,
-        configuration_traj,
-        use_mim,
+        vel_exponent=0,
+        xlim_exponent=0,
+        use_mim=False,
+        configuration_traj=False,
     ):
         """Set problem, run solver and check if we found a better solution."""
         self.set_problem_run_solver(
             10 ** (grip_exponent / 10),
             10 ** (x_exponent / 10),
             10 ** (u_exponent / 10),
+            10 ** (vel_exponent / 10),
+            10 ** (xlim_exponent / 10),
             terminal_idx,
             use_mim,
         )
         diff = self.get_trajectory_difference(terminal_idx, configuration_traj)
         if diff < self.best_diff:
-            self.best_combination = [grip_exponent, x_exponent, u_exponent]
+            self.best_combination = [
+                grip_exponent,
+                x_exponent,
+                u_exponent,
+                vel_exponent,
+                xlim_exponent,
+            ]
             self.best_diff = diff
             self.best_solver = self.prob.solver
 
     def set_problem_run_solver(
-        self, grip_cost, x_cost, u_cost, terminal_idx, use_mim=False
+        self,
+        grip_cost,
+        x_cost,
+        u_cost,
+        vel_cost,
+        xlim_cost,
+        terminal_idx,
+        use_mim=False,
     ):
         """Set OCP problem with new costs then run solver."""
-        self.prob.set_costs(grip_cost, x_cost, u_cost)
+        self.prob.set_costs(grip_cost, x_cost, u_cost, vel_cost, xlim_cost)
         self.prob.set_models([terminal_idx], use_mim=use_mim)
         self.prob.run_solver(0, terminal_idx, use_mim=use_mim)
         self.croco_xs = self.prob.solver.xs
