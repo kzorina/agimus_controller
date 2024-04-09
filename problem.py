@@ -10,7 +10,7 @@ class SubPath:
     def __init__(self, path):
         if path is not None:
             self.path = path  # hpp path
-            self.T = int(40 * self.path.length())
+            self.T = int(50 * self.path.length())
             self.x_plan = self.get_xplan()
         self.u_ref = None
         self.running_models = None
@@ -32,7 +32,6 @@ class SubPath:
 
 class Problem:
     def __init__(self, ps, robot_name):
-        self.DT = 1e-3  # integration step for crocoddyl
         self.x_cost = 1e-1
         self.u_cost = 1e-4
         self.grip_cost = 1e6
@@ -40,19 +39,19 @@ class Problem:
         self.vel_cost = 0.01
         self.null_speed_path_idxs = [
             1,
-            4,
+            3,
         ]  # sub path indexes where we desire null speed at the last node
         self.robot = example_robot_data.load(robot_name)
         self.robot_data = self.robot.model.createData()
         self.state = crocoddyl.StateMultibody(self.robot.model)
         self.actuation_model = crocoddyl.ActuationModelFull(self.state)
-        self.DT = 1e-3
+        self.DT = 2e-2
         self.nq = self.robot.nq
         self.nv = self.robot.nv
 
         self.hpp_paths = []
         if ps is not None:
-            self.p = ps.client.basic.problem.getPath(2)
+            self.p = ps.client.basic.problem.getPath(ps.numberPaths() - 1)
             for i in range(self.p.numberPaths()):
                 new_path = SubPath(self.p.pathAtRank(i))
                 if new_path.T > 0:
@@ -135,10 +134,11 @@ class Problem:
                     pin.WORLD,
                 ),
             )
-            running_cost_model.addCost("vel", frameVelocityCost, self.vel_cost)
+
             running_cost_model.addCost("xReg", x_reg_cost, self.x_cost)
             running_cost_model.addCost("uReg", u_reg_cost, self.u_cost)
-            running_cost_model.addCost("xlimitReg", xLimitCost, self.xlim_cost)
+            # running_cost_model.addCost("xlimitReg", xLimitCost, self.xlim_cost)
+            # running_cost_model.addCost("vel", frameVelocityCost, self.vel_cost)
 
             # running_cost_model.addCost("xlimitReg", u_reg_cost, 5)
             running_models.append(
@@ -176,19 +176,17 @@ class Problem:
         if path_idx in self.null_speed_path_idxs or path_idx in terminal_paths_idxs:
 
             vref = pin.Motion.Zero()
-            for joint_name in self.robot.model.names:
-                vel_cost = crocoddyl.CostModelResidual(
+            # for joint_name in self.robot.model.names:
+            vel_cost = crocoddyl.CostModelResidual(
+                self.state,
+                crocoddyl.ResidualModelFrameVelocity(
                     self.state,
-                    crocoddyl.ResidualModelFrameVelocity(
-                        self.state,
-                        self.robot.model.getFrameId(joint_name),
-                        vref,
-                        pin.LOCAL,
-                    ),
-                )
-                running_cost_model.addCost(
-                    f"vel_{joint_name}", vel_cost, self.grip_cost
-                )
+                    self.robot.model.getFrameId("wrist_3_joint"),
+                    vref,
+                    pin.LOCAL,
+                ),
+            )
+            running_cost_model.addCost("vel_wrist_3_joint", vel_cost, self.grip_cost)
             """
             vref = pin.Motion.Zero()
             frameVelocityCost = crocoddyl.CostModelResidual(
@@ -209,8 +207,8 @@ class Problem:
                     self.state, self.hpp_paths[path_idx].u_ref[-1]
                 ),
             )
-            running_cost_model.addCost("uReg", u_reg_cost, self.u_cost)
-
+            running_cost_model.addCost("uReg", u_reg_cost, self.u_cost * 1000)
+        """
         xLimitCost = crocoddyl.CostModelResidual(
             self.state,
             crocoddyl.ActivationModelQuadraticBarrier(
@@ -222,7 +220,7 @@ class Problem:
                 self.actuation_model.nu,
             ),
         )
-        running_cost_model.addCost("xlimitReg", xLimitCost, self.xlim_cost / 10)
+        running_cost_model.addCost("xlimitReg", xLimitCost, self.xlim_cost / 10)"""
         return crocoddyl.IntegratedActionModelEuler(
             crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self.state, self.actuation_model, running_cost_model

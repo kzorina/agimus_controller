@@ -10,7 +10,7 @@ class CrocoHppConnection:
         self.prob = Problem(ps, robot_name)
         self.robot = example_robot_data.load(robot_name)
         self.nq = self.robot.nq
-        self.DT = 1e-3
+        self.DT = 2e-2
         self.croco_xs = None
         self.hpp_paths = None
 
@@ -215,10 +215,10 @@ class CrocoHppConnection:
                     end = time.time()
                     print("iteration duration ", end - start)
         else:
-            for grip_exponent in range(50, 60, 2):
+            for grip_exponent in range(34, 46, 2):
                 print("grip expo ", grip_exponent)
-                for x_exponent in range(-12, -6, 2):
-                    for u_exponent in range(-30, -26, 2):
+                for x_exponent in range(-20, 0, 5):
+                    for u_exponent in range(-35, -15, 5):
                         start = time.time()
                         self.try_new_costs(
                             grip_exponent,
@@ -232,6 +232,7 @@ class CrocoHppConnection:
                         print("iteration duration ", end - start)
             self.max_control = np.max(self.prob.solver.us)
             best_combination = self.best_combination
+            """
             for vel_exponent in range(-40, -5, 5):
                 for xlim_exponent in range(-20, -5, 5):
                     self.try_new_costs(
@@ -243,7 +244,7 @@ class CrocoHppConnection:
                         xlim_exponent,
                         use_mim,
                         configuration_traj,
-                    )
+                    )"""
 
         self.prob.solver = self.best_solver
         self.croco_xs = self.prob.solver.xs
