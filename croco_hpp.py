@@ -10,6 +10,7 @@ class CrocoHppConnection:
         self.prob = Problem(ps, robot_name)
         self.robot = example_robot_data.load(robot_name)
         self.nq = self.robot.nq
+        self.DT = 1e-3
         self.croco_xs = None
         self.hpp_paths = None
 
@@ -53,6 +54,33 @@ class CrocoHppConnection:
             plt.plot(t, v_hpp[idx])
             plt.xlabel("time (s)")
             plt.ylabel(f"velocity q{idx}")
+            plt.legend(["crocoddyl", "hpp warm start"], loc="best")
+        plt.show()
+
+    def plot_integrated_configuration(self, terminal_idx):
+        v_crocos, v_hpp = self.get_velocity_trajectory(terminal_idx)
+        q_crocos = [[] for _ in range(self.nq)]
+        q_hpps = [[] for _ in range(self.nq)]
+        x0_croco = self.croco_xs[0]
+        x0_hpp = self.hpp_paths[0].x_plan[0]
+        for idx in range(self.nq):
+            q_crocos[idx].append(x0_croco[idx])
+            q_hpps[idx].append(x0_hpp[idx])
+
+        for idx in range(len(self.croco_xs)):
+            for joint_idx in range(self.nq):
+                q_croco = q_crocos[joint_idx][-1] + v_crocos[joint_idx][idx] * self.DT
+                q_crocos[joint_idx].append(q_croco)
+                q_hpp = q_hpps[joint_idx][-1] + v_hpp[joint_idx][idx] * self.DT
+                q_hpps[joint_idx].append(q_hpp)
+        path_time = self.get_path_length(terminal_idx)
+        t = np.linspace(0, path_time, len(self.croco_xs) + 1)
+        for idx in range(self.nq):
+            plt.subplot(3, 2, idx + 1)
+            plt.plot(t, q_crocos[idx])
+            plt.plot(t, q_hpps[idx])
+            plt.xlabel("time (s)")
+            plt.ylabel(f"q{idx} position integrated")
             plt.legend(["crocoddyl", "hpp warm start"], loc="best")
         plt.show()
 
@@ -175,6 +203,7 @@ class CrocoHppConnection:
         if use_mim:
             for x_exponent in range(0, 8, 2):
                 for u_exponent in range(-32, -26, 2):
+                    start = time.time()
                     self.try_new_costs(
                         0,
                         x_exponent,
@@ -183,11 +212,14 @@ class CrocoHppConnection:
                         use_mim,
                         configuration_traj,
                     )
+                    end = time.time()
+                    print("iteration duration ", end - start)
         else:
             for grip_exponent in range(50, 60, 2):
                 print("grip expo ", grip_exponent)
                 for x_exponent in range(-12, -6, 2):
                     for u_exponent in range(-30, -26, 2):
+                        start = time.time()
                         self.try_new_costs(
                             grip_exponent,
                             x_exponent,
@@ -196,6 +228,8 @@ class CrocoHppConnection:
                             use_mim=use_mim,
                             configuration_traj=configuration_traj,
                         )
+                        end = time.time()
+                        print("iteration duration ", end - start)
             self.max_control = np.max(self.prob.solver.us)
             best_combination = self.best_combination
             for vel_exponent in range(-40, -5, 5):
