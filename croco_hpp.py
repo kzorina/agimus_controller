@@ -10,7 +10,7 @@ class CrocoHppConnection:
         self.prob = Problem(ps, robot_name)
         self.robot = example_robot_data.load(robot_name)
         self.nq = self.robot.nq
-        self.DT = 2e-2
+        self.DT = self.prob.DT
         self.croco_xs = None
         self.hpp_paths = None
 

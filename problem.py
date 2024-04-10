@@ -10,7 +10,7 @@ class SubPath:
     def __init__(self, path):
         if path is not None:
             self.path = path  # hpp path
-            self.T = int(50 * self.path.length())
+            self.T = int(20 * self.path.length())
             self.x_plan = self.get_xplan()
         self.u_ref = None
         self.running_models = None
@@ -45,7 +45,7 @@ class Problem:
         self.robot_data = self.robot.model.createData()
         self.state = crocoddyl.StateMultibody(self.robot.model)
         self.actuation_model = crocoddyl.ActuationModelFull(self.state)
-        self.DT = 2e-2
+        self.DT = 5e-2
         self.nq = self.robot.nq
         self.nv = self.robot.nv
 
