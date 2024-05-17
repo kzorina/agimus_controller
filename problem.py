@@ -56,10 +56,25 @@ class Problem:
         self.vel_cost = 0
         self.use_mim = False
         self.null_speed_path_idxs = []
+
         #    1,
         #    3,
         # ]  # sub path indexes where we desire null speed at the last node
         self.robot = example_robot_data.load(robot_name)
+        if robot_name in ["ur3", "ur5", "ur10"]:
+            self.last_joint_name = "wrist_3_joint"
+        elif robot_name == "panda":
+            self.last_joint_name = "panda_joint7"
+            locked_joints = [
+                self.robot.model.getJointId("panda_finger_joint1"),
+                self.robot.model.getJointId("panda_finger_joint2"),
+            ]
+            robot_model_reduced = pin.buildReducedModel(
+                self.robot.model, locked_joints, self.robot.q0
+            )
+            self.robot.model = robot_model_reduced
+        else:
+            raise Exception("Unkown robot")
         self.robot_data = self.robot.model.createData()
         self.state = crocoddyl.StateMultibody(self.robot.model)
         self.actuation = crocoddyl.ActuationModelFull(self.state)
@@ -126,7 +141,7 @@ class Problem:
             x_residual = self.get_state_residual(x_ref)
             u_residual = self.get_control_residual(self.hpp_paths[path_idx].u_ref[idx])
             xLimit_residual = self.get_xlimit_residual()
-            frame_velocity_residual = self.get_velocity_residual("wrist_3_joint")
+            frame_velocity_residual = self.get_velocity_residual(self.last_joint_name)
             placemment_residual = self.get_placement_residual(x_ref[: self.nq])
 
             running_cost_model.addCost("xReg", x_residual, self.x_cost)
@@ -171,8 +186,8 @@ class Problem:
         running_cost_model.addCost(
             "gripperPose", goal_placement_residual, self.grip_cost
         )
-        vel_cost = self.get_velocity_residual("wrist_3_joint")
-        if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
+        vel_cost = self.get_velocity_residual(self.last_joint_name)
+        if np.linalg.norm(x_ref[self.nq :]) < 1e-6:
             running_cost_model.addCost("vel", vel_cost, self.grip_cost)
         else:
             running_cost_model.addCost("vel", vel_cost, 0)
@@ -227,7 +242,7 @@ class Problem:
 
         joint_vel_residual = crocoddyl.ResidualModelFrameVelocity(
             self.state,
-            self.robot.model.getFrameId("wrist_3_joint"),
+            self.robot.model.getFrameId(self.last_joint_name),
             vref,
             pin.LOCAL,
         )
@@ -278,7 +293,7 @@ class Problem:
         return crocoddyl.CostModelResidual(
             self.state,
             crocoddyl.ResidualModelFramePlacement(
-                self.state, self.robot.model.getFrameId("wrist_3_joint"), target
+                self.state, self.robot.model.getFrameId(self.last_joint_name), target
             ),
         )
 
@@ -326,7 +341,7 @@ class Problem:
         target = self.robot.placement(q_final, self.nq)
         return crocoddyl.ResidualModelFrameTranslation(
             self.state,
-            self.robot.model.getFrameId("wrist_3_joint"),
+            self.robot.model.getFrameId(self.last_joint_name),
             target.translation,
         )
 

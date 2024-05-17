@@ -1,4 +1,4 @@
-from problem import *
+from .problem import *
 import matplotlib.pyplot as plt
 
 
@@ -8,7 +8,7 @@ class CrocoHppConnection:
         if vf is not None:
             self.v = vf.createViewer()
         self.prob = Problem(ps, robot_name)
-        self.robot = example_robot_data.load(robot_name)
+        self.robot = self.prob.robot
         self.nq = self.robot.nq
         self.DT = self.prob.DT
         self.croco_xs = None
@@ -36,7 +36,7 @@ class CrocoHppConnection:
         path_time = self.get_path_length(terminal_idx)
         t = np.linspace(0, path_time, len(self.croco_xs))
         for idx in range(self.nq):
-            plt.subplot(3, 2, idx + 1)
+            plt.subplot(self.nq, 1, idx + 1)
             plt.plot(t, q_crocos[idx])
             plt.plot(t, q_hpp[idx])
             plt.xlabel("time (s)")
@@ -50,7 +50,7 @@ class CrocoHppConnection:
         path_time = self.get_path_length(terminal_idx)
         t = np.linspace(0, path_time, len(self.croco_xs))
         for idx in range(self.nq):
-            plt.subplot(3, 2, idx + 1)
+            plt.subplot(self.robot.nq, 1, idx + 1)
             plt.plot(t, v_crocos[idx])
             plt.plot(t, v_hpp[idx])
             plt.xlabel("time (s)")
@@ -97,7 +97,7 @@ class CrocoHppConnection:
         path_time = self.get_path_length(terminal_idx)
         t = np.linspace(0, path_time, len(self.croco_us))
         for idx in range(self.nq):
-            plt.subplot(3, 2, idx + 1)
+            plt.subplot(self.nq, 1, idx + 1)
             plt.plot(t, us[idx])
             plt.xlabel("time (s)")
             plt.ylabel(f"q{idx} control")
@@ -108,7 +108,7 @@ class CrocoHppConnection:
         path_time = self.get_path_length(terminal_idx)
         DT = path_time / len(self.croco_xs)
         for x in self.croco_xs:
-            self.v(list(x)[: self.nq] + self.ball_init_pose)
+            self.v(list(x)[: self.nq])  # + self.ball_init_pose
             time.sleep(DT)
 
     def print_final_placement(self, terminal_idx):
