@@ -13,6 +13,12 @@ class CrocoHppConnection:
         self.DT = self.prob.DT
         self.croco_xs = None
         self.croco_us = None
+        self.results = {}
+        self.results["croco_xs"] = []
+        self.results["croco_us"] = []
+        self.results["max_us"] = []
+        self.results["max_increase_us"] = []
+        self.results["combination"] = []
         self.hpp_paths = self.prob.hpp_paths
 
     def plot_traj(self, terminal_idx):
@@ -149,6 +155,18 @@ class CrocoHppConnection:
             diffs.append(np.sum(array_diff))
         return sum(diffs)
 
+    def max_increase_us(self):
+        """Return control max increase"""
+        increases = np.zeros([len(self.croco_us) - 1, 7])
+        for joint_idx in range(7):
+            for idx in range(len(self.croco_us) - 1):
+                increases[idx, joint_idx] = (
+                    self.croco_us[idx + 1][joint_idx] - self.croco_us[idx][joint_idx]
+                )
+        return np.max(np.abs(increases)), np.unravel_index(
+            np.argmax(np.abs(increases), axis=None), increases.shape
+        )
+
     def get_cartesian_trajectory(self, terminal_idx):
         """Return the vector of gripper pose for both trajectories found by hpp and crocoddyl."""
         pose_croco = [[] for _ in range(3)]
@@ -205,8 +223,9 @@ class CrocoHppConnection:
     ):
         """Search costs that minimize the gap between hpp and crocoddyl trajectories."""
         self.best_combination = None
+        self.best_croco_xs = None
+        self.best_croco_us = None
         self.best_diff = 1e6
-        self.best_solver = None
         self.prob.use_mim = use_mim
         if use_mim:
             for x_exponent in range(0, 8, 2):
@@ -223,8 +242,8 @@ class CrocoHppConnection:
                         0,
                         0,
                         configuration_traj=configuration_traj,
-                        vel_exponent=0,
-                        xlim_exponent=0,
+                        vel_cost=0,
+                        xlim_cost=0,
                         is_mpc=is_mpc,
                     )
                     end = time.time()
@@ -232,7 +251,7 @@ class CrocoHppConnection:
         else:
             for grip_exponent in range(25, 50, 5):
                 print("grip expo ", grip_exponent)
-                for x_exponent in range(5, 25, 5):
+                for x_exponent in range(0, 15, 5):
                     for u_exponent in range(-35, -25, 5):
                         # for vel_exponent in range(-6, 14, 4):
                         grip_cost, x_cost, u_cost, _, _ = self.get_cost_from_exponent(
@@ -246,17 +265,15 @@ class CrocoHppConnection:
                             u_cost,
                             terminal_idx,
                             configuration_traj=configuration_traj,
-                            vel_exponent=0,
-                            xlim_exponent=0,
+                            vel_cost=0,
+                            xlim_cost=0,
                             is_mpc=is_mpc,
                         )
                         end = time.time()
                         print("iteration duration ", end - start)
 
-        self.prob.solver = self.best_solver
-        if is_mpc == False:
-            self.croco_xs = self.prob.solver.xs
-            self.croco_us = self.prob.solver.us
+        self.croco_xs = self.best_croco_xs
+        self.croco_us = self.best_croco_us
         print("best diff ", self.best_diff)
         print("best combination ", self.best_combination)
         print("max torque ", np.max(np.abs(self.croco_us)))
@@ -274,16 +291,16 @@ class CrocoHppConnection:
 
     def try_new_costs(
         self,
-        grip_exponent,
-        x_exponent,
-        u_exponent,
+        grip_cost,
+        x_cost,
+        u_cost,
         terminal_idx,
-        vel_exponent=0,
-        xlim_exponent=0,
+        vel_cost=0,
+        xlim_cost=0,
         configuration_traj=False,
         is_mpc=False,
     ):
-        """Set problem, run solver and check if we found a better solution."""
+        """Set problem, run solver, add result in dict and check if we found a better solution."""
         if is_mpc:
             print("doing mpc")
             self.do_mpc(terminal_idx, 100)
@@ -292,17 +309,21 @@ class CrocoHppConnection:
             self.set_problem_run_solver(
                 terminal_idx,
             )
+        max_us = np.max(np.abs(self.croco_us))
+        max_increase_us, _ = self.max_increase_us()
+        self.results["croco_xs"].append(self.croco_xs)
+        self.results["croco_us"].append(self.croco_us)
+        self.results["max_us"].append(max_us)
+        self.results["max_increase_us"].append(max_increase_us)
+        self.results["combination"].append(
+            [grip_cost, x_cost, u_cost, vel_cost, xlim_cost]
+        )
         diff = self.get_trajectory_difference(terminal_idx, configuration_traj)
-        if diff < self.best_diff:
-            self.best_combination = [
-                grip_exponent,
-                x_exponent,
-                u_exponent,
-                vel_exponent,
-                xlim_exponent,
-            ]
+        if diff < self.best_diff and max_us < 100 and max_increase_us < 50:
+            self.best_combination = [grip_cost, x_cost, u_cost, vel_cost, xlim_cost]
             self.best_diff = diff
-            self.best_solver = self.prob.solver
+            self.best_croco_xs = self.croco_xs
+            self.best_croco_us = self.croco_us
 
     def set_problem_run_solver(self, terminal_idx):
         """Set OCP problem with new costs then run solver."""
