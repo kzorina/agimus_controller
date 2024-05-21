@@ -11,7 +11,8 @@ class SubPath:
         if path is not None:
             self.path = path  # hpp path
             self.T = int(np.round(self.path.length() * 1 / DT))
-            self.x_plan = self.get_xplan(DT, path_idx, nq)
+            self.x_plan, self.a_plan = self.get_xplan(DT, path_idx, nq)
+
             # if path_idx > 0:
             #    self.T -= 1
 
@@ -20,31 +21,36 @@ class SubPath:
         self.terminal_model = None
 
     def get_xplan(self, DT, path_idx, nq):
-        """Return x_plan, the state trajectory of hpp."""
-        x_plan = []
+        """Return x_plan the state and a_plan the acceleration of hpp's trajectory."""
+        x_plan = np.zeros([self.T, 2 * nq])
+        a_plan = np.zeros([self.T, nq])
         if self.T == 0:
-            return x_plan
+            return x_plan, a_plan
         elif self.T == 1:
             time = self.path.length()
             q_t = np.array(self.path.call(time)[0][:nq])
             v_t = np.array(self.path.derivative(time, 1)[:nq])
-            x_plan.append(np.concatenate([q_t, v_t]))
-            return x_plan
+            x_plan[0, :] = np.concatenate([q_t, v_t])
+            a_t = np.array(self.path.derivative(time, 2)[:nq])
+            a_plan[0, :] = a_t
+            return x_plan, a_plan
         """if path_idx == 0:
             start_idx = 0
         else:
             start_idx = 1"""
         total_time = self.path.length()
-        for iter in range(0, self.T):
+        for iter in range(self.T):
             iter_time = total_time * iter / (self.T - 1)  # iter * DT
             q_t = np.array(self.path.call(iter_time)[0][:nq])
             v_t = np.array(self.path.derivative(iter_time, 1)[:nq])
-            x_plan.append(np.concatenate([q_t, v_t]))
+            x_plan[iter, :] = np.concatenate([q_t, v_t])
+            a_t = np.array(self.path.derivative(iter_time, 2)[:nq])
+            a_plan[iter, :] = a_t
         """
         q_t = np.array(self.path.call(total_time)[0][:6])
         v_t = np.array(self.path.derivative(total_time, 1)[:6])
         x_plan.append(np.concatenate([q_t, v_t]))"""
-        return x_plan
+        return x_plan, a_plan
 
 
 class Problem:
@@ -101,13 +107,21 @@ class Problem:
     def get_uref(self, path_idx):
         """Return the reference of control u_ref that compensates gravity."""
         u_ref = []
+        """
         for x in self.hpp_paths[path_idx].x_plan:
             pin.computeGeneralizedGravity(
                 self.robot.model,
                 self.robot_data,
                 x[: self.nq],
             )
-            u_ref.append(self.robot_data.g.copy())
+            u_ref.append(self.robot_data.g.copy())"""
+        for idx in range(self.hpp_paths[path_idx].x_plan.shape[0]):
+            x = self.hpp_paths[path_idx].x_plan[idx, :]
+            a = self.hpp_paths[path_idx].a_plan[idx, :]
+            tau = pin.rnea(
+                self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
+            ).copy()
+            u_ref.append(tau)
         return u_ref
 
     def set_costs(self, grip_cost, x_cost, u_cost, vel_cost=0, xlim_cost=0):
@@ -137,7 +151,7 @@ class Problem:
         )
         for idx in range(self.hpp_paths[path_idx].T - 1):
             running_cost_model = crocoddyl.CostModelSum(self.state)
-            x_ref = self.hpp_paths[path_idx].x_plan[idx]
+            x_ref = self.hpp_paths[path_idx].x_plan[idx, :]
             x_residual = self.get_state_residual(x_ref)
             u_residual = self.get_control_residual(self.hpp_paths[path_idx].u_ref[idx])
             xLimit_residual = self.get_xlimit_residual()
@@ -172,7 +186,7 @@ class Problem:
         else:
 
             last_model = self.get_last_model_without_mim(
-                goal_placement_residual, self.hpp_paths[path_idx].x_plan[-1], u_ref
+                goal_placement_residual, self.hpp_paths[path_idx].x_plan[-1, :], u_ref
             )
         if path_idx in terminal_paths_idxs:
             self.hpp_paths[path_idx].u_ref.pop()
@@ -211,7 +225,7 @@ class Problem:
 
         # add placement constraint
         placement_residual = self.get_placement_residual(
-            self.hpp_paths[path_idx].x_plan[-1][: self.nq]
+            self.hpp_paths[path_idx].x_plan[-1, : self.nq]
         )
         placement_constraint = crocoddyl.ConstraintModelResidual(
             self.state,
@@ -282,7 +296,7 @@ class Problem:
         for path_idx in range(self.nb_paths):
             goals_placement_residual.append(
                 self.get_placement_residual(
-                    self.hpp_paths[path_idx].x_plan[-1][: self.nq]
+                    self.hpp_paths[path_idx].x_plan[-1, : self.nq]
                 ),
             )
         return goals_placement_residual
@@ -337,7 +351,7 @@ class Problem:
 
     def get_translation_residual(self, path_idx):
         """Return translation residual to the last position of the sub path."""
-        q_final = self.hpp_paths[path_idx].x_plan[-1][: self.nq]
+        q_final = self.hpp_paths[path_idx].x_plan[-1, : self.nq]
         target = self.robot.placement(q_final, self.nq)
         return crocoddyl.ResidualModelFrameTranslation(
             self.state,
@@ -346,7 +360,7 @@ class Problem:
         )
 
     def create_whole_problem(self):
-        x0 = self.hpp_paths[0].x_plan[0]
+        x0 = self.hpp_paths[0].x_plan[0, :]
         final_running_model = []
 
         for path_idx in range(self.nb_paths):
@@ -434,11 +448,13 @@ class Problem:
         # return problem
 
     def set_xplan_and_uref(self, start_idx, terminal_idx):
-        self.x_plan = []
-        self.u_ref = []
-        for path_idx in range(start_idx, terminal_idx + 1):
-            self.x_plan += self.hpp_paths[path_idx].x_plan
-            self.u_ref += self.hpp_paths[path_idx].u_ref
+        x_plan = self.hpp_paths[start_idx].x_plan
+        u_ref = self.hpp_paths[start_idx].u_ref
+        for path_idx in range(start_idx + 1, terminal_idx + 1):
+            x_plan = np.concatenate([x_plan, self.hpp_paths[path_idx].x_plan])
+            u_ref = np.concatenate([u_ref, self.hpp_paths[path_idx].u_ref])
+        self.x_plan = x_plan
+        self.u_ref = u_ref
 
     def run_solver(self, problem, xs_init, us_init, max_iter, set_callback=False):
         """
