@@ -313,7 +313,7 @@ class CrocoHppConnection:
         m.calc(d, x, self.prob.solver.us[0])
         return d.xnext.copy()
 
-    def do_mpc(self, path_terminal_idx, T):
+    def do_mpc(self, path_terminal_idx, T, node_idx_breakpoint=None):
         self.prob.set_models([path_terminal_idx])
         self.prob.create_whole_problem()
         self.prob.set_xplan_and_uref(0, path_terminal_idx)
@@ -330,18 +330,20 @@ class CrocoHppConnection:
         us[0, :] = self.prob.solver.us[0]
         x = self.compute_next_step(problem.x0, problem)
         xs[1, :] = x
-
-        for idx in range(1, len(self.prob.whole_problem.runningModels.tolist())):
+        breakpoint()
+        for idx in range(1, len(self.prob.whole_problem.runningModels)):
             self.prob.reset_ocp(x, next_node_idx)
             xs_init = list(self.prob.solver.xs[1:]) + [self.prob.solver.xs[-1]]
             xs_init[0] = x
             us_init = list(self.prob.solver.us[1:]) + [self.prob.solver.us[-1]]
 
-            self.prob.run_solver(self.prob.solver.problem, xs_init, us_init, 1)
-            x = self.compute_next_step(x, self.prob.solver.problem)
+            self.prob.run_solver(problem, xs_init, us_init, 1)
+            x = self.compute_next_step(x, problem)
             xs[idx + 1, :] = x
             us[idx, :] = self.prob.solver.us[0]
             next_node_idx += 1
-            self.problem = self.prob.solver.problem.copy()
+            self.prob.solver.problem.copy()
+            if idx == node_idx_breakpoint:
+                breakpoint()
         self.croco_xs = xs
         self.croco_us = us
