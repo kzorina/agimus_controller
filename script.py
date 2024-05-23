@@ -252,28 +252,14 @@ from hpp.corbaserver import wrap_delete
 from croco_hpp import *
 
 
-# new_p = wrap_delete(p.pathAtRank(0))
-##TODO trouver les indexs pour split le path en plusieurs parties
-def split_paths_idx(p):
-    splitted_paths_idxs = {}
-    for idx in range(p.numberPaths()):
-        sub_path = p.pathAtRank(idx)
-        if sub_path.initial()[6:] != sub_path.end()[6:]:
-            splitted_paths_idxs[f"path_{idx}"] = idx
-    return splitted_paths_idxs
-
-
 ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
 chc = CrocoHppConnection(ps, "ur5", vf, ball_init_pose)
 start = time.time()
-chc.search_best_costs(1, use_mim=True)
+chc.prob.set_costs(10**4.5, 100, 10**-3.5, 0, 0)
+chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
+# chc.do_mpc(chc.prob.nb_paths - 1, 100)
 end = time.time()
 print("search duration ", end - start)
 with open("datas.npy", "wb") as f:
     np.save(f, chc.prob.hpp_paths[0].x_plan)
     np.save(f, chc.prob.hpp_paths[1].x_plan)
-
-"""
-from hpp.gepetto import PathPlayer
-v =vf.createViewer()
-pp = PathPlayer (v)"""
