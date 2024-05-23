@@ -248,18 +248,23 @@ if args.N != 0:
         print(f"Average number nodes per success: {totalNumberNodes/success}")
 
 ##### start croco script
-from hpp.corbaserver import wrap_delete
-from croco_hpp import *
+if __name__ == "__main__":
+    from hpp.corbaserver import wrap_delete
+    from .croco_hpp import *
 
+    ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
+    chc = CrocoHppConnection(ps, "ur5", vf, ball_init_pose)
+    start = time.time()
+    chc.prob.set_costs(10**4.5, 100, 10**-3.5, 0, 0)
+    chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
+    # chc.do_mpc(chc.prob.nb_paths - 1, 100)
+    end = time.time()
+    print("search duration ", end - start)
+    with open("datas.npy", "wb") as f:
+        np.save(f, chc.prob.hpp_paths[0].x_plan)
+        np.save(f, chc.prob.hpp_paths[1].x_plan)
 
-ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
-chc = CrocoHppConnection(ps, "ur5", vf, ball_init_pose)
-start = time.time()
-chc.prob.set_costs(10**4.5, 100, 10**-3.5, 0, 0)
-chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
-# chc.do_mpc(chc.prob.nb_paths - 1, 100)
-end = time.time()
-print("search duration ", end - start)
-with open("datas.npy", "wb") as f:
-    np.save(f, chc.prob.hpp_paths[0].x_plan)
-    np.save(f, chc.prob.hpp_paths[1].x_plan)
+"""
+from hpp.gepetto import PathPlayer
+v =vf.createViewer()
+pp = PathPlayer (v)"""
