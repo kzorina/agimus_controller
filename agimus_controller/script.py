@@ -256,8 +256,8 @@ if __name__ == "__main__":
     chc = CrocoHppConnection(ps, "ur5", vf, ball_init_pose)
     start = time.time()
     chc.prob.set_costs(10**4.5, 100, 10**-3.5, 0, 0)
-    chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
-    # chc.do_mpc(chc.prob.nb_paths - 1, 100)
+    # chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
+    chc.do_mpc(chc.prob.nb_paths - 1, 100)
     end = time.time()
     print("search duration ", end - start)
     with open("datas.npy", "wb") as f:
@@ -268,3 +268,5 @@ if __name__ == "__main__":
 from hpp.gepetto import PathPlayer
 v =vf.createViewer()
 pp = PathPlayer (v)"""
+# plot_costs_from_dic(return_cost_vectors(chc.prob.solver,weighted=True))
+# plot_costs_from_dic(return_cost_vectors(self.prob.solver,weighted=True))

@@ -1,5 +1,6 @@
 from .problem import *
 import matplotlib.pyplot as plt
+from .ocp_analyzer import *
 
 
 class CrocoHppConnection:
@@ -347,3 +348,23 @@ class CrocoHppConnection:
                 breakpoint()
         self.croco_xs = xs
         self.croco_us = us
+
+    def plot_xs_us(self, solver):
+        xs = np.array(solver.xs)
+        us = np.array(solver.us)
+        dt = solver.problem.runningModels[0].dt
+        poses = np.zeros([len(xs), 3])
+        for idx in range(xs.shape[0]):
+            pose = self.robot.placement(xs[idx, : self.nq])
+            poses[idx, :] = pose.translation
+        t_xs = np.linspace(0, (len(xs) - 1) * dt, int(1 / dt))
+        for idx in range(3):
+            plt.subplot(3, 1, idx)
+            plt.plot(t_xs, poses[:, idx])
+        for idx in range(self.nq):
+            plt.subplot(self.nq, 1, idx)
+            plt.plot(t_xs, xs[:, idx])
+        for idx in range(self.nq):
+            plt.subplot(self.nq, 1, idx)
+            plt.plot(t_xs[:-1], us[:, idx])
+        plt.show()

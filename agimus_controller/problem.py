@@ -121,7 +121,7 @@ class Problem:
             tau = pin.rnea(
                 self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
             ).copy()
-            u_ref.append(tau)
+            u_ref.append(tau[: self.nq])
         return u_ref
 
     def set_costs(self, grip_cost, x_cost, u_cost, vel_cost=0, xlim_cost=0):
@@ -160,7 +160,7 @@ class Problem:
 
             running_cost_model.addCost("xReg", x_residual, self.x_cost)
             running_cost_model.addCost("uReg", u_residual, self.u_cost)
-            running_cost_model.addCost("xlimitReg", xLimit_residual, self.xlim_cost)
+            # running_cost_model.addCost("xlimitReg", xLimit_residual, self.xlim_cost)
             running_cost_model.addCost("vel", frame_velocity_residual, self.vel_cost)
             running_cost_model.addCost(
                 "gripperPose", placemment_residual, 0
@@ -211,6 +211,9 @@ class Problem:
         if u_ref is not None:
             u_reg_cost = self.get_control_residual(u_ref)
             running_cost_model.addCost("uReg", u_reg_cost, self.u_cost)
+        else:
+            u_reg_cost = self.get_control_residual(np.zeros([self.nq, 1]))
+            running_cost_model.addCost("uReg", u_reg_cost, 0)
         return crocoddyl.IntegratedActionModelEuler(
             crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self.state, self.actuation, running_cost_model
@@ -382,38 +385,24 @@ class Problem:
 
         # models = self.whole_problem.runningModels[: T - 1]
         terminal_model = self.whole_problem.runningModels[T - 1].copy()
-        terminal_model.differential.costs.costs["xReg"].weight = 0
-        terminal_model.differential.costs.costs["gripperPose"].weight = self.grip_cost
         return crocoddyl.ShootingProblem(x0, models, terminal_model)
 
-    def update_model(self, model, new_model, is_last_model=False):
-        model.differential.costs.costs["xReg"].cost.residual.reference = (
-            new_model.differential.costs.costs["xReg"].cost.residual.reference.copy()
+    def update_cost(self, model, new_model, cost_name):
+        model.differential.costs.costs[cost_name].cost.residual.reference = (
+            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
         )
-        # self.x_plan[
-        #   node_idx
-        # ]
-        #
-        model.differential.costs.costs["xReg"].weight = (
-            new_model.differential.costs.costs["xReg"].weight
-        )
-        model.differential.costs.costs["gripperPose"].cost.residual.reference = (
-            new_model.differential.costs.costs[
-                "gripperPose"
-            ].cost.residual.reference.copy()
-        )  # FIXME uniquement utile si le coût est != de 0 donc à changer je suppose
-        model.differential.costs.costs["gripperPose"].weight = (
-            new_model.differential.costs.costs["gripperPose"].weight
-        )
-        model.differential.costs.costs["vel"].weight = (
-            new_model.differential.costs.costs["vel"].weight
-        )
-        if not is_last_model:
-            model.differential.costs.costs["uReg"].cost.residual.reference = (
-                new_model.differential.costs.costs[
-                    "uReg"
-                ].cost.residual.reference.copy()
-            )
+        new_weight = new_model.differential.costs.costs[cost_name].weight
+        model.differential.costs.costs[cost_name].weight = new_weight
+        if new_weight == 0:
+            model.differential.costs.changeCostStatus(cost_name, False)
+        else:
+            model.differential.costs.changeCostStatus(cost_name, True)
+
+    def update_model(self, model, new_model):
+        self.update_cost(model, new_model, "xReg")
+        self.update_cost(model, new_model, "gripperPose")
+        self.update_cost(model, new_model, "vel")
+        self.update_cost(model, new_model, "uReg")
 
     def update_terminal_model(self, model, new_model):
         model.differential.costs.costs["xReg"].weight = 0
@@ -449,12 +438,12 @@ class Problem:
         else:
             self.update_model(
                 runningModels[-1],
-                self.whole_problem_models[next_node_idx - 1].copy(),
+                self.whole_problem.runningModels[next_node_idx - 1].copy(),
             )
         if next_node_idx < self.whole_traj_T - 1:
             self.update_model(
                 self.solver.problem.terminalModel,
-                self.whole_problem_models[next_node_idx].copy(),
+                self.whole_problem.runningModels[next_node_idx].copy(),
             )  # update_terminal_model
 
         else:
@@ -463,24 +452,6 @@ class Problem:
                 self.whole_problem.terminalModel.copy(),
                 True,
             )
-        # return problem
-
-    def reset_ocp_2(self, x, next_node_idx):
-        self.solver.problem.x0 = x
-        # problem.runningModels = problem.runningModels[1:]
-        runningModels = list(self.solver.problem.runningModels)
-        """"""
-        del runningModels[0]
-        if next_node_idx >= self.whole_traj_T:
-            runningModels.append(self.whole_problem.terminalModel.copy())
-        else:
-            runningModels.append(self.whole_problem_models[next_node_idx - 1].copy())
-        if next_node_idx < self.whole_traj_T - 1:
-            self.solver.problem.terminalModel = self.whole_problem_models[
-                next_node_idx
-            ].copy()
-        else:
-            self.solver.problem.terminalModel = self.whole_problem.terminalModel.copy()
 
     def set_xplan_and_uref(self, start_idx, terminal_idx):
         x_plan = self.hpp_paths[start_idx].x_plan
