@@ -3,12 +3,43 @@ import matplotlib.pyplot as plt
 from .ocp_analyzer import *
 
 
+class TrajectoryBuffer:
+    def __init__(self, model):
+        self.model = model
+        self.x_plan = []
+        self.a_plan = []
+
+    def add_trajectory_point(self, q, v, a=None):
+        if len(q) != self.model.nq:
+            raise Exception(
+                f"configuration vector size : {len(q)} doesn't match model's nq : {self.model.nq}"
+            )
+        if len(v) != self.model.nv:
+            raise Exception(
+                f"velocity vector size : {len(v)} doesn't match model's nv : {self.model.nv}"
+            )
+        x = np.concatenate([np.array(q), np.array(v)])
+        self.x_plan.append(x)
+        if a is not None:
+            if len(a) != self.model.nv:
+                raise Exception(
+                    f"acceleration vector size : {len(a)} doesn't match model's nv : {self.model.nv}"
+                )
+            self.a_plan.append(np.array(a))
+
+    def get_x_plan(self):
+        return self.x_plan
+
+    def get_a_plan(self):
+        return self.a_plan
+
+
 class CrocoHppConnection:
-    def __init__(self, ps, robot_name, vf, ball_init_pose):
+    def __init__(self, x_plans, a_plans, robot_name, vf, ball_init_pose):
         self.ball_init_pose = ball_init_pose
         if vf is not None:
             self.v = vf.createViewer()
-        self.prob = Problem(ps, robot_name)
+        self.prob = Problem(x_plans, a_plans, robot_name)
         self.robot = self.prob.robot
         self.nq = self.robot.nq
         self.DT = self.prob.DT
@@ -155,10 +186,7 @@ class CrocoHppConnection:
         )
 
     def get_path_length(self, terminal_idx):
-        length = 0
-        for idx in range(terminal_idx + 1):
-            length += self.prob.hpp_paths[idx].path.length()
-        return length
+        return self.prob.whole_traj_T * self.DT
 
     def get_trajectory_difference(self, terminal_idx, configuration_traj=True):
         """Compute at each node the absolute difference in position either in cartesian or configuration space and sum it."""

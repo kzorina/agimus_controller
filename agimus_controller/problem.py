@@ -7,54 +7,17 @@ import mim_solvers
 
 
 class SubPath:
-    def __init__(self, path, DT, path_idx, nq):
-        if path is not None:
-            self.path = path  # hpp path
-            self.T = int(np.round(self.path.length() * 1 / DT))
-            self.x_plan, self.a_plan = self.get_xplan(DT, path_idx, nq)
-
-            # if path_idx > 0:
-            #    self.T -= 1
-
+    def __init__(self, x_plan, a_plan):
+        self.T = x_plan.shape[0]
+        self.x_plan = x_plan
+        self.a_plan = a_plan
         self.u_ref = None
         self.running_models = None
         self.terminal_model = None
 
-    def get_xplan(self, DT, path_idx, nq):
-        """Return x_plan the state and a_plan the acceleration of hpp's trajectory."""
-        x_plan = np.zeros([self.T, 2 * nq])
-        a_plan = np.zeros([self.T, nq])
-        if self.T == 0:
-            return x_plan, a_plan
-        elif self.T == 1:
-            time = self.path.length()
-            q_t = np.array(self.path.call(time)[0][:nq])
-            v_t = np.array(self.path.derivative(time, 1)[:nq])
-            x_plan[0, :] = np.concatenate([q_t, v_t])
-            a_t = np.array(self.path.derivative(time, 2)[:nq])
-            a_plan[0, :] = a_t
-            return x_plan, a_plan
-        """if path_idx == 0:
-            start_idx = 0
-        else:
-            start_idx = 1"""
-        total_time = self.path.length()
-        for iter in range(self.T):
-            iter_time = total_time * iter / (self.T - 1)  # iter * DT
-            q_t = np.array(self.path.call(iter_time)[0][:nq])
-            v_t = np.array(self.path.derivative(iter_time, 1)[:nq])
-            x_plan[iter, :] = np.concatenate([q_t, v_t])
-            a_t = np.array(self.path.derivative(iter_time, 2)[:nq])
-            a_plan[iter, :] = a_t
-        """
-        q_t = np.array(self.path.call(total_time)[0][:6])
-        v_t = np.array(self.path.derivative(total_time, 1)[:6])
-        x_plan.append(np.concatenate([q_t, v_t]))"""
-        return x_plan, a_plan
-
 
 class Problem:
-    def __init__(self, ps, robot_name):
+    def __init__(self, x_plans, a_plans, robot_name):
         self.x_cost = 1e-1
         self.u_cost = 1e-4
         self.grip_cost = 1e6
@@ -92,17 +55,12 @@ class Problem:
         self.u_ref = []  # hpp's x_plan for the whole trajectory
         self.hpp_paths = []
         self.whole_traj_T = 0
-        if ps is not None:
-            self.p = ps.client.basic.problem.getPath(ps.numberPaths() - 1)
-            for path_idx in range(self.p.numberPaths()):
-                new_path = SubPath(
-                    self.p.pathAtRank(path_idx), self.DT, path_idx, self.nq
-                )
-                self.whole_traj_T += new_path.T
-                if new_path.T > 0:
-                    self.hpp_paths.append(new_path)
-            self.nb_paths = len(self.hpp_paths)  # number of sub paths
-            self.solver = None
+        for idx in range(len(x_plans)):
+            new_path = SubPath(x_plans[idx], a_plans[idx])
+            self.hpp_paths.append(new_path)
+            self.whole_traj_T += new_path.T
+        self.nb_paths = len(self.hpp_paths)
+        self.solver = None
 
     def get_uref(self, path_idx):
         """Return the reference of control u_ref that compensates gravity."""
