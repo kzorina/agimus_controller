@@ -250,16 +250,19 @@ if args.N != 0:
 
 def get_hpp_plan(ps, DT, nq):
     p = ps.client.basic.problem.getPath(ps.numberPaths() - 1)
-    x_plans = []
-    a_plans = []
-    for path_idx in range(p.numberPaths()):
+    path = p.pathAtRank(0)
+    T = int(np.round(path.length() / DT))
+    x_plans, a_plans = get_xplan_aplan(T, path, nq)
+    whole_traj_T = 0
+    for path_idx in range(1, p.numberPaths()):
         path = p.pathAtRank(path_idx)
         T = int(np.round(path.length() / DT))
         if T == 0:
             continue
         x_plan, a_plan = get_xplan_aplan(T, path, nq)
-        x_plans.append(x_plan)
-        a_plans.append(a_plan)
+        x_plans = np.concatenate([x_plans, x_plan], axis=0)
+        a_plans = np.concatenate([a_plans, a_plan], axis=0)
+        whole_traj_T += T
     return x_plans, a_plans
 
 
@@ -299,12 +302,13 @@ if __name__ == "__main__":
     start = time.time()
     chc.prob.set_costs(10**4, 1, 10**-3, 0, 0)
     # chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
-    chc.do_mpc(chc.prob.nb_paths - 1, 100)
+    chc.do_mpc(100)
     end = time.time()
     print("search duration ", end - start)
+    """
     with open("datas.npy", "wb") as f:
         np.save(f, chc.prob.hpp_paths[0].x_plan)
-        np.save(f, chc.prob.hpp_paths[1].x_plan)
+        np.save(f, chc.prob.hpp_paths[1].x_plan)"""
 
 """
 from hpp.gepetto import PathPlayer

@@ -6,18 +6,8 @@ import time
 import mim_solvers
 
 
-class SubPath:
-    def __init__(self, x_plan, a_plan):
-        self.T = x_plan.shape[0]
-        self.x_plan = x_plan
-        self.a_plan = a_plan
-        self.u_ref = None
-        self.running_models = None
-        self.terminal_model = None
-
-
 class Problem:
-    def __init__(self, x_plans, a_plans, robot_name):
+    def __init__(self, x_plan, a_plan, robot_name):
         self.x_cost = 1e-1
         self.u_cost = 1e-4
         self.grip_cost = 1e6
@@ -51,20 +41,18 @@ class Problem:
         self.nq = self.robot.nq
         self.nv = self.robot.nv
 
-        self.x_plan = []  # hpp's x_plan for the whole trajectory
-        self.u_ref = []  # hpp's x_plan for the whole trajectory
-        self.hpp_paths = []
-        self.whole_traj_T = 0
-        for idx in range(len(x_plans)):
-            new_path = SubPath(x_plans[idx], a_plans[idx])
-            self.hpp_paths.append(new_path)
-            self.whole_traj_T += new_path.T
-        self.nb_paths = len(self.hpp_paths)
+        self.x_plan = x_plan  # hpp's x_plan for the whole trajectory
+        self.a_plan = a_plan
+        self.u_ref = self.get_uref(x_plan, a_plan)
+        self.whole_traj_T = x_plan.shape[0]
+        self.T = x_plan.shape[0]
+        self.running_models = None
+        self.terminal_model = None
         self.solver = None
 
-    def get_uref(self, path_idx):
+    def get_uref(self, x_plans, a_plans):
         """Return the reference of control u_ref that compensates gravity."""
-        u_ref = []
+        u_ref = np.zeros([x_plans.shape[0] - 1, self.nv])
         """
         for x in self.hpp_paths[path_idx].x_plan:
             pin.computeGeneralizedGravity(
@@ -73,13 +61,13 @@ class Problem:
                 x[: self.nq],
             )
             u_ref.append(self.robot_data.g.copy())"""
-        for idx in range(self.hpp_paths[path_idx].x_plan.shape[0]):
-            x = self.hpp_paths[path_idx].x_plan[idx, :]
-            a = self.hpp_paths[path_idx].a_plan[idx, :]
+        for idx in range(x_plans.shape[0] - 1):
+            x = x_plans[idx, :]
+            a = a_plans[idx, :]
             tau = pin.rnea(
                 self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
             ).copy()
-            u_ref.append(tau[: self.nq])
+            u_ref[idx, :] = tau[: self.nq]
         return u_ref
 
     def set_costs(self, grip_cost, x_cost, u_cost, vel_cost=0, xlim_cost=0):
@@ -90,28 +78,24 @@ class Problem:
         self.vel_cost = vel_cost
         self.xlim_cost = xlim_cost
 
-    def set_models(self, terminal_paths_idxs):
+    def set_models(self):
         """Set running models and terminal model of the ddp problem."""
-        goals_placement_residual = self.get_goals_placement_residual()
-        for path_idx in range(self.nb_paths):
-            self.hpp_paths[path_idx].u_ref = self.get_uref(path_idx)
-            self.set_sub_path_running_models(path_idx)
-            self.set_last_model(
-                terminal_paths_idxs, goals_placement_residual[path_idx], path_idx
-            )
+        goal_placement_residual = self.get_goal_placement_residual()
+        self.set_sub_path_running_models()
+        self.set_last_model(goal_placement_residual, True)
 
-    def set_sub_path_running_models(self, path_idx):
+    def set_sub_path_running_models(self):
         """Set running models for one sub path of the ddp problem."""
 
         running_models = []
         x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
             np.array([1] * self.nq + [10] * self.nv) ** 2
         )
-        for idx in range(self.hpp_paths[path_idx].T - 1):
+        for idx in range(self.T - 1):
             running_cost_model = crocoddyl.CostModelSum(self.state)
-            x_ref = self.hpp_paths[path_idx].x_plan[idx, :]
+            x_ref = self.x_plan[idx, :]
             x_residual = self.get_state_residual(x_ref)
-            u_residual = self.get_control_residual(self.hpp_paths[path_idx].u_ref[idx])
+            u_residual = self.get_control_residual(self.u_ref[idx, :])
             xLimit_residual = self.get_xlimit_residual()
             frame_velocity_residual = self.get_velocity_residual(self.last_joint_name)
             placemment_residual = self.get_placement_residual(x_ref[: self.nq])
@@ -131,26 +115,22 @@ class Problem:
                     self.DT,
                 )
             )
-        self.hpp_paths[path_idx].running_models = running_models
+        self.running_models = running_models
 
-    def set_last_model(self, terminal_paths_idxs, goal_placement_residual, path_idx):
+    def set_last_model(self, goal_placement_residual, is_terminal_model=True):
         """Set last model for a sub path."""
-        if path_idx in terminal_paths_idxs:
-            u_ref = None
-        else:
-            u_ref = self.hpp_paths[path_idx].u_ref[-1]
+        u_ref = self.u_ref[-1, :]
         if self.use_mim:
-            last_model = self.get_last_model_with_mim(path_idx)
+            last_model = self.get_last_model_with_mim()
         else:
 
             last_model = self.get_last_model_without_mim(
-                goal_placement_residual, self.hpp_paths[path_idx].x_plan[-1, :], u_ref
+                goal_placement_residual, self.x_plan[-1, :], u_ref
             )
-        if path_idx in terminal_paths_idxs:
-            self.hpp_paths[path_idx].u_ref.pop()
-            self.hpp_paths[path_idx].terminal_model = last_model
+        if is_terminal_model:
+            self.terminal_model = last_model
         else:
-            self.hpp_paths[path_idx].running_models.append(last_model)
+            self.running_models.append(last_model)
 
     def get_last_model_without_mim(self, goal_placement_residual, x_ref, u_ref):
         """Return last model without constraints."""
@@ -179,15 +159,13 @@ class Problem:
             self.DT,
         )
 
-    def get_last_model_with_mim(self, path_idx):
+    def get_last_model_with_mim(self):
         """Return last model for a sub path with constraints for mim_solvers."""
         running_cost_model = crocoddyl.CostModelSum(self.state)
         constraints = crocoddyl.ConstraintModelManager(self.state, self.nv)
 
         # add placement constraint
-        placement_residual = self.get_placement_residual(
-            self.hpp_paths[path_idx].x_plan[-1, : self.nq]
-        )
+        placement_residual = self.get_placement_residual(self.x_plan[-1, : self.nq])
         placement_constraint = crocoddyl.ConstraintModelResidual(
             self.state,
             placement_residual,
@@ -251,16 +229,10 @@ class Problem:
             self.DT,
         )
 
-    def get_goals_placement_residual(self):
+    def get_goal_placement_residual(self):
         """Return vector of tracking costs for each sub path."""
-        goals_placement_residual = []
-        for path_idx in range(self.nb_paths):
-            goals_placement_residual.append(
-                self.get_placement_residual(
-                    self.hpp_paths[path_idx].x_plan[-1, : self.nq]
-                ),
-            )
-        return goals_placement_residual
+
+        return self.get_placement_residual(self.x_plan[-1, : self.nq])
 
     def get_placement_residual(self, q):
         """Return placement residual to the last position of the sub path."""
@@ -312,7 +284,7 @@ class Problem:
 
     def get_translation_residual(self, path_idx):
         """Return translation residual to the last position of the sub path."""
-        q_final = self.hpp_paths[path_idx].x_plan[-1, : self.nq]
+        q_final = self.x_plan[-1, : self.nq]
         target = self.robot.placement(q_final, self.nq)
         return crocoddyl.ResidualModelFrameTranslation(
             self.state,
@@ -321,13 +293,10 @@ class Problem:
         )
 
     def create_whole_problem(self):
-        x0 = self.hpp_paths[0].x_plan[0, :]
-        final_running_model = []
+        x0 = self.x_plan[0, :]
 
-        for path_idx in range(self.nb_paths):
-            final_running_model += self.hpp_paths[path_idx].running_models.copy()
         self.whole_problem = crocoddyl.ShootingProblem(
-            x0, final_running_model, self.hpp_paths[-1].terminal_model
+            x0, self.running_models, self.terminal_model
         )
         self.whole_problem_models = list(self.whole_problem.runningModels)
 
@@ -341,7 +310,6 @@ class Problem:
         for i in range(T - 1):
             models.append(self.whole_problem.runningModels[i].copy())
 
-        # models = self.whole_problem.runningModels[: T - 1]
         terminal_model = self.whole_problem.runningModels[T - 1].copy()
         return crocoddyl.ShootingProblem(x0, models, terminal_model)
 
@@ -381,7 +349,6 @@ class Problem:
 
     def reset_ocp(self, x, next_node_idx):
         self.solver.problem.x0 = x
-        # problem.runningModels = problem.runningModels[1:]
         runningModels = list(self.solver.problem.runningModels)
         start_idx = next_node_idx - (len(self.solver.problem.runningModels) + 1)
         for node_idx in range(len(runningModels) - 1):
@@ -403,22 +370,13 @@ class Problem:
             self.update_model(
                 self.solver.problem.terminalModel,
                 self.whole_problem.runningModels[next_node_idx].copy(),
-            )  # update_terminal_model
+            )
 
         else:
             self.update_model(
                 self.solver.problem.terminalModel,
                 self.whole_problem.terminalModel.copy(),
             )
-
-    def set_xplan_and_uref(self, start_idx, terminal_idx):
-        x_plan = self.hpp_paths[start_idx].x_plan
-        u_ref = self.hpp_paths[start_idx].u_ref
-        for path_idx in range(start_idx + 1, terminal_idx + 1):
-            x_plan = np.concatenate([x_plan, self.hpp_paths[path_idx].x_plan])
-            u_ref = np.concatenate([u_ref, self.hpp_paths[path_idx].u_ref])
-        self.x_plan = x_plan
-        self.u_ref = u_ref
 
     def run_solver(self, problem, xs_init, us_init, max_iter, set_callback=False):
         """
