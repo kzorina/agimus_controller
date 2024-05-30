@@ -100,6 +100,19 @@ class CrocoHppConnection:
             plt.legend(["crocoddyl", "hpp"], loc="best")
         plt.show()
 
+    def plot_a_plan(self):
+        a_plan = self.prob.hpp_paths[0].a_plan
+        for idx in range(1, len(self.prob.hpp_paths)):
+            a_plan = np.concatenate([a_plan, self.prob.hpp_paths[idx].a_plan], axis=0)
+        path_time = self.get_path_length(self.prob.nb_paths - 1)
+        t = np.linspace(0, path_time, a_plan.shape[0])
+        for idx in range(self.nq):
+            plt.subplot(self.nq, 1, idx + 1)
+            plt.plot(t, a_plan[:, idx])
+            plt.xlabel("time (s)")
+            plt.ylabel(f"a{idx} (m/s²)")
+        plt.show()
+
     def plot_control(self, terminal_idx):
         """Plot control for each joint."""
         path_time = self.get_path_length(terminal_idx)
@@ -331,7 +344,6 @@ class CrocoHppConnection:
         us[0, :] = self.prob.solver.us[0]
         x = self.compute_next_step(problem.x0, problem)
         xs[1, :] = x
-        breakpoint()
         for idx in range(1, len(self.prob.whole_problem.runningModels)):
             self.prob.reset_ocp(x, next_node_idx)
             xs_init = list(self.prob.solver.xs[1:]) + [self.prob.solver.xs[-1]]

@@ -431,9 +431,10 @@ class Problem:
                 runningModels[node_idx],
                 runningModels[node_idx + 1],
             )
-        if next_node_idx >= self.whole_traj_T:
+        if next_node_idx >= self.whole_traj_T - 1:
             self.update_model(
-                runningModels[-1], self.whole_problem.terminalModel.copy(), True
+                runningModels[-1],
+                self.whole_problem.runningModels[-1].copy(),
             )
         else:
             self.update_model(
@@ -450,7 +451,6 @@ class Problem:
             self.update_model(
                 self.solver.problem.terminalModel,
                 self.whole_problem.terminalModel.copy(),
-                True,
             )
 
     def set_xplan_and_uref(self, start_idx, terminal_idx):
