@@ -1,4 +1,4 @@
-from .problem import *
+from .mpc import *
 import matplotlib.pyplot as plt
 from .ocp_analyzer import *
 
@@ -27,10 +27,12 @@ class TrajectoryBuffer:
                 )
             self.a_plan.append(np.array(a))
 
-    def get_x_plan(self):
+    def get_joint_state_horizon(self):
+        """Return the state reference for the horizon, state is composed of joints positions and velocities"""
         return self.x_plan
 
-    def get_a_plan(self):
+    def get_joint_acceleration_horizon(self):
+        """Return the acceleration reference for the horizon, state is composed of joints positions and velocities"""
         return self.a_plan
 
 
