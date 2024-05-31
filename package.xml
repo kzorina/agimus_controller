@@ -8,7 +8,7 @@
   <author email="maximilien.naveau@toward.fr">Maximilien Naveau</author>
 
   <license>BSD-3</license>
-  <url type="website">https://github.com/TheoMF/croco_hpp_connection</url>
+  <url type="website">https://github.com/agimus-project/agimus_controller</url>
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>cmake</buildtool_depend>
