@@ -14,11 +14,6 @@ class Problem:
         self.xlim_cost = 0
         self.vel_cost = 0
         self.use_mim = False
-        self.null_speed_path_idxs = []
-
-        #    1,
-        #    3,
-        # ]  # sub path indexes where we desire null speed at the last node
         self.robot = example_robot_data.load(robot_name)
         if robot_name in ["ur3", "ur5", "ur10"]:
             self.last_joint_name = "wrist_3_joint"
@@ -50,9 +45,9 @@ class Problem:
         self.terminal_model = None
         self.solver = None
 
-    def get_uref(self, x_plans, a_plans):
+    def get_uref(self, x_plan, a_plan):
         """Return the reference of control u_ref that compensates gravity."""
-        u_ref = np.zeros([x_plans.shape[0] - 1, self.nv])
+        u_ref = np.zeros([x_plan.shape[0] - 1, self.nv])
         """
         for x in self.hpp_paths[path_idx].x_plan:
             pin.computeGeneralizedGravity(
@@ -61,9 +56,9 @@ class Problem:
                 x[: self.nq],
             )
             u_ref.append(self.robot_data.g.copy())"""
-        for idx in range(x_plans.shape[0] - 1):
-            x = x_plans[idx, :]
-            a = a_plans[idx, :]
+        for idx in range(x_plan.shape[0] - 1):
+            x = x_plan[idx, :]
+            a = a_plan[idx, :]
             tau = pin.rnea(
                 self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
             ).copy()
@@ -282,7 +277,7 @@ class Problem:
             ),
         )
 
-    def get_translation_residual(self, path_idx):
+    def get_translation_residual(self):
         """Return translation residual to the last position of the sub path."""
         q_final = self.x_plan[-1, : self.nq]
         target = self.robot.placement(q_final, self.nq)
@@ -330,36 +325,15 @@ class Problem:
         self.update_cost(model, new_model, "vel")
         self.update_cost(model, new_model, "uReg")
 
-    def update_terminal_model(self, model, new_model):
-        model.differential.costs.costs["xReg"].weight = 0
-        model.differential.costs.costs["gripperPose"].cost.residual.reference = (
-            new_model.differential.costs.costs["gripperPose"].cost.residual.reference
-        )  # FIXME uniquement utile si le coût est != de 0 donc à changer je suppose
-        model.differential.costs.costs["gripperPose"].weight = self.grip_cost
-        model.differential.costs.costs["vel"].weight = (
-            new_model.differential.costs.costs["vel"].weight
-        )
-        if "ureg" in new_model.differential.costs.costs.todict().keys():
-            model.differential.costs.costs["uReg"].cost.residual.reference = (
-                new_model.differential.costs.costs["uReg"].cost.residual.reference
-            )
-        elif "ureg" in model.differential.costs.costs.todict().keys():
-
-            model.differential.costs.costs["uReg"].weight = 0
-
     def reset_ocp(self, x, next_node_idx):
         self.solver.problem.x0 = x
         runningModels = list(self.solver.problem.runningModels)
         start_idx = next_node_idx - (len(self.solver.problem.runningModels) + 1)
         for node_idx in range(len(runningModels) - 1):
-            self.update_model(
-                runningModels[node_idx],
-                runningModels[node_idx + 1],
-            )
+            self.update_model(runningModels[node_idx], runningModels[node_idx + 1])
         if next_node_idx >= self.whole_traj_T - 1:
             self.update_model(
-                runningModels[-1],
-                self.whole_problem.runningModels[-1].copy(),
+                runningModels[-1], self.whole_problem.runningModels[-1].copy()
             )
         else:
             self.update_model(
@@ -402,10 +376,5 @@ class Problem:
             if set_callback:
                 solver.setCallbacks([crocoddyl.CallbackVerbose()])
 
-        # Warm start with hpp trajectory then solve
-        # solver.setCandidate(self.x_plan, self.u_ref, False)
-        start = time.time()
         solver.solve(xs_init, us_init, max_iter)
-        end = time.time()
-        # print("solve duration ", end - start)
         self.solver = solver
