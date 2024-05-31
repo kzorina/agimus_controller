@@ -26,8 +26,6 @@
   <exec_depend>python-matplotlib</exec_depend>
   <exec_depend>python-numpy</exec_depend>
 
-
-
   <!-- LAAS dependencies. -->
   <exec_depend>pinocchio</exec_depend>
   <exec_depend>croccodyl</exec_depend>
@@ -38,7 +36,8 @@
   <exec_depend>mim_solvers</exec_depend>
   
   <!-- HPP dependencies. -->
-  <exec_depend>hpp-corbaservers</exec_depend>
+  <exec_depend>hpp-corbaserver</exec_depend>
+  <exec_depend>hpp-manipulation-corba</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
