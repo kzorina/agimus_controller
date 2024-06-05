@@ -21,4 +21,6 @@ Once the code is built one can run these in several terminals inside the docker:
 - roscore
 - hppcorbaserver
 - gepetto-gui
-- ipython3 -i -m agimus_controller.script
+- run the srcipt:
+    - with python3: python3 -i -m agimus_controller.theos_work.script -N=1
+    - with ipython3: ipython3 -i -m agimus_controller.theos_work.script -- -N=1

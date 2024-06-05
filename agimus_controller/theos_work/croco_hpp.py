@@ -1,6 +1,8 @@
-from .mpc import *
+import time
+import numpy as np
+import pinocchio as pin
 import matplotlib.pyplot as plt
-from .ocp_analyzer import *
+from .mpc import Problem
 
 
 class TrajectoryBuffer:
@@ -226,6 +228,7 @@ class CrocoHppConnection:
         self.best_croco_xs = None
         self.best_croco_us = None
         self.best_diff = 1e6
+        grip_cost = 0
         self.prob.use_mim = use_mim
         if use_mim:
             for x_exponent in range(0, 8, 2):

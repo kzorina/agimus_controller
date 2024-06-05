@@ -7,7 +7,10 @@
 # Start hppcorbaserver before running this script
 #
 
+import datetime as dt
+import numpy as np
 import os
+import time
 from argparse import ArgumentParser
 from math import pi
 from hpp.corbaserver.manipulation import (
@@ -22,6 +25,7 @@ from hpp.corbaserver.manipulation.ur5 import Robot
 from hpp.gepetto.manipulation import ViewerFactory
 from hpp.corbaserver import loadServerPlugin
 from hpp_idl.hpp import Equality, EqualToZero
+from agimus_controller.theos_work.croco_hpp import CrocoHppConnection
 
 parser = ArgumentParser()
 parser.add_argument("-N", default=20, type=int)
@@ -214,8 +218,6 @@ ps.addGoalConfig(q_goal)
 ps.setMaxIterPathPlanning(5000)
 # Run benchmark
 #
-import datetime as dt
-
 totalTime = dt.timedelta(0)
 totalNumberNodes = 0
 success = 0
@@ -293,8 +295,6 @@ def get_xplan_aplan(T, path, nq):
 
 ##### start croco script
 if __name__ == "__main__":
-    from .croco_hpp import *
-
     ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
     x_plan, a_plan = get_hpp_plan(ps, 1e-2, 6)
     chc = CrocoHppConnection(x_plan, a_plan, "ur5", vf, ball_init_pose)

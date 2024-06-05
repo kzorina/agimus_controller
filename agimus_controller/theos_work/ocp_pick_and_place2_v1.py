@@ -8,7 +8,9 @@
 @brief Simple self-contained example of DDP trajectory for KUKA - without PyBullet
 """
 
+import time
 import numpy as np
+import matplotlib.pyplot as plt  # ; plt.ion()
 import pinocchio as pin
 from mim_robots.robot_loader import load_pinocchio_wrapper
 import crocoddyl
@@ -48,8 +50,6 @@ M0 = pin_robot.data.oMf[id_endeff]
 ##########
 # VIEWER #
 ##########
-import time
-
 
 pin_robot.initViewer(loadModel=True)
 
@@ -226,9 +226,9 @@ def resetProblem(t, x, problem, check=True):
     TCYCLE_2 = TCYCLE / 2
 
     t0cycle = t // TCYCLE * TCYCLE  # Date of cycle start in ms
-    t0cycleB = (
-        t0cycle + TCYCLE_2 if t > t0cycle + TCYCLE_2 else t0cycle - TCYCLE_2
-    )  # Date of start of the anti cycle
+    # t0cycleB = (
+    #     t0cycle + TCYCLE_2 if t > t0cycle + TCYCLE_2 else t0cycle - TCYCLE_2
+    # )  # Date of start of the anti cycle
     # print('t0 = ',t0cycle, "\tt = ",t)
 
     WEIGHT_SLOPE = 18  # 20 10
@@ -378,8 +378,6 @@ for t in range(0, NTOTAL, NSTEPS):
 
 # # ### DISPLAY AND PLOT
 # # disp(hx,1e-3*NSTEPS)
-
-import matplotlib.pyplot as plt  # ; plt.ion()
 
 """
 for i in range(nq):

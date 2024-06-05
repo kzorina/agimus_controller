@@ -82,15 +82,15 @@ class Problem:
         """Set running models for one sub path of the ddp problem."""
 
         running_models = []
-        x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
-            np.array([1] * self.nq + [10] * self.nv) ** 2
-        )
+        # x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
+        #     np.array([1] * self.nq + [10] * self.nv) ** 2
+        # )
         for idx in range(self.T - 1):
             running_cost_model = crocoddyl.CostModelSum(self.state)
             x_ref = self.x_plan[idx, :]
             x_residual = self.get_state_residual(x_ref)
             u_residual = self.get_control_residual(self.u_ref[idx, :])
-            xLimit_residual = self.get_xlimit_residual()
+            # xLimit_residual = self.get_xlimit_residual()
             frame_velocity_residual = self.get_velocity_residual(self.last_joint_name)
             placemment_residual = self.get_placement_residual(x_ref[: self.nq])
 
@@ -328,7 +328,7 @@ class Problem:
     def reset_ocp(self, x, next_node_idx):
         self.solver.problem.x0 = x
         runningModels = list(self.solver.problem.runningModels)
-        start_idx = next_node_idx - (len(self.solver.problem.runningModels) + 1)
+        # start_idx = next_node_idx - (len(self.solver.problem.runningModels) + 1)
         for node_idx in range(len(runningModels) - 1):
             self.update_model(runningModels[node_idx], runningModels[node_idx + 1])
         if next_node_idx >= self.whole_traj_T - 1:
