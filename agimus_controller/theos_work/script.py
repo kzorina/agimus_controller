@@ -24,6 +24,7 @@ from hpp.corbaserver.manipulation.ur5 import Robot
 from hpp.gepetto.manipulation import ViewerFactory
 from hpp.corbaserver import loadServerPlugin
 from hpp_idl.hpp import Equality, EqualToZero
+from agimus_controller.theos_work.croco_hpp import CrocoHppConnection
 
 parser = ArgumentParser()
 parser.add_argument("-N", default=20, type=int)
@@ -295,8 +296,6 @@ def get_xplan_aplan(T, path, nq):
 
 ##### start croco script
 if __name__ == "__main__":
-    from .croco_hpp import CrocoHppConnection
-
     ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
     x_plan, a_plan = get_hpp_plan(ps, 1e-2, 6)
     chc = CrocoHppConnection(x_plan, a_plan, "ur5", vf, ball_init_pose)
