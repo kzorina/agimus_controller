@@ -1,8 +1,8 @@
 import time
+import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
 from .mpc import Problem
-from .ocp_analyzer import *
 
 
 class TrajectoryBuffer:
