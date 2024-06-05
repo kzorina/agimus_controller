@@ -1,380 +1,326 @@
-import crocoddyl
-import pinocchio as pin
-import numpy as np
-import example_robot_data
 import time
-import mim_solvers
+import numpy as np
+import matplotlib.pyplot as plt
+
+from mim_robots.pybullet.env import BulletEnvWithGround
+import pinocchio as pin
+import mpc_utils
+import pin_utils
+from ocp import OCPPandaReachingColWithMultipleCol
+from wrapper_panda import PandaRobot
+
+np.set_printoptions(precision=4, linewidth=180)
 
 
-class Problem:
-    def __init__(self, x_plan, a_plan, robot_name):
-        self.x_cost = 1e-1
-        self.u_cost = 1e-4
-        self.grip_cost = 1e6
-        self.xlim_cost = 0
-        self.vel_cost = 0
-        self.use_mim = False
-        self.robot = example_robot_data.load(robot_name)
-        if robot_name in ["ur3", "ur5", "ur10"]:
-            self.last_joint_name = "wrist_3_joint"
-        elif robot_name == "panda":
-            self.last_joint_name = "panda_joint7"
-            locked_joints = [
-                self.robot.model.getJointId("panda_finger_joint1"),
-                self.robot.model.getJointId("panda_finger_joint2"),
-            ]
-            robot_model_reduced = pin.buildReducedModel(
-                self.robot.model, locked_joints, self.robot.q0
-            )
-            self.robot.model = robot_model_reduced
-        else:
-            raise Exception("Unkown robot")
-        self.robot_data = self.robot.model.createData()
-        self.state = crocoddyl.StateMultibody(self.robot.model)
-        self.actuation = crocoddyl.ActuationModelFull(self.state)
-        self.DT = 1e-2
-        self.nq = self.robot.nq
-        self.nv = self.robot.nv
+class MPC:
+    def __init__(
+        self,
+        robot_simulator: PandaRobot,
+        OCP: OCPPandaReachingColWithMultipleCol,
+        max_iter: int,
+        env: BulletEnvWithGround,
+        TARGET_POSE_1: pin.SE3,
+        TARGET_POSE_2: pin.SE3,
+        T_sim: float,
+    ):
+        """Create the MPC class used to solve the OCP problem.
 
-        self.x_plan = x_plan  # hpp's x_plan for the whole trajectory
-        self.a_plan = a_plan
-        self.u_ref = self.get_uref(x_plan, a_plan)
-        self.whole_traj_T = x_plan.shape[0]
-        self.T = x_plan.shape[0]
-        self.running_models = None
-        self.terminal_model = None
-        self.solver = None
-
-    def get_uref(self, x_plan, a_plan):
-        """Return the reference of control u_ref that compensates gravity."""
-        u_ref = np.zeros([x_plan.shape[0] - 1, self.nv])
+        Args:
+            robot_simulator (PandaRobot): Wrapper of pinocchio and pybullet robot.
+            OCP (OCPPandaReachingColWithMultipleCol): OCP solved in the MPC.
+            max_iter (int): Number max of iterations of the solver.
+            env (BulletEnvWithGround): Pybullet environement.
+            TARGET_POSE_1 (pin.SE3): First target of the robot.
+            TARGET_POSE_2 (pin.SE3): Second target of the robot.
+            T_sim (float): total time of the simulation.
         """
-        for x in self.hpp_paths[path_idx].x_plan:
-            pin.computeGeneralizedGravity(
-                self.robot.model,
-                self.robot_data,
-                x[: self.nq],
-            )
-            u_ref.append(self.robot_data.g.copy())"""
-        for idx in range(x_plan.shape[0] - 1):
-            x = x_plan[idx, :]
-            a = a_plan[idx, :]
-            tau = pin.rnea(
-                self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
-            ).copy()
-            u_ref[idx, :] = tau[: self.nq]
-        return u_ref
 
-    def set_costs(self, grip_cost, x_cost, u_cost, vel_cost=0, xlim_cost=0):
-        """Set costs of the ddp problem."""
-        self.x_cost = x_cost
-        self.u_cost = u_cost
-        self.grip_cost = grip_cost
-        self.vel_cost = vel_cost
-        self.xlim_cost = xlim_cost
+        # Robot wrapper
+        self._robot_simulator = robot_simulator
 
-    def set_models(self):
-        """Set running models and terminal model of the ddp problem."""
-        goal_placement_residual = self.get_goal_placement_residual()
-        self.set_sub_path_running_models()
-        self.set_last_model(goal_placement_residual, True)
+        # Environement of the robot
+        self._env = env
+        self._scene = self._robot_simulator.scene
 
-    def set_sub_path_running_models(self):
-        """Set running models for one sub path of the ddp problem."""
+        # Setting up the OCP to be solved
+        self._OCP = OCP
+        self._sqp = self._OCP()
 
-        running_models = []
-        x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
-            np.array([1] * self.nq + [10] * self.nv) ** 2
+        # OCP params needed
+        self._T = self._OCP._T  # Number of nodes
+        self._dt = self._OCP._dt  # Time between each node
+        self._x0 = self._OCP._x0  # Initial state of the robot
+        self._xs_init = [
+            self._x0 for i in range(self._T + 1)
+        ]  # Initial trajectory of the robot
+        self._us_init = self._sqp.problem.quasiStatic(
+            self._xs_init[:-1]
+        )  # Initial command of the robot
+        self._max_iter = max_iter  # Number max of iterations of the solver
+        self._TARGET_POSE_1 = TARGET_POSE_1  # First target of the robot
+        self._TARGET_POSE_2 = TARGET_POSE_2  # Second target of the robot
+
+        # Filling the OCP dictionnary used to store all the results
+        self._ocp_params = {}
+        self._ocp_params["N_h"] = self._T
+        self._ocp_params["dt"] = self._dt
+        self._ocp_params["maxiter"] = self._max_iter
+        self._ocp_params["pin_model"] = robot_simulator.pin_robot.model
+        self._ocp_params["armature"] = self._OCP._runningModel.differential.armature
+        self._ocp_params["id_endeff"] = robot_simulator.pin_robot.model.getFrameId(
+            "panda2_leftfinger"
         )
-        for idx in range(self.T - 1):
-            running_cost_model = crocoddyl.CostModelSum(self.state)
-            x_ref = self.x_plan[idx, :]
-            x_residual = self.get_state_residual(x_ref)
-            u_residual = self.get_control_residual(self.u_ref[idx, :])
-            xLimit_residual = self.get_xlimit_residual()
-            frame_velocity_residual = self.get_velocity_residual(self.last_joint_name)
-            placemment_residual = self.get_placement_residual(x_ref[: self.nq])
+        self._ocp_params["active_costs"] = self._sqp.problem.runningModels[
+            0
+        ].differential.costs.active.tolist()
 
-            running_cost_model.addCost("xReg", x_residual, self.x_cost)
-            running_cost_model.addCost("uReg", u_residual, self.u_cost)
-            # running_cost_model.addCost("xlimitReg", xLimit_residual, self.xlim_cost)
-            running_cost_model.addCost("vel", frame_velocity_residual, self.vel_cost)
-            running_cost_model.addCost(
-                "gripperPose", placemment_residual, 0
-            )  # useful for mpc to reset ocp
-            running_models.append(
-                crocoddyl.IntegratedActionModelEuler(
-                    crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                        self.state, self.actuation, running_cost_model
-                    ),
-                    self.DT,
+        # Filling the simu parameters dictionnary
+        self._sim_params = {}
+        self._sim_params["sim_freq"] = int(1.0 / env.dt)
+        self._sim_params["mpc_freq"] = 1000
+        self._sim_params["T_sim"] = T_sim
+        self._log_rate = 100
+
+        # Initialize simulation data
+        self._sim_data = mpc_utils.init_sim_data(
+            self._sim_params, self._ocp_params, self._x0
+        )
+
+        # Display target in pybullet
+        mpc_utils.display_ball(
+            self._TARGET_POSE_1.translation, RADIUS=0.05, COLOR=[1.0, 0.0, 0.0, 0.6]
+        )
+        mpc_utils.display_ball(
+            self._TARGET_POSE_2.translation, RADIUS=0.5e-1, COLOR=[1.0, 0.0, 0.0, 0.6]
+        )
+
+        # Boolean describing whether the MPC has already been solved or not
+        self._SOLVE = False
+
+    def solve(self):
+        """Solve the MPC problem and display it in a pybullet GUI."""
+
+        time_calc = []
+        u_list = []
+        # Simulate
+        mpc_cycle = 0
+        TARGET_POSE = self._TARGET_POSE_1
+        for i in range(self._sim_data["N_sim"]):
+            if i % 500 == 0 and i != 0:
+                ### Changing from target pose 1 to target pose 2 or inversely
+                if TARGET_POSE == self._TARGET_POSE_1:
+                    TARGET_POSE = self._TARGET_POSE_2
+                else:
+                    TARGET_POSE = self._TARGET_POSE_1
+
+                for k in range(self._T):
+                    self._sqp.problem.runningModels[k].differential.costs.costs[
+                        "gripperPoseRM"
+                    ].cost.residual.reference = TARGET_POSE.translation
+                self._sqp.problem.terminalModel.differential.costs.costs[
+                    "gripperPose"
+                ].cost.residual.reference = TARGET_POSE.translation
+
+            if i % self._log_rate == 0:
+                print(
+                    "\n SIMU step " + str(i) + "/" + str(self._sim_data["N_sim"]) + "\n"
                 )
-            )
-        self.running_models = running_models
 
-    def set_last_model(self, goal_placement_residual, is_terminal_model=True):
-        """Set last model for a sub path."""
-        u_ref = self.u_ref[-1, :]
-        if self.use_mim:
-            last_model = self.get_last_model_with_mim()
-        else:
+            # Solve OCP if we are in a planning cycle (MPC/planning frequency)
+            if (
+                i % int(self._sim_params["sim_freq"] / self._sim_params["mpc_freq"])
+                == 0
+            ):
+                # Set x0 to measured state
+                self._sqp.problem.x0 = self._sim_data["state_mea_SIM_RATE"][i, :]
+                # Warm start using previous solution
+                xs_init = [*list(self._sqp.xs[1:]), self._sqp.xs[-1]]
+                xs_init[0] = self._sim_data["state_mea_SIM_RATE"][i, :]
+                us_init = [*list(self._sqp.us[1:]), self._sqp.us[-1]]
 
-            last_model = self.get_last_model_without_mim(
-                goal_placement_residual, self.x_plan[-1, :], u_ref
-            )
-        if is_terminal_model:
-            self.terminal_model = last_model
-        else:
-            self.running_models.append(last_model)
+                # Solve OCP & record MPC predictions
+                start = time.process_time()
+                self._sqp.solve(xs_init, us_init, maxiter=self._ocp_params["maxiter"])
+                t_solve = time.process_time() - start
+                time_calc.append(t_solve)
+                self._sim_data["state_pred"][mpc_cycle, :, :] = np.array(self._sqp.xs)
+                self._sim_data["ctrl_pred"][mpc_cycle, :, :] = np.array(self._sqp.us)
+                # Extract relevant predictions for interpolations
+                x_curr = self._sim_data["state_pred"][
+                    mpc_cycle, 0, :
+                ]  # x0* = measured state    (q^,  v^ )
+                x_pred = self._sim_data["state_pred"][
+                    mpc_cycle, 1, :
+                ]  # x1* = predicted state   (q1*, v1*)
+                u_curr = self._sim_data["ctrl_pred"][
+                    mpc_cycle, 0, :
+                ]  # u0* = optimal control   (tau0*)
+                # Record costs references
+                q = self._sim_data["state_pred"][mpc_cycle, 0, : self._sim_data["nq"]]
+                self._sim_data["ctrl_ref"][mpc_cycle, :] = pin_utils.get_u_grav(
+                    q,
+                    self._sqp.problem.runningModels[0].differential.pinocchio,
+                    self._ocp_params["armature"],
+                )
+                self._sim_data["state_ref"][mpc_cycle, :] = (
+                    self._sqp.problem.runningModels[0]
+                    .differential.costs.costs["stateReg"]
+                    .cost.residual.reference
+                )
+                self._sim_data["lin_pos_ee_ref"][mpc_cycle, :] = (
+                    self._sqp.problem.runningModels[0]
+                    .differential.costs.costs["gripperPoseRM"]
+                    .cost.residual.reference
+                )
 
-    def get_last_model_without_mim(self, goal_placement_residual, x_ref, u_ref):
-        """Return last model without constraints."""
-        running_cost_model = crocoddyl.CostModelSum(self.state)
-        running_cost_model.addCost(
-            "gripperPose", goal_placement_residual, self.grip_cost
-        )
-        vel_cost = self.get_velocity_residual(self.last_joint_name)
-        if np.linalg.norm(x_ref[self.nq :]) < 1e-6:
-            running_cost_model.addCost("vel", vel_cost, self.grip_cost)
-        else:
-            running_cost_model.addCost("vel", vel_cost, 0)
-        x_residual = self.get_state_residual(x_ref)
-        running_cost_model.addCost("xReg", x_residual, 0)
+                # Select reference control and state for the current MPC cycle
+                x_ref_MPC_RATE = x_curr + self._sim_data["ocp_to_mpc_ratio"] * (
+                    x_pred - x_curr
+                )
+                u_ref_MPC_RATE = u_curr
+                if mpc_cycle == 0:
+                    self._sim_data["state_des_MPC_RATE"][mpc_cycle, :] = x_curr
+                self._sim_data["ctrl_des_MPC_RATE"][mpc_cycle, :] = u_ref_MPC_RATE
+                self._sim_data["state_des_MPC_RATE"][mpc_cycle + 1, :] = x_ref_MPC_RATE
 
-        if u_ref is not None:
-            u_reg_cost = self.get_control_residual(u_ref)
-            running_cost_model.addCost("uReg", u_reg_cost, self.u_cost)
-        else:
-            u_reg_cost = self.get_control_residual(np.zeros([self.nq, 1]))
-            running_cost_model.addCost("uReg", u_reg_cost, 0)
-        return crocoddyl.IntegratedActionModelEuler(
-            crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self.state, self.actuation, running_cost_model
-            ),
-            self.DT,
-        )
+                # Increment planning counter
+                mpc_cycle += 1
 
-    def get_last_model_with_mim(self):
-        """Return last model for a sub path with constraints for mim_solvers."""
-        running_cost_model = crocoddyl.CostModelSum(self.state)
-        constraints = crocoddyl.ConstraintModelManager(self.state, self.nv)
+                # Select reference control and state for the current SIMU cycle
+                x_ref_SIM_RATE = x_curr + self._sim_data["ocp_to_mpc_ratio"] * (
+                    x_pred - x_curr
+                )
+                u_ref_SIM_RATE = u_curr
 
-        # add placement constraint
-        placement_residual = self.get_placement_residual(self.x_plan[-1, : self.nq])
-        placement_constraint = crocoddyl.ConstraintModelResidual(
-            self.state,
-            placement_residual,
-            np.array([0] * 12),
-            np.array([1e-3] * 12),
-        )
-        constraints.addConstraint("gripperPose", placement_constraint)
+                # First prediction = measurement = initialization of MPC
+                if i == 0:
+                    self._sim_data["state_des_SIM_RATE"][i, :] = x_curr
+                self._sim_data["ctrl_des_SIM_RATE"][i, :] = u_ref_SIM_RATE
+                self._sim_data["state_des_SIM_RATE"][i + 1, :] = x_ref_SIM_RATE
 
-        # add torque constraint
+                # Send torque to simulator & step simulator
+                self._robot_simulator.send_joint_command(u_ref_SIM_RATE)
+                self._env.step()
+                # Measure new state from simulator
+                q_mea_SIM_RATE, v_mea_SIM_RATE = self._robot_simulator.get_state()
+                # Update pinocchio model
+                self._robot_simulator.forward_robot(q_mea_SIM_RATE, v_mea_SIM_RATE)
+                # Record data
+                x_mea_SIM_RATE = np.concatenate([q_mea_SIM_RATE, v_mea_SIM_RATE]).T
+                self._sim_data["state_mea_SIM_RATE"][i + 1, :] = x_mea_SIM_RATE
+                u_list.append(u_curr.tolist())
+
+        self._SOLVE = True
+
+    def plot_collision_distances(self):
+        """Plot the distances between obstacles and shapes of the robot throughout the whole trajectory.
+
+        Raises:
+            NotSolvedError: Call the solve method before the plot one.
         """
-        torque_residual = crocoddyl.ResidualModelJointEffort(
-            self.state,
-            self.actuation,
-            np.array([0] * 6),  # np.array([0] * 6)
+        if not self._SOLVE:
+            raise NotSolvedError()
+
+        self._shapes_in_collision_with_obstacle = (
+            self._scene.get_shapes_avoiding_collision()
         )
-        torque_constraint = crocoddyl.ConstraintModelResidual(
-            self.state,
-            torque_residual,
-            np.array([-87] * 4 + [-12] * 3),
-            np.array([87] * 4 + [12] * 3),
-        )
-        constraints.addConstraint("JointsEfforts", torque_constraint)
+        self._obstacles = self._scene._obstacles_name
 
-        # add velocities constraints
+        self._distances = {}
 
-        vref = pin.Motion.Zero()
+        # Creating the dictionnary regrouping the distances
+        for obstacle in self._obstacles:
+            self._distances[obstacle] = {}
+            for shapes in self._shapes_in_collision_with_obstacle:
+                self._distances[obstacle][shapes] = []
 
-        joint_vel_residual = crocoddyl.ResidualModelFrameVelocity(
-            self.state,
-            self.robot.model.getFrameId(self.last_joint_name),
-            vref,
-            pin.LOCAL,
-        )
-        joint_vel_constraint = crocoddyl.ConstraintModelResidual(
-            self.state,
-            joint_vel_residual,
-            np.array([0] * self.nv),
-            np.array([1e-3] * self.nv),
-        )
-        constraints.addConstraint("shoulder_lift_joint_velocity", joint_vel_constraint)
-        
-        for joint_name in self.robot.model.names:
-            joint_vel_residual = crocoddyl.ResidualModelFrameVelocity(
-                self.state,
-                self.robot.model.getFrameId(joint_name),
-                vref,
-                pin.LOCAL,
-            )
-            joint_vel_constraint = crocoddyl.ConstraintModelResidual(
-                self.state,
-                joint_vel_residual,
-                np.array([-1e-6] * self.nv),
-                np.array([1e-6] * self.nv),
-            )
-            constraints.addConstraint(f"{joint_name}_velocity", joint_vel_constraint)
-        """
-        return crocoddyl.IntegratedActionModelEuler(
-            crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self.state, self.actuation, running_cost_model, constraints
-            ),
-            self.DT,
-        )
+        # Going through all the trajectory
+        for q in self._sim_data["state_mea_SIM_RATE"]:
+            # Going through the obstacles
+            for obstacle, shape in self._distances.items():
+                for shape_name, distance_between_shape_and_obstacle in shape.items():
+                    id_shape = (
+                        self._robot_simulator.pin_robot.collision_model.getGeometryId(
+                            shape_name
+                        )
+                    )
+                    id_obstacle = (
+                        self._robot_simulator.pin_robot.collision_model.getGeometryId(
+                            obstacle
+                        )
+                    )
+                    dist = pin_utils.compute_distance_between_shapes(
+                        self._robot_simulator.pin_robot.model,
+                        self._robot_simulator.pin_robot.collision_model,
+                        id_shape,
+                        id_obstacle,
+                        q[:7],
+                    )
+                    distance_between_shape_and_obstacle.append(dist)
 
-    def get_goal_placement_residual(self):
-        """Return vector of tracking costs for each sub path."""
+        # Doing the plot blakc magic
+        ncols = 2
+        nrows = (len(self._obstacles) + 1) // 2 if len(self._obstacles) > 1 else 1
+        fig, axes = plt.subplots(nrows, ncols, figsize=(10, 5 * nrows))
 
-        return self.get_placement_residual(self.x_plan[-1, : self.nq])
-
-    def get_placement_residual(self, q):
-        """Return placement residual to the last position of the sub path."""
-        target = self.robot.placement(q, self.nq).copy()
-        return crocoddyl.CostModelResidual(
-            self.state,
-            crocoddyl.ResidualModelFramePlacement(
-                self.state, self.robot.model.getFrameId(self.last_joint_name), target
-            ),
-        )
-
-    def get_velocity_residual(self, joint_name):
-        """Return velocity residual of desired joint."""
-        vref = pin.Motion.Zero()
-        return crocoddyl.CostModelResidual(
-            self.state,
-            crocoddyl.ResidualModelFrameVelocity(
-                self.state,
-                self.robot.model.getFrameId(joint_name),
-                vref,
-                pin.WORLD,
-            ),
-        )
-
-    def get_control_residual(self, uref):
-        return crocoddyl.CostModelResidual(
-            self.state, crocoddyl.ResidualModelControl(self.state, uref)
-        )
-
-    def get_state_residual(self, xref):
-        return crocoddyl.CostModelResidual(
-            self.state,  # x_reg_weights,
-            crocoddyl.ResidualModelState(self.state, xref, self.actuation.nu),
-        )
-
-    def get_xlimit_residual(self):
-        """Return velocity residual of desired joint."""
-        return crocoddyl.CostModelResidual(
-            self.state,
-            crocoddyl.ActivationModelQuadraticBarrier(
-                crocoddyl.ActivationBounds(self.state.lb, self.state.ub)
-            ),
-            crocoddyl.ResidualModelState(
-                self.state,
-                np.array([0] * (self.nq + self.nv)),
-                self.actuation.nu,
-            ),
-        )
-
-    def get_translation_residual(self):
-        """Return translation residual to the last position of the sub path."""
-        q_final = self.x_plan[-1, : self.nq]
-        target = self.robot.placement(q_final, self.nq)
-        return crocoddyl.ResidualModelFrameTranslation(
-            self.state,
-            self.robot.model.getFrameId(self.last_joint_name),
-            target.translation,
-        )
-
-    def create_whole_problem(self):
-        x0 = self.x_plan[0, :]
-
-        self.whole_problem = crocoddyl.ShootingProblem(
-            x0, self.running_models, self.terminal_model
-        )
-        self.whole_problem_models = list(self.whole_problem.runningModels)
-
-    def create_problem(self, T):
-        x0 = (
-            self.whole_problem.runningModels[0]
-            .differential.costs.costs["xReg"]
-            .cost.residual.reference
-        )
-        models = []
-        for i in range(T - 1):
-            models.append(self.whole_problem.runningModels[i].copy())
-
-        terminal_model = self.whole_problem.runningModels[T - 1].copy()
-        return crocoddyl.ShootingProblem(x0, models, terminal_model)
-
-    def update_cost(self, model, new_model, cost_name):
-        model.differential.costs.costs[cost_name].cost.residual.reference = (
-            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
-        )
-        new_weight = new_model.differential.costs.costs[cost_name].weight
-        model.differential.costs.costs[cost_name].weight = new_weight
-        if new_weight == 0:
-            model.differential.costs.changeCostStatus(cost_name, False)
-        else:
-            model.differential.costs.changeCostStatus(cost_name, True)
-
-    def update_model(self, model, new_model):
-        self.update_cost(model, new_model, "xReg")
-        self.update_cost(model, new_model, "gripperPose")
-        self.update_cost(model, new_model, "vel")
-        self.update_cost(model, new_model, "uReg")
-
-    def reset_ocp(self, x, next_node_idx):
-        self.solver.problem.x0 = x
-        runningModels = list(self.solver.problem.runningModels)
-        start_idx = next_node_idx - (len(self.solver.problem.runningModels) + 1)
-        for node_idx in range(len(runningModels) - 1):
-            self.update_model(runningModels[node_idx], runningModels[node_idx + 1])
-        if next_node_idx >= self.whole_traj_T - 1:
-            self.update_model(
-                runningModels[-1], self.whole_problem.runningModels[-1].copy()
+        # Flatten axes array for consistent indexing
+        if nrows == 1 and ncols == 1:
+            axes = [[axes]]
+        elif nrows == 1 or ncols == 1:
+            axes = (
+                np.expand_dims(axes, axis=0)
+                if nrows == 1
+                else np.expand_dims(axes, axis=1)
             )
         else:
-            self.update_model(
-                runningModels[-1],
-                self.whole_problem.runningModels[next_node_idx - 1].copy(),
-            )
-        if next_node_idx < self.whole_traj_T - 1:
-            self.update_model(
-                self.solver.problem.terminalModel,
-                self.whole_problem.runningModels[next_node_idx].copy(),
-            )
+            axes = axes.reshape((nrows, ncols))
 
+        # Flatten the 2D axes array for easy iteration
+        flat_axes = axes.flatten()
+
+        for ax, (obstacle, shapes) in zip(flat_axes, self._distances.items()):
+            for shape, values in shapes.items():
+                (handle,) = ax.plot(values, label=shape)
+            ax.plot(np.zeros(len(values)), "-", label="Collision threshold")
+            ax.set_ylabel("Distance from the obstacle")
+            ax.set_xlabel("Timestep of the simulation")
+            ax.set_title(f"Collisions with {obstacle}")
+
+        # Create a single legend outside the plots
+        if nrows > 1:
+            ax.legend(
+                loc="upper center",
+                bbox_to_anchor=(-0.15, -0.3),
+                fancybox=True,
+                shadow=True,
+                ncol=8,
+                prop={"size": 6},
+            )
         else:
-            self.update_model(
-                self.solver.problem.terminalModel,
-                self.whole_problem.terminalModel.copy(),
-            )
+            ax.legend()
 
-    def run_solver(self, problem, xs_init, us_init, max_iter, set_callback=False):
-        """
-        Run ddp solver
-        start_idx : hpp's sub path idx from which we start to run ddp on
-        terminal_idx : hpp's sub path idx from which we end to run ddp.
-        """
-        # Creating the solver for this OC problem, defining a logger
-        if self.use_mim:
-            solver = mim_solvers.SolverCSQP(problem)
-            solver.use_filter_line_search = True
-            solver.termination_tolerance = 1e-3
-            solver.max_qp_iters = 100
-            # solver.eps_rel = 0
-            # solver.eps_abs = 1e-6
-            # solver.with_callbacks = True
-            # solver.reset_rho = True
-            # solver.reset_y = True
-        else:
-            solver = crocoddyl.SolverFDDP(problem)
-            solver.use_filter_line_search = True
-            solver.termination_tolerance = 1e-3
-            if set_callback:
-                solver.setCallbacks([crocoddyl.CallbackVerbose()])
+        # Hide any unused subplots
+        for i in range(len(self._distances), len(flat_axes)):
+            fig.delaxes(flat_axes[i])
 
-        solver.solve(xs_init, us_init, max_iter)
-        self.solver = solver
+        # Adjust the layout to make room for legend and title
+        plt.suptitle("Distance between collision shapes & obstacles")
+        fig.subplots_adjust(hspace=0.5)
+        plt.show()
+
+    def plot_mpc_results(self):
+        plot_data = mpc_utils.extract_plot_data_from_sim_data(self._sim_data)
+        mpc_utils.plot_mpc_results(
+            plot_data,
+            which_plots=["all"],
+            PLOT_PREDICTIONS=True,
+            pred_plot_sampling=int(self._sim_params["mpc_freq"] / 10),
+        )
+
+
+class NotSolvedError(Exception):
+    """Exception raised when plot is called before solve for the MPC class."""
+
+    def __init__(self, message="Solve method must be called before plot."):
+        self.message = message
+        super().__init__(self.message)
