@@ -50,7 +50,8 @@ def return_cost_vectors(ddp, weighted=False, integrated=False):
                 costs[cost_tag][i] = (
                     ddp.problem.runningDatas[i].differential.costs.costs[cost_tag].cost
                 )
-            except:
+            except Exception as ex:
+                print(ex.with_traceback())
                 costs[cost_tag][i] = np.mean(
                     [
                         diff.costs.costs[cost_tag].cost
@@ -90,7 +91,8 @@ def return_cost_vectors(ddp, weighted=False, integrated=False):
                 costs[cost_tag][-1] *= (
                     ddp.problem.terminalModel.differential.costs.costs.todict()[cost_tag].weight
                 )
-        except:
+        except Exception as ex:
+            print(ex.with_traceback())
             costs[cost_tag][-1] = np.mean(
                 [
                     diff.costs.costs[cost_tag].cost
@@ -131,7 +133,8 @@ def return_constraint_vector(solver):
                     constraints[constraint_tag][i] = constraint_value.residual.r
                 else:
                     constraints[constraint_tag][i, :] = constraint_value.residual.r
-            except:
+            except Exception as ex:
+                print(ex.with_traceback())
                 print("Error processing constraint:", constraint_tag)
     return constraints
 
@@ -265,7 +268,6 @@ def plot_constraints_from_dic(dic, subplots_per_fig=6, nan_threshold=0.5, point_
 
 def plot_state_from_dic(dic):
     fig = plt.figure()
-
     for i in range(len(list(dic.keys()))):
         key = list(dic.keys())[i]
         ax = fig.add_subplot(3, 2, i + 1)
@@ -274,6 +276,6 @@ def plot_state_from_dic(dic):
 
 
 def plot_command(commands):
-    fig = plt.figure()
+    plt.figure()
     plt.plot(commands)
     plt.title("Commands")
