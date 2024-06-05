@@ -24,3 +24,13 @@ Once the code is built one can run these in several terminals inside the docker:
 - run the srcipt:
     - with python3: python3 -i -m agimus_controller.main_hpp_mpc -N=1
     - with ipython3: ipython3 -i -m agimus_controller.main_hpp_mpc -- -N=1
+
+For one to simply run the node individually.
+
+```bash
+rosrun agimus_controller agimus_controller_node
+```
+
+For a more complete setup see the
+https://github.com/agimus-project/agimus_pick_and_place
+package.

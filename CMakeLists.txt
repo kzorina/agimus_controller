@@ -4,7 +4,9 @@ cmake_minimum_required(VERSION 3.16.3)
 # Set up project properties
 set(PROJECT_NAMESPACE agimus)
 set(PROJECT_NAME agimus_controller)
-set(PROJECT_DESCRIPTION "Defines the controller for the AGIMUS project.")
+set(PROJECT_DESCRIPTION
+    "Defines the controller for the AGIMUS project."
+)
 set(PROJECT_URL https://github.com/${PROJECT_NAMESPACE}/${PROJECT_NAME})
 
 # Create different building options
@@ -70,4 +72,6 @@ if(BUILD_ROS_INTERFACE)
   catkin_python_setup()
   catkin_package(CATKIN_DEPENDS ${MY_CATKIN_DEPENDENCIES} DEPENDS
                  ${MY_PYTHON_DEPENDENCIES})
+    catkin_install_python(PROGRAMS ${PROJECT_NAME}_ros/node/agimus_controller_node
+                          DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 endif()
