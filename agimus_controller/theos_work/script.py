@@ -7,7 +7,9 @@
 # Start hppcorbaserver before running this script
 #
 
+import numpy as np
 import os
+import time
 from argparse import ArgumentParser
 from math import pi
 from hpp.corbaserver.manipulation import (
@@ -293,7 +295,7 @@ def get_xplan_aplan(T, path, nq):
 
 ##### start croco script
 if __name__ == "__main__":
-    from .croco_hpp import *
+    from .croco_hpp import CrocoHppConnection
 
     ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
     x_plan, a_plan = get_hpp_plan(ps, 1e-2, 6)
