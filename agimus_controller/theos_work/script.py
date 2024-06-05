@@ -7,6 +7,7 @@
 # Start hppcorbaserver before running this script
 #
 
+import datetime as dt
 import numpy as np
 import os
 import time
@@ -217,8 +218,6 @@ ps.addGoalConfig(q_goal)
 ps.setMaxIterPathPlanning(5000)
 # Run benchmark
 #
-import datetime as dt
-
 totalTime = dt.timedelta(0)
 totalNumberNodes = 0
 success = 0
