@@ -36,29 +36,27 @@ add_project_dependency(mim_solvers 0.0.4 REQUIRED PKG_CONFIG_REQUIRES
 if(NOT INSTALL_ROS_INTERFACE_ONLY)
   # Install the python package.
   set(project_python_source_files
-    __init__.py
-    main_mpc.py
-    main_optim_traj.py
-    mpc_utils.py
-    mpc.py
-    ocp.py
-    pin_utils.py
-    scenes.py
-    wrapper_meshcat.py
-    wrapper_panda.py
-  )
+      __init__.py
+      main_mpc.py
+      main_optim_traj.py
+      mpc_utils.py
+      mpc.py
+      ocp.py
+      pin_utils.py
+      scenes.py
+      wrapper_meshcat.py
+      wrapper_panda.py)
   foreach(file ${project_python_source_files})
     python_install_on_site(${PROJECT_NAME} ${file})
   endforeach()
   set(project_theos_work_python_source_files
-    __init__.py
-    croco_hpp.py
-    mpc.py
-    ocp_analyzer.py
-    ocp_pick_and_place2_v1.py
-    run.py
-    script.py
-  )
+      __init__.py
+      croco_hpp.py
+      mpc.py
+      ocp_analyzer.py
+      ocp_pick_and_place2_v1.py
+      run.py
+      script.py)
   foreach(file ${project_theos_work_python_source_files})
     python_install_on_site(${PROJECT_NAME}/theos_work ${file})
   endforeach()
