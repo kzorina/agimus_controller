@@ -5,7 +5,7 @@
 @license License BSD-3-Clause
 @copyright Copyright (c) 2019, New York University and Max Planck Gesellschaft.
 @date 2020-05-18
-@brief Simple self-contained example of DDP trajectory for KUKA - without PyBullet 
+@brief Simple self-contained example of DDP trajectory for KUKA - without PyBullet
 """
 
 import numpy as np
@@ -13,7 +13,6 @@ import pinocchio as pin
 from mim_robots.robot_loader import load_pinocchio_wrapper
 import crocoddyl
 import mim_solvers
-import example_robot_data
 
 ###################
 ### ROBOT MODEL ###
@@ -242,7 +241,6 @@ def resetProblem(t, x, problem, check=True):
     # First trial: - weights(t) = exp(slope*(t-tcut))
     current_target = None
     for k, m in enumerate(models[:]):
-
         # Compute the absolute time of the shooting interval, modulo the cycle time,
         # so that 0<=ta0<TCYCLE and 0<ta1<=TCYCLE
 
@@ -312,8 +310,8 @@ def resetProblem(t, x, problem, check=True):
     # stophere
     import matplotlib.pylab as plt
 
-    
-    
+
+
     plt.ion()
     plt.figure(1)
     plt.clf()
