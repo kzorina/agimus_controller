@@ -58,9 +58,7 @@ class Problem:
         for idx in range(x_plan.shape[0] - 1):
             x = x_plan[idx, :]
             a = a_plan[idx, :]
-            tau = pin.rnea(
-                self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
-            ).copy()
+            tau = self.get_inverse_dynamic_control(x, a)
             u_ref[idx, :] = tau[: self.nq]
         return u_ref
 
@@ -74,9 +72,11 @@ class Problem:
 
     def set_models(self):
         """Set running models and terminal model of the ddp problem."""
-        goal_placement_residual = self.get_goal_placement_residual()
+        goal_placement_residual = self.get_placement_residual(
+            self.x_plan[-1, : self.nq]
+        )
         self.set_sub_path_running_models()
-        self.set_last_model(goal_placement_residual, True)
+        self.set_last_model(goal_placement_residual, self.u_ref[-1])
 
     def set_sub_path_running_models(self):
         """Set running models for one sub path of the ddp problem."""
@@ -111,19 +111,15 @@ class Problem:
             )
         self.running_models = running_models
 
-    def set_last_model(self, goal_placement_residual, is_terminal_model=True):
+    def set_last_model(self, goal_placement_residual, u_ref):
         """Set last model for a sub path."""
-        u_ref = self.u_ref[-1, :]
         if self.use_mim:
             last_model = self.get_last_model_with_mim()
         else:
             last_model = self.get_last_model_without_mim(
                 goal_placement_residual, self.x_plan[-1, :], u_ref
             )
-        if is_terminal_model:
-            self.terminal_model = last_model
-        else:
-            self.running_models.append(last_model)
+        self.terminal_model = last_model
 
     def get_last_model_without_mim(self, goal_placement_residual, x_ref, u_ref):
         """Return last model without constraints."""
@@ -132,19 +128,15 @@ class Problem:
             "gripperPose", goal_placement_residual, self.grip_cost
         )
         vel_cost = self.get_velocity_residual(self.last_joint_name)
-        if np.linalg.norm(x_ref[self.nq :]) < 1e-6:
+        if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
             running_cost_model.addCost("vel", vel_cost, self.grip_cost)
         else:
             running_cost_model.addCost("vel", vel_cost, 0)
         x_residual = self.get_state_residual(x_ref)
         running_cost_model.addCost("xReg", x_residual, 0)
 
-        if u_ref is not None:
-            u_reg_cost = self.get_control_residual(u_ref)
-            running_cost_model.addCost("uReg", u_reg_cost, self.u_cost)
-        else:
-            u_reg_cost = self.get_control_residual(np.zeros([self.nq, 1]))
-            running_cost_model.addCost("uReg", u_reg_cost, 0)
+        u_reg_cost = self.get_control_residual(u_ref)
+        running_cost_model.addCost("uReg", u_reg_cost, 0)
         return crocoddyl.IntegratedActionModelEuler(
             crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self.state, self.actuation, running_cost_model
@@ -222,11 +214,6 @@ class Problem:
             self.DT,
         )
 
-    def get_goal_placement_residual(self):
-        """Return vector of tracking costs for each sub path."""
-
-        return self.get_placement_residual(self.x_plan[-1, : self.nq])
-
     def get_placement_residual(self, q):
         """Return placement residual to the last position of the sub path."""
         target = self.robot.placement(q, self.nq).copy()
@@ -285,6 +272,11 @@ class Problem:
             target.translation,
         )
 
+    def get_inverse_dynamic_control(self, x, a):
+        return pin.rnea(
+            self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
+        ).copy()
+
     def create_whole_problem(self):
         x0 = self.x_plan[0, :]
 
@@ -306,15 +298,14 @@ class Problem:
         terminal_model = self.whole_problem.runningModels[T - 1].copy()
         return crocoddyl.ShootingProblem(x0, models, terminal_model)
 
-    def update_cost(self, model, new_model, cost_name):
-        model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference = new_model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference.copy()
-        new_weight = new_model.differential.costs.costs[cost_name].weight
-        model.differential.costs.costs[cost_name].weight = new_weight
-        if new_weight == 0:
+    def update_cost(self, model, new_model, cost_name, update_weight=True):
+        model.differential.costs.costs[cost_name].cost.residual.reference = (
+            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
+        )
+        if update_weight:
+            new_weight = new_model.differential.costs.costs[cost_name].weight
+            model.differential.costs.costs[cost_name].weight = new_weight
+        if model.differential.costs.costs[cost_name].weight == 0:
             model.differential.costs.changeCostStatus(cost_name, False)
         else:
             model.differential.costs.changeCostStatus(cost_name, True)
@@ -325,32 +316,32 @@ class Problem:
         self.update_cost(model, new_model, "vel")
         self.update_cost(model, new_model, "uReg")
 
-    def reset_ocp(self, x, next_node_idx):
+    def update_last_running_model(self, model, new_model):
+        self.update_cost(model, new_model, "xReg", False)
+        self.update_cost(model, new_model, "gripperPose", False)
+        self.update_cost(model, new_model, "vel", False)
+        self.update_cost(model, new_model, "uReg", False)
+
+    def reset_ocp(self, x, x_ref, u_ref):
         self.solver.problem.x0 = x
         runningModels = list(self.solver.problem.runningModels)
-        # start_idx = next_node_idx - (len(self.solver.problem.runningModels) + 1)
         for node_idx in range(len(runningModels) - 1):
             self.update_model(runningModels[node_idx], runningModels[node_idx + 1])
-        if next_node_idx >= self.whole_traj_T - 1:
-            self.update_model(
-                runningModels[-1], self.whole_problem.runningModels[-1].copy()
-            )
-        else:
-            self.update_model(
-                runningModels[-1],
-                self.whole_problem.runningModels[next_node_idx - 1].copy(),
-            )
-        if next_node_idx < self.whole_traj_T - 1:
-            self.update_model(
-                self.solver.problem.terminalModel,
-                self.whole_problem.runningModels[next_node_idx].copy(),
-            )
+        self.update_last_running_model(
+            runningModels[-1], self.solver.problem.terminalModel
+        )
+        terminal_model = self.get_last_model_without_mim(
+            self.get_placement_residual(x_ref[: self.nq]), x_ref, u_ref
+        )
+        self.update_model(self.solver.problem.terminalModel, terminal_model)
 
-        else:
-            self.update_model(
-                self.solver.problem.terminalModel,
-                self.whole_problem.terminalModel.copy(),
-            )
+    def build_ocp_from_plannif(self, x_plan, a_plan, x0):
+        self.x_plan = x_plan
+        self.a_plan = a_plan
+        self.T = x_plan.shape[0]
+        self.u_ref = self.get_uref(x_plan, a_plan)
+        self.set_models()
+        return crocoddyl.ShootingProblem(x0, self.running_models, self.terminal_model)
 
     def run_solver(self, problem, xs_init, us_init, max_iter, set_callback=False):
         """

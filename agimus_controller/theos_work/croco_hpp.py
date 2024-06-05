@@ -44,6 +44,8 @@ class CrocoHppConnection:
         if vf is not None:
             self.v = vf.createViewer()
         self.prob = Problem(x_plan, a_plan, robot_name)
+        self.whole_x_plan = x_plan
+        self.whole_a_plan = a_plan
         self.robot = self.prob.robot
         self.nq = self.robot.nq
         self.DT = self.prob.DT
@@ -74,7 +76,7 @@ class CrocoHppConnection:
     def plot_traj_configuration(self):
         """Plot both trajectories of hpp and crocoddyl in configuration space."""
         q_crocos = self.croco_xs[:, : self.nq]
-        q_hpp = self.prob.x_plan[:, : self.nq]
+        q_hpp = self.whole_x_plan[:, : self.nq]
         t = np.linspace(0, self.path_length, self.croco_xs.shape[0])
         for idx in range(self.nq):
             plt.subplot(self.nq, 1, idx + 1)
@@ -88,7 +90,7 @@ class CrocoHppConnection:
     def plot_traj_velocity(self):
         """Plot both velocities of hpp and crocoddyl."""
         v_crocos = self.croco_xs[:, self.nq :]
-        v_hpp = self.prob.x_plan[:, self.nq :]
+        v_hpp = self.whole_x_plan[:, self.nq :]
         t = np.linspace(0, self.path_length, self.croco_xs.shape[0])
         for idx in range(self.nq):
             plt.subplot(self.robot.nq, 1, idx + 1)
@@ -102,13 +104,13 @@ class CrocoHppConnection:
     def plot_integrated_configuration(self):
         """Plot both trajectories of hpp and crocoddyl in configuration space by integrating velocities."""
         v_crocos = self.croco_xs[:, self.nq :]
-        v_hpp = self.prob.x_plan[:, self.nq :]
+        v_hpp = self.whole_x_plan[:, self.nq :]
         q_crocos = [[] for _ in range(self.nq)]
         q_hpps = [[] for _ in range(self.nq)]
 
         # add initial configuration
         x0_croco = self.croco_xs[0]
-        x0_hpp = self.prob.x_plan[0]
+        x0_hpp = self.whole_x_plan[0]
         for idx in range(self.nq):
             q_crocos[idx].append(x0_croco[idx])
             q_hpps[idx].append(x0_hpp[idx])
@@ -132,7 +134,7 @@ class CrocoHppConnection:
         plt.show()
 
     def plot_a_plan(self):
-        a_plan = self.prob.a_plan
+        a_plan = self.whole_a_plan
         t = np.linspace(0, self.path_length, a_plan.shape[0])
         for idx in range(self.nq):
             plt.subplot(self.nq, 1, idx + 1)
@@ -144,10 +146,11 @@ class CrocoHppConnection:
     def plot_control(self):
         """Plot control for each joint."""
         t = np.linspace(0, self.path_length, self.croco_us.shape[0])
+        u_ref = self.prob.get_uref(self.whole_x_plan, self.whole_a_plan)
         for idx in range(self.nq):
             plt.subplot(self.nq, 1, idx + 1)
             plt.plot(t, self.croco_us[:, idx])
-            plt.plot(t, self.prob.u_ref[:, idx])
+            plt.plot(t, u_ref[:, idx])
             plt.xlabel("time (s)")
             plt.ylabel(f"q{idx} control")
             plt.legend(["crocoddyl", "hpp"], loc="best")
@@ -161,7 +164,7 @@ class CrocoHppConnection:
 
     def print_final_placement(self):
         """Print final gripper position for both hpp and crocoddyl trajectories."""
-        q_final_hpp = self.prob.x_plan[-1][: self.nq]
+        q_final_hpp = self.whole_x_plan[-1][: self.nq]
         hpp_placement = self.robot.placement(q_final_hpp, self.nq)
         print("Last node placement ")
         print(
@@ -213,8 +216,8 @@ class CrocoHppConnection:
             pose = self.robot.placement(q, self.nq).translation
             for idx in range(3):
                 pose_croco[idx].append(pose[idx])
-        for idx in range(self.prob.x_plan.shape[0]):
-            q = self.prob.x_plan[idx, : self.nq]
+        for idx in range(self.whole_x_plan.shape[0]):
+            q = self.whole_x_plan[idx, : self.nq]
             pose = self.robot.placement(q, self.nq).translation
             for idx in range(3):
                 pose_hpp[idx].append(pose[idx])
@@ -347,38 +350,61 @@ class CrocoHppConnection:
         return d.xnext.copy()
 
     def do_mpc(self, T, node_idx_breakpoint=None):
+        mpc_xs = np.zeros([self.prob.T, 2 * self.nq])
+        mpc_us = np.zeros([self.prob.T - 1, self.nq])
+        x0 = self.prob.x_plan[0]
+        mpc_xs[0, :] = x0
+
+        x, u0 = self.mpc_first_step(x0, T)
+        mpc_xs[1, :] = x
+        mpc_us[0, :] = u0
+
+        next_node_idx = T
+        x_plan = self.whole_x_plan[next_node_idx - T : next_node_idx, :]
+        a_plan = self.whole_a_plan[next_node_idx - T : next_node_idx, :]
+        for idx in range(1, len(self.prob.whole_problem.runningModels)):
+            x_plan = np.delete(x_plan, 0, 0)
+            a_plan = np.delete(a_plan, 0, 0)
+            # breakpoint()
+            new_x_ref = self.whole_x_plan[next_node_idx, :]
+            new_a_ref = self.whole_a_plan[next_node_idx, :]
+            x_plan = np.r_[x_plan, new_x_ref[np.newaxis, :]]
+            a_plan = np.r_[a_plan, new_a_ref[np.newaxis, :]]
+            x, u = self.mpc_step(x, x_plan, a_plan)
+            if next_node_idx < self.whole_x_plan.shape[0] - 1:
+                next_node_idx += 1
+            mpc_xs[idx + 1, :] = x
+            mpc_us[idx, :] = u
+
+            if idx == node_idx_breakpoint:
+                breakpoint()
+        self.croco_xs = mpc_xs
+        self.croco_us = mpc_us
+
+    def mpc_first_step(self, x0, T):
         self.prob.set_models()
         self.prob.create_whole_problem()
-        # self.prob.set_xplan_and_uref(0, path_terminal_idx)
-
         problem = self.prob.create_problem(T)
-        problem.x0 = self.prob.x_plan[0]
+        problem.x0 = x0
         self.prob.run_solver(
             problem, list(self.prob.x_plan[:T]), list(self.prob.u_ref[: T - 1]), 1000
         )
-        next_node_idx = T
-        xs = np.zeros([len(self.prob.whole_problem.runningModels) + 1, 2 * self.nq])
-        xs[0, :] = problem.x0
-        us = np.zeros([len(self.prob.whole_problem.runningModels), self.nq])
-        us[0, :] = self.prob.solver.us[0]
-        x = self.compute_next_step(problem.x0, problem)
-        xs[1, :] = x
-        for idx in range(1, len(self.prob.whole_problem.runningModels)):
-            self.prob.reset_ocp(x, next_node_idx)
-            xs_init = list(self.prob.solver.xs[1:]) + [self.prob.solver.xs[-1]]
-            xs_init[0] = x
-            us_init = list(self.prob.solver.us[1:]) + [self.prob.solver.us[-1]]
+        x = self.compute_next_step(x0, self.prob.solver.problem)
+        return x, self.prob.solver.us[0]
 
-            self.prob.run_solver(problem, xs_init, us_init, 1)
-            x = self.compute_next_step(x, problem)
-            xs[idx + 1, :] = x
-            us[idx, :] = self.prob.solver.us[0]
-            next_node_idx += 1
-            self.prob.solver.problem.copy()
-            if idx == node_idx_breakpoint:
-                breakpoint()
-        self.croco_xs = xs
-        self.croco_us = us
+    def mpc_step(self, x, x_plan, a_plan):
+        u_ref_terminal_node = self.prob.get_inverse_dynamic_control(
+            x_plan[-1], a_plan[-1]
+        )
+        self.prob.reset_ocp(x, x_plan[-1], u_ref_terminal_node)
+        # problem = self.prob.build_ocp_from_plannif(x_plan, a_plan, x)
+        xs_init = list(self.prob.solver.xs[1:]) + [self.prob.solver.xs[-1]]
+        xs_init[0] = x
+        us_init = list(self.prob.solver.us[1:]) + [self.prob.solver.us[-1]]
+        self.prob.solver.problem.x0 = x
+        self.prob.run_solver(self.prob.solver.problem, xs_init, us_init, 1)
+        x = self.compute_next_step(x, self.prob.solver.problem)
+        return x, self.prob.solver.us[0]
 
     def plot_xs_us(self, solver):
         xs = np.array(solver.xs)
@@ -386,16 +412,16 @@ class CrocoHppConnection:
         dt = solver.problem.runningModels[0].dt
         poses = np.zeros([len(xs), 3])
         for idx in range(xs.shape[0]):
-            pose = self.robot.placement(xs[idx, : self.nq])
+            pose = self.robot.placement(xs[idx, : self.nq], self.nq)
             poses[idx, :] = pose.translation
-        t_xs = np.linspace(0, (len(xs) - 1) * dt, int(1 / dt))
-        for idx in range(3):
-            plt.subplot(3, 1, idx)
-            plt.plot(t_xs, poses[:, idx])
+        t_xs = np.linspace(0, (len(xs) - 1), int(1 / dt))
+        # for idx in range(3):
+        #    plt.subplot(3, 1, idx + 1)
+        #    plt.plot(t_xs, poses[:, idx])
         for idx in range(self.nq):
-            plt.subplot(self.nq, 1, idx)
-            plt.plot(t_xs, xs[:, idx])
+            plt.subplot(self.nq, 1, idx + 1)
+            plt.plot(t_xs, xs[:, idx], label="q" + idx)
         for idx in range(self.nq):
-            plt.subplot(self.nq, 1, idx)
-            plt.plot(t_xs[:-1], us[:, idx])
+            plt.subplot(self.nq, 1, idx + 1)
+            plt.plot(t_xs[:-1], us[:, idx], label="u" + idx)
         plt.show()
