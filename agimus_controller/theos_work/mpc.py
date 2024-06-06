@@ -277,9 +277,11 @@ class Problem:
         ).copy()
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
-        model.differential.costs.costs[cost_name].cost.residual.reference = (
-            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
-        )
+        model.differential.costs.costs[
+            cost_name
+        ].cost.residual.reference = new_model.differential.costs.costs[
+            cost_name
+        ].cost.residual.reference.copy()
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight
