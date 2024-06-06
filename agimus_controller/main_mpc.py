@@ -74,7 +74,7 @@ def main():
         WEIGHT_GRIPPER_POSE=WEIGHT_GRIPPER_POSE,
         MAX_QP_ITERS=max_qp_iters,
         SAFETY_THRESHOLD=safety_threshhold,
-        callbacks=callbacks
+        callbacks=callbacks,
     )
 
     mpc = MPC(
