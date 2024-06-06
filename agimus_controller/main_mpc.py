@@ -38,8 +38,6 @@ def main():
     # Extract robot model
     nq = robot_simulator.pin_robot.model.nq
     nv = robot_simulator.pin_robot.model.nv
-    nu = nq
-    nx = nq + nv
     v0 = np.zeros(nv)
     x0 = np.concatenate([q0, v0])
     # Add robot to simulation and initialize
@@ -52,9 +50,7 @@ def main():
     dt = 2e-2
     T = 10
     WEIGHT_GRIPPER_POSE = 1e2
-    WEIGHT_GRIPPER_POSE_TERM = 1e2
     WEIGHT_xREG = 1e-2
-    WEIGHT_xREG_TERM = 1e-2
     WEIGHT_uREG = 1e-4
     max_qp_iters = 25
     callbacks = False
@@ -78,6 +74,7 @@ def main():
         WEIGHT_GRIPPER_POSE=WEIGHT_GRIPPER_POSE,
         MAX_QP_ITERS=max_qp_iters,
         SAFETY_THRESHOLD=safety_threshhold,
+        callbacks=callbacks
     )
 
     mpc = MPC(
