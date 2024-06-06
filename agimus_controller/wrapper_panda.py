@@ -300,7 +300,7 @@ class PandaRobot(PinBulletWrapper):
 
 
 if __name__ == "__main__":
-    from wrapper_meshcat import MeshcatWrapper
+    from agimus_controller.wrapper_meshcat import MeshcatWrapper
 
     # Creating the robot
     robot_wrapper = PandaWrapper(capsule=True, auto_col=True)

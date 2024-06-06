@@ -194,8 +194,8 @@ class Scene:
 
 
 if __name__ == "__main__":
-    from wrapper_meshcat import MeshcatWrapper
-    from wrapper_panda import PandaWrapper
+    from agimus_controller.wrapper_meshcat import MeshcatWrapper
+    from agimus_controller.wrapper_panda import PandaWrapper
 
     # Creating the robot
     robot_wrapper = PandaWrapper(capsule=True)
