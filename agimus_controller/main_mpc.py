@@ -36,7 +36,6 @@ def main():
     env.add_robot(robot_simulator)
 
     # Extract robot model
-    nq = robot_simulator.pin_robot.model.nq
     nv = robot_simulator.pin_robot.model.nv
     v0 = np.zeros(nv)
     x0 = np.concatenate([q0, v0])
