@@ -9,7 +9,6 @@ from agimus_controller.scenes import Scene
 
 
 def main():
-    
     ### PARAMETERS
     # Number of nodes of the trajectory
     T = 20
@@ -22,7 +21,9 @@ def main():
 
     # Creating the scene
     scene = Scene("wall")
-    rmodel1, cmodel1, TARGET1, TARGET2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
+    rmodel1, cmodel1, TARGET1, TARGET2, q0 = scene.create_scene_from_urdf(
+        rmodel, cmodel
+    )
     # Generating the meshcat visualizer
     MeshcatVis = MeshcatWrapper()
     vis, meshcatVis = MeshcatVis.visualize(

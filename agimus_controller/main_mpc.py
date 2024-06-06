@@ -8,11 +8,11 @@ from agimus_controller.wrapper_panda import PandaRobot
 from agimus_controller.scenes import Scene
 from agimus_controller.mpc import MPC
 
+
 def main():
     # # # # # # # # # # # # # # # # # # #
     ### LOAD ROBOT MODEL and SIMU ENV ###
     # # # # # # # # # # # # # # # # # # #
-
 
     # Name of the scene (can be changed by "ball" and "wall")
     name_scene = "box"
@@ -48,9 +48,7 @@ def main():
 
     # Parameters of the OCP
     max_iter = 4  # Maximum iterations of the solver
-    max_qp_iters = (
-        25  # Maximum iterations for solving each qp solved in one iteration of the solver
-    )
+    max_qp_iters = 25  # Maximum iterations for solving each qp solved in one iteration of the solver
     dt = 2e-2
     T = 10
     WEIGHT_GRIPPER_POSE = 1e2
