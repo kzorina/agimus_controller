@@ -43,7 +43,7 @@ class CrocoHppConnection:
         self.ball_init_pose = ball_init_pose
         if vf is not None:
             self.v = vf.createViewer()
-        self.prob = Problem(x_plan, a_plan, robot_name)
+        self.prob = Problem(robot_name)
         self.whole_x_plan = x_plan
         self.whole_a_plan = a_plan
         self.robot = self.prob.robot
@@ -57,7 +57,8 @@ class CrocoHppConnection:
         self.results["max_us"] = []
         self.results["max_increase_us"] = []
         self.results["combination"] = []
-        self.path_length = self.prob.whole_traj_T * self.DT
+        self.whole_traj_T = x_plan.shape[0]
+        self.path_length = (self.whole_traj_T - 1) * self.DT
 
     def plot_traj(self):
         """Plot both trajectories of hpp and crocoddyl for the gripper pose."""
@@ -334,12 +335,11 @@ class CrocoHppConnection:
     def set_problem_run_solver(self, terminal_idx):
         """Set OCP problem with new costs then run solver."""
 
-        self.prob.set_models([terminal_idx])
-        self.prob.create_whole_problem()
-        self.prob.set_xplan_and_uref(0, terminal_idx)
-        self.prob.run_solver(
-            self.prob.whole_problem, self.prob.x_plan, self.prob.u_ref, 10
+        self.prob.set_models()
+        problem = self.prob.build_ocp_from_plannif(
+            self.whole_x_plan, self.whole_a_plan, self.whole_x_plan[0, :]
         )
+        self.prob.run_solver(problem, self.prob.x_plan, self.prob.u_ref, 10)
         self.croco_xs = np.array(self.prob.solver.xs)
         self.croco_us = np.array(self.prob.solver.us)
 
@@ -350,26 +350,22 @@ class CrocoHppConnection:
         return d.xnext.copy()
 
     def do_mpc(self, T, node_idx_breakpoint=None):
-        mpc_xs = np.zeros([self.prob.T, 2 * self.nq])
-        mpc_us = np.zeros([self.prob.T - 1, self.nq])
-        x0 = self.prob.x_plan[0]
+        mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
+        mpc_us = np.zeros([self.whole_traj_T - 1, self.nq])
+        x0 = self.whole_x_plan[0, :]
         mpc_xs[0, :] = x0
 
-        x, u0 = self.mpc_first_step(x0, T)
+        x_plan = self.whole_x_plan[:T, :]
+        a_plan = self.whole_a_plan[:T, :]
+        x, u0 = self.mpc_first_step(x_plan, a_plan, x0, T)
         mpc_xs[1, :] = x
         mpc_us[0, :] = u0
 
         next_node_idx = T
-        x_plan = self.whole_x_plan[next_node_idx - T : next_node_idx, :]
-        a_plan = self.whole_a_plan[next_node_idx - T : next_node_idx, :]
-        for idx in range(1, len(self.prob.whole_problem.runningModels)):
-            x_plan = np.delete(x_plan, 0, 0)
-            a_plan = np.delete(a_plan, 0, 0)
-            # breakpoint()
-            new_x_ref = self.whole_x_plan[next_node_idx, :]
-            new_a_ref = self.whole_a_plan[next_node_idx, :]
-            x_plan = np.r_[x_plan, new_x_ref[np.newaxis, :]]
-            a_plan = np.r_[a_plan, new_a_ref[np.newaxis, :]]
+
+        for idx in range(1, self.whole_traj_T - 1):
+            x_plan = self.update_planning(x_plan, self.whole_x_plan[next_node_idx, :])
+            a_plan = self.update_planning(a_plan, self.whole_a_plan[next_node_idx, :])
             x, u = self.mpc_step(x, x_plan, a_plan)
             if next_node_idx < self.whole_x_plan.shape[0] - 1:
                 next_node_idx += 1
@@ -381,13 +377,14 @@ class CrocoHppConnection:
         self.croco_xs = mpc_xs
         self.croco_us = mpc_us
 
-    def mpc_first_step(self, x0, T):
-        self.prob.set_models()
-        self.prob.create_whole_problem()
-        problem = self.prob.create_problem(T)
-        problem.x0 = x0
+    def update_planning(self, planning_vec, next_value):
+        planning_vec = np.delete(planning_vec, 0, 0)
+        return np.r_[planning_vec, next_value[np.newaxis, :]]
+
+    def mpc_first_step(self, x_plan, a_plan, x0, T):
+        problem = self.prob.build_ocp_from_plannif(x_plan, a_plan, x0)
         self.prob.run_solver(
-            problem, list(self.prob.x_plan[:T]), list(self.prob.u_ref[: T - 1]), 1000
+            problem, list(x_plan), list(self.prob.u_ref[: T - 1]), 1000
         )
         x = self.compute_next_step(x0, self.prob.solver.problem)
         return x, self.prob.solver.us[0]
@@ -397,7 +394,6 @@ class CrocoHppConnection:
             x_plan[-1], a_plan[-1]
         )
         self.prob.reset_ocp(x, x_plan[-1], u_ref_terminal_node)
-        # problem = self.prob.build_ocp_from_plannif(x_plan, a_plan, x)
         xs_init = list(self.prob.solver.xs[1:]) + [self.prob.solver.xs[-1]]
         xs_init[0] = x
         us_init = list(self.prob.solver.us[1:]) + [self.prob.solver.us[-1]]

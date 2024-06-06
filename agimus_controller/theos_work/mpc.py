@@ -6,7 +6,7 @@ import mim_solvers
 
 
 class Problem:
-    def __init__(self, x_plan, a_plan, robot_name):
+    def __init__(self, robot_name):
         self.x_cost = 1e-1
         self.u_cost = 1e-4
         self.grip_cost = 1e6
@@ -35,11 +35,10 @@ class Problem:
         self.nq = self.robot.nq
         self.nv = self.robot.nv
 
-        self.x_plan = x_plan  # hpp's x_plan for the whole trajectory
-        self.a_plan = a_plan
-        self.u_ref = self.get_uref(x_plan, a_plan)
-        self.whole_traj_T = x_plan.shape[0]
-        self.T = x_plan.shape[0]
+        self.x_plan = None
+        self.a_plan = None
+        self.u_ref = None
+        self.T = None
         self.running_models = None
         self.terminal_model = None
         self.solver = None
@@ -276,27 +275,6 @@ class Problem:
         return pin.rnea(
             self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
         ).copy()
-
-    def create_whole_problem(self):
-        x0 = self.x_plan[0, :]
-
-        self.whole_problem = crocoddyl.ShootingProblem(
-            x0, self.running_models, self.terminal_model
-        )
-        self.whole_problem_models = list(self.whole_problem.runningModels)
-
-    def create_problem(self, T):
-        x0 = (
-            self.whole_problem.runningModels[0]
-            .differential.costs.costs["xReg"]
-            .cost.residual.reference
-        )
-        models = []
-        for i in range(T - 1):
-            models.append(self.whole_problem.runningModels[i].copy())
-
-        terminal_model = self.whole_problem.runningModels[T - 1].copy()
-        return crocoddyl.ShootingProblem(x0, models, terminal_model)
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
         model.differential.costs.costs[cost_name].cost.residual.reference = (
