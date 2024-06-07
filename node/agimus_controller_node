@@ -3,13 +3,13 @@
 import rospy
 from agimus_controller_ros.agimus_controller import AgimusControllerNode
 
-def agimus_controller_node():
+def run():
     rospy.init_node('talker', anonymous=True)
     node = AgimusControllerNode()
     node.run()
 
 if __name__ == '__main__':
     try:
-        agimus_controller_node()
+        run()
     except rospy.ROSInterruptException:
         pass
