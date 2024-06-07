@@ -66,7 +66,6 @@ class HppInterface:
         Robot.srdfFilename = (
             "package://example-robot-data/robots/ur_description/srdf/ur3_gripper.srdf"
         )
-        dir = os.getenv("PWD")
 
         nSphere = 1
         robot = Robot("ur3-spheres", "ur3")  # ,rootJointType="anchor"
@@ -112,8 +111,6 @@ class HppInterface:
         #
         handlesPerObject = [["sphere{0}/handle".format(i)] for i in range(nSphere)]
         contactsPerObject = [[] for i in range(nSphere)]
-        ## Contact surfaces
-        shapesPerObject = [[] for o in objects]
         ## Constraints
         #
         for i in range(nSphere):
@@ -255,7 +252,7 @@ class HppInterface:
         self.vf = vf
 
     def get_hpp_plan(self, DT, nq):
-        p = self.ps.client.basic.problem.getPath(ps.numberPaths() - 1)
+        p = self.ps.client.basic.problem.getPath(self.ps.numberPaths() - 1)
         path = p.pathAtRank(0)
         T = int(np.round(path.length() / DT))
         x_plan, a_plan = self.get_xplan_aplan(T, path, nq)

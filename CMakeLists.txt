@@ -37,6 +37,7 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
   # Install the python package.
   set(project_python_source_files
       __init__.py
+      hpp_interface.py
       main_mpc.py
       main_optim_traj.py
       mpc_utils.py
@@ -52,11 +53,11 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
   set(project_theos_work_python_source_files
       __init__.py
       croco_hpp.py
+      main.py
       mpc.py
       ocp_analyzer.py
       ocp_pick_and_place2_v1.py
-      run.py
-      script.py)
+      run.py)
   foreach(file ${project_theos_work_python_source_files})
     python_install_on_site(${PROJECT_NAME}/theos_work ${file})
   endforeach()

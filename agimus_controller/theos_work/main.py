@@ -2,6 +2,7 @@
 
 from agimus_controller.theos_work.croco_hpp import CrocoHppConnection
 from agimus_controller.hpp_interface import HppInterface
+import time
 
 
 class TrajectoryPoint:
