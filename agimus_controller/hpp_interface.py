@@ -9,7 +9,6 @@
 
 import datetime as dt
 import numpy as np
-import os
 from argparse import ArgumentParser
 from math import pi
 from hpp.corbaserver.manipulation import (
@@ -54,7 +53,6 @@ class HppInterface:
         self.set_ur3_problem_solver()
 
     def set_ur3_problem_solver(self):
-
         parser = ArgumentParser()
         parser.add_argument("-N", default=20, type=int)
         args = parser.parse_args()
