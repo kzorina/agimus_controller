@@ -28,6 +28,13 @@ from hpp_idl.hpp import Equality, EqualToZero
 from agimus_controller.theos_work.croco_hpp import CrocoHppConnection
 
 
+class TrajectoryPoint:
+    def __init__(self, x, a, com_pose=None):
+        self.x = x
+        self.a = a
+        self.com_pose = com_pose
+
+
 class Sphere(object):
     rootJointType = "freeflyer"
     packageName = "hpp_environments"
@@ -290,6 +297,11 @@ class HppInterface:
             a_t = np.array(path.derivative(iter_time, 2)[:nq])
             a_plan[iter, :] = a_t
         return x_plan, a_plan
+
+    def get_trajectory_point(self, point_idx):
+        x = self.x_plan[point_idx]
+        a = self.a_plan[point_idx]
+        return TrajectoryPoint(x, a)
 
 
 ##### start croco script
