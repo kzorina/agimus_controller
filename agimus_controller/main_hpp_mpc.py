@@ -5,13 +5,6 @@ from agimus_controller.hpp_interface import HppInterface
 import time
 
 
-class TrajectoryPoint:
-    def __init__(self, x, a, com_pose=None):
-        self.x = x
-        self.a = a
-        self.com_pose = com_pose
-
-
 if __name__ == "__main__":
     hpp_interface = HppInterface()
     ps = hpp_interface.ps
