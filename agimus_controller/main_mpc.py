@@ -6,7 +6,7 @@ from mim_robots.pybullet.env import BulletEnvWithGround
 from agimus_controller.ocp import OCPPandaReachingColWithMultipleCol
 from agimus_controller.wrapper_panda import PandaRobot
 from agimus_controller.scenes import Scene
-from croco_hpp_connection.agimus_controller.mpc_arthur import MPC
+from agimus_controller.mpc_arthur import MPC
 
 
 def main():
