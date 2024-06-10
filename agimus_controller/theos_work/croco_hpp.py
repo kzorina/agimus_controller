@@ -1,8 +1,6 @@
 import time
 import numpy as np
-import pinocchio as pin
-import matplotlib.pyplot as plt
-from .mpc import Problem
+from .ocp import OCPCrocoHPP
 
 
 class TrajectoryBuffer:
@@ -38,17 +36,13 @@ class TrajectoryBuffer:
         return self.a_plan
 
 
-class CrocoHppConnection:
-    def __init__(self, x_plan, a_plan, robot_name, vf, ball_init_pose):
-        self.ball_init_pose = ball_init_pose
-        if vf is not None:
-            self.v = vf.createViewer()
-        self.prob = Problem(robot_name)
+class MPC:
+    def __init__(self, x_plan, a_plan, robot_name):
+        self.prob = OCPCrocoHPP(robot_name)
         self.whole_x_plan = x_plan
         self.whole_a_plan = a_plan
         self.robot = self.prob.robot
         self.nq = self.robot.nq
-        self.DT = self.prob.DT
         self.croco_xs = None
         self.croco_us = None
         self.results = {}
@@ -58,130 +52,6 @@ class CrocoHppConnection:
         self.results["max_increase_us"] = []
         self.results["combination"] = []
         self.whole_traj_T = x_plan.shape[0]
-        self.path_length = (self.whole_traj_T - 1) * self.DT
-
-    def plot_traj(self):
-        """Plot both trajectories of hpp and crocoddyl for the gripper pose."""
-        pose_croco, pose_hpp = self.get_cartesian_trajectory()
-        t = np.linspace(0, self.path_length, self.croco_xs.shape[0])
-        axis_string = ["x", "y", "z"]
-        for idx in range(3):
-            plt.subplot(2, 2, idx + 1)
-            plt.plot(t, pose_croco[idx])
-            plt.plot(t, pose_hpp[idx])
-            plt.xlabel("time (s)")
-            plt.ylabel("effector " + axis_string[idx] + " position")
-            plt.legend(["crocoddyl", "hpp"], loc="best")
-        plt.show()
-
-    def plot_traj_configuration(self):
-        """Plot both trajectories of hpp and crocoddyl in configuration space."""
-        q_crocos = self.croco_xs[:, : self.nq]
-        q_hpp = self.whole_x_plan[:, : self.nq]
-        t = np.linspace(0, self.path_length, self.croco_xs.shape[0])
-        for idx in range(self.nq):
-            plt.subplot(self.nq, 1, idx + 1)
-            plt.plot(t, q_crocos[:, idx])
-            plt.plot(t, q_hpp[:, idx])
-            plt.xlabel("time (s)")
-            plt.ylabel(f"q{idx} position")
-            plt.legend(["crocoddyl", "hpp"], loc="best")
-        plt.show()
-
-    def plot_traj_velocity(self):
-        """Plot both velocities of hpp and crocoddyl."""
-        v_crocos = self.croco_xs[:, self.nq :]
-        v_hpp = self.whole_x_plan[:, self.nq :]
-        t = np.linspace(0, self.path_length, self.croco_xs.shape[0])
-        for idx in range(self.nq):
-            plt.subplot(self.robot.nq, 1, idx + 1)
-            plt.plot(t, v_crocos[:, idx])
-            plt.plot(t, v_hpp[:, idx])
-            plt.xlabel("time (s)")
-            plt.ylabel(f"velocity q{idx}")
-            plt.legend(["crocoddyl", "hpp"], loc="best")
-        plt.show()
-
-    def plot_integrated_configuration(self):
-        """Plot both trajectories of hpp and crocoddyl in configuration space by integrating velocities."""
-        v_crocos = self.croco_xs[:, self.nq :]
-        v_hpp = self.whole_x_plan[:, self.nq :]
-        q_crocos = [[] for _ in range(self.nq)]
-        q_hpps = [[] for _ in range(self.nq)]
-
-        # add initial configuration
-        x0_croco = self.croco_xs[0]
-        x0_hpp = self.whole_x_plan[0]
-        for idx in range(self.nq):
-            q_crocos[idx].append(x0_croco[idx])
-            q_hpps[idx].append(x0_hpp[idx])
-
-        # compute next configurations by integrating velocities
-        for idx in range(self.croco_xs.shape[0]):
-            for joint_idx in range(self.nq):
-                q_croco = q_crocos[joint_idx][-1] + v_crocos[joint_idx][idx] * self.DT
-                q_crocos[joint_idx].append(q_croco)
-                q_hpp = q_hpps[joint_idx][-1] + v_hpp[joint_idx][idx] * self.DT
-                q_hpps[joint_idx].append(q_hpp)
-
-        t = np.linspace(0, self.path_length, self.croco_xs.shape[0] + 1)
-        for idx in range(self.nq):
-            plt.subplot(3, 2, idx + 1)
-            plt.plot(t, q_crocos[idx])
-            plt.plot(t, q_hpps[idx])
-            plt.xlabel("time (s)")
-            plt.ylabel(f"q{idx} integrated")
-            plt.legend(["crocoddyl", "hpp"], loc="best")
-        plt.show()
-
-    def plot_a_plan(self):
-        a_plan = self.whole_a_plan
-        t = np.linspace(0, self.path_length, a_plan.shape[0])
-        for idx in range(self.nq):
-            plt.subplot(self.nq, 1, idx + 1)
-            plt.plot(t, a_plan[:, idx])
-            plt.xlabel("time (s)")
-            plt.ylabel(f"a{idx} (m/s²)")
-        plt.show()
-
-    def plot_control(self):
-        """Plot control for each joint."""
-        t = np.linspace(0, self.path_length, self.croco_us.shape[0])
-        u_ref = self.prob.get_uref(self.whole_x_plan, self.whole_a_plan)
-        for idx in range(self.nq):
-            plt.subplot(self.nq, 1, idx + 1)
-            plt.plot(t, self.croco_us[:, idx])
-            plt.plot(t, u_ref[:, idx])
-            plt.xlabel("time (s)")
-            plt.ylabel(f"q{idx} control")
-            plt.legend(["crocoddyl", "hpp"], loc="best")
-        plt.show()
-
-    def display_path(self):
-        """Display in Gepetto Viewer the trajectory found with crocoddyl."""
-        for x in self.croco_xs:
-            self.v(list(x)[: self.nq] + self.ball_init_pose)  # + self.ball_init_pose
-            time.sleep(self.DT)
-
-    def print_final_placement(self):
-        """Print final gripper position for both hpp and crocoddyl trajectories."""
-        q_final_hpp = self.whole_x_plan[-1][: self.nq]
-        hpp_placement = self.robot.placement(q_final_hpp, self.nq)
-        print("Last node placement ")
-        print(
-            "hpp rot ",
-            pin.log(hpp_placement.rotation),
-            " translation ",
-            hpp_placement.translation,
-        )
-        q_final_croco = self.croco_xs[-1][: self.nq]
-        croco_placement = self.robot.placement(q_final_croco, self.nq)
-        print(
-            "croco rot ",
-            pin.log(croco_placement.rotation),
-            " translation ",
-            croco_placement.translation,
-        )
 
     def get_trajectory_difference(self, configuration_traj=True):
         """Compute at each node the absolute difference in position either in cartesian or configuration space and sum it."""
@@ -401,23 +271,3 @@ class CrocoHppConnection:
         self.prob.run_solver(self.prob.solver.problem, xs_init, us_init, 1)
         x = self.compute_next_step(x, self.prob.solver.problem)
         return x, self.prob.solver.us[0]
-
-    def plot_xs_us(self, solver):
-        xs = np.array(solver.xs)
-        us = np.array(solver.us)
-        dt = solver.problem.runningModels[0].dt
-        poses = np.zeros([len(xs), 3])
-        for idx in range(xs.shape[0]):
-            pose = self.robot.placement(xs[idx, : self.nq], self.nq)
-            poses[idx, :] = pose.translation
-        t_xs = np.linspace(0, (len(xs) - 1), int(1 / dt))
-        # for idx in range(3):
-        #    plt.subplot(3, 1, idx + 1)
-        #    plt.plot(t_xs, poses[:, idx])
-        for idx in range(self.nq):
-            plt.subplot(self.nq, 1, idx + 1)
-            plt.plot(t_xs, xs[:, idx], label="q" + idx)
-        for idx in range(self.nq):
-            plt.subplot(self.nq, 1, idx + 1)
-            plt.plot(t_xs[:-1], us[:, idx], label="u" + idx)
-        plt.show()
