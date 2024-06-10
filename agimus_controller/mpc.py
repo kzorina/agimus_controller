@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from .ocp import OCPCrocoHPP
+from .ocp_croco_hpp import OCPCrocoHPP
 
 
 class TrajectoryBuffer:

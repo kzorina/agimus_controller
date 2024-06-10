@@ -41,10 +41,13 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
       main_hpp_mpc.py
       main_mpc.py
       main_optim_traj.py
+      mpc_arthur.py
       mpc_utils.py
       mpc.py
+      ocp_croco_hpp.py
       ocp.py
       pin_utils.py
+      plots.py
       scenes.py
       wrapper_meshcat.py
       wrapper_panda.py)
@@ -52,7 +55,7 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
     python_install_on_site(${PROJECT_NAME} ${file})
   endforeach()
   set(project_theos_work_python_source_files
-      __init__.py croco_hpp.py mpc.py ocp_analyzer.py ocp_pick_and_place2_v1.py
+      __init__.py ocp_analyzer.py ocp_pick_and_place2_v1.py
       run.py)
   foreach(file ${project_theos_work_python_source_files})
     python_install_on_site(${PROJECT_NAME}/theos_work ${file})
