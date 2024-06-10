@@ -1,0 +1,4 @@
+<launch>
+    <!-- <rosparam param="param" subst_value="True"> "[lf, rf]" </rosparam> -->
+    <test test-name="subscribers" pkg="agimus_controller" type="subscribers.py" />
+</launch>

@@ -51,6 +51,7 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
   foreach(file ${project_python_source_files})
     python_install_on_site(${PROJECT_NAME} ${file})
   endforeach()
+  # Install the theos_work files.
   set(project_theos_work_python_source_files
       __init__.py croco_hpp.py mpc.py ocp_analyzer.py ocp_pick_and_place2_v1.py
       run.py)
@@ -62,6 +63,11 @@ endif()
 install(DIRECTORY ${PROJECT_NAME}/resources
         DESTINATION ${PYTHON_SITELIB}/${PROJECT_NAME})
 
+include(CTest)
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
+
 if(BUILD_ROS_INTERFACE)
   # Build with ros1 catkin specific configuration
   set(MY_CATKIN_DEPENDENCIES linear_feedback_controller_msgs rospy)
@@ -70,4 +76,6 @@ if(BUILD_ROS_INTERFACE)
   catkin_python_setup()
   catkin_package(CATKIN_DEPENDS ${MY_CATKIN_DEPENDENCIES} DEPENDS
                  ${MY_PYTHON_DEPENDENCIES})
+  catkin_install_python(PROGRAMS node/agimus_controller_node DESTINATION
+                        ${CATKIN_PACKAGE_SHARE_DESTINATION})
 endif()
