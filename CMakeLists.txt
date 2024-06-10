@@ -54,9 +54,8 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
   foreach(file ${project_python_source_files})
     python_install_on_site(${PROJECT_NAME} ${file})
   endforeach()
-  set(project_theos_work_python_source_files
-      __init__.py ocp_analyzer.py ocp_pick_and_place2_v1.py
-      run.py)
+  set(project_theos_work_python_source_files __init__.py ocp_analyzer.py
+                                             ocp_pick_and_place2_v1.py run.py)
   foreach(file ${project_theos_work_python_source_files})
     python_install_on_site(${PROJECT_NAME}/theos_work ${file})
   endforeach()
