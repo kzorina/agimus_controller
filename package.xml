@@ -31,13 +31,20 @@
   <exec_depend>croccodyl</exec_depend>
   <exec_depend>example-robot-data</exec_depend>
 
-
   <!-- MiM dependencies. -->
   <exec_depend>mim_solvers</exec_depend>
+  <exec_depend>mim_robots</exec_depend>
 
   <!-- HPP dependencies. -->
   <exec_depend>hpp-corbaserver</exec_depend>
   <exec_depend>hpp-manipulation-corba</exec_depend>
+
+  <!-- Visualization dependencies -->
+  <exec_depend>meshcat</exec_depend>
+  <exec_depend>pybullet</exec_depend>
+
+  <!-- Tests -->
+  <build_depend>rostest</build_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

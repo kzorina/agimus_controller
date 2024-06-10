@@ -32,7 +32,7 @@ import pybullet
 from mim_robots.pybullet.wrapper import PinBulletWrapper
 from pinocchio.robot_wrapper import RobotWrapper
 
-from scenes import Scene
+from .scenes import Scene
 
 # This class is for unwrapping an URDF and converting it to a model. It is also possible to add objects in the model,
 # such as a ball at a specific position.

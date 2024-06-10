@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+
+import rospy
+from agimus_controller_ros.agimus_controller import AgimusControllerNode
+
+def run():
+    rospy.init_node('talker', anonymous=True)
+    node = AgimusControllerNode()
+    node.run()
+
+if __name__ == '__main__':
+    try:
+        run()
+    except rospy.ROSInterruptException:
+        pass
