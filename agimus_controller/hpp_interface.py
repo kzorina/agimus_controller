@@ -23,13 +23,7 @@ from hpp.corbaserver.manipulation.ur5 import Robot
 from hpp.gepetto.manipulation import ViewerFactory
 from hpp.corbaserver import loadServerPlugin
 from hpp_idl.hpp import Equality, EqualToZero
-
-
-class TrajectoryPoint:
-    def __init__(self, x, a, com_pose=None):
-        self.x = x
-        self.a = a
-        self.com_pose = com_pose
+from agimus_controller.trajectory_point import TrajectoryPoint
 
 
 class Sphere(object):
@@ -50,6 +44,7 @@ class Ground(object):
 
 class HppInterface:
     def __init__(self):
+        self.trajectory = []
         self.set_ur3_problem_solver()
 
     def set_ur3_problem_solver(self):
@@ -253,16 +248,18 @@ class HppInterface:
         p = self.ps.client.basic.problem.getPath(self.ps.numberPaths() - 1)
         path = p.pathAtRank(0)
         T = int(np.round(path.length() / DT))
-        x_plan, a_plan = self.get_xplan_aplan(T, path, nq)
+        x_plan, a_plan, subpath = self.get_xplan_aplan(T, path, nq)
+        self.trajectory = subpath
         whole_traj_T = 0
         for path_idx in range(1, p.numberPaths()):
             path = p.pathAtRank(path_idx)
             T = int(np.round(path.length() / DT))
             if T == 0:
                 continue
-            subpath_x_plan, subpath_a_plan = self.get_xplan_aplan(T, path, nq)
+            subpath_x_plan, subpath_a_plan, subpath = self.get_xplan_aplan(T, path, nq)
             x_plan = np.concatenate([x_plan, subpath_x_plan], axis=0)
             a_plan = np.concatenate([a_plan, subpath_a_plan], axis=0)
+            self.trajectory += subpath
             whole_traj_T += T
         self.x_plan = x_plan
         self.a_plan = a_plan
@@ -271,8 +268,14 @@ class HppInterface:
         """Return x_plan the state and a_plan the acceleration of hpp's trajectory."""
         x_plan = np.zeros([T, 2 * nq])
         a_plan = np.zeros([T, nq])
+        subpath = []
+        trajectory_point = TrajectoryPoint()
+        trajectory_point.q = np.zeros(nq)
+        trajectory_point.v = np.zeros(nq)
+        trajectory_point.a = np.zeros(nq)
+        subpath = [trajectory_point]
         if T == 0:
-            return x_plan, a_plan
+            pass
         elif T == 1:
             time = path.length()
             q_t = np.array(path.call(time)[0][:nq])
@@ -280,18 +283,23 @@ class HppInterface:
             x_plan[0, :] = np.concatenate([q_t, v_t])
             a_t = np.array(path.derivative(time, 2)[:nq])
             a_plan[0, :] = a_t
-            return x_plan, a_plan
-        total_time = path.length()
-        for iter in range(T):
-            iter_time = total_time * iter / (T - 1)  # iter * DT
-            q_t = np.array(path.call(iter_time)[0][:nq])
-            v_t = np.array(path.derivative(iter_time, 1)[:nq])
-            x_plan[iter, :] = np.concatenate([q_t, v_t])
-            a_t = np.array(path.derivative(iter_time, 2)[:nq])
-            a_plan[iter, :] = a_t
-        return x_plan, a_plan
+            subpath[0].q[:] = q_t[:]
+            subpath[0].v[:] = v_t[:]
+            subpath[0].a[:] = a_t[:]
+        else:
+            total_time = path.length()
+            subpath = [TrajectoryPoint(t, nq, nq) for t in range(T)]
+            for iter in range(T):
+                iter_time = total_time * iter / (T - 1)  # iter * DT
+                q_t = np.array(path.call(iter_time)[0][:nq])
+                v_t = np.array(path.derivative(iter_time, 1)[:nq])
+                x_plan[iter, :] = np.concatenate([q_t, v_t])
+                a_t = np.array(path.derivative(iter_time, 2)[:nq])
+                a_plan[iter, :] = a_t
+                subpath[iter].q[:] = q_t[:]
+                subpath[iter].v[:] = v_t[:]
+                subpath[iter].a[:] = a_t[:]
+        return x_plan, a_plan, subpath
 
-    def get_trajectory_point(self, point_idx):
-        x = self.x_plan[point_idx]
-        a = self.a_plan[point_idx]
-        return TrajectoryPoint(x, a)
+    def get_trajectory_point(self, index):
+        return self.trajectory[index]

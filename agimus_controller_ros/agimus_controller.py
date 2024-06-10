@@ -1,6 +1,7 @@
 import rospy
 from functools import partial
 from geometry_msgs.msg import Vector3, Transform
+from dynamic_graph_bridge_msgs.msg import Vector
 
 
 class AgimusControllerNodeParameters:
@@ -9,18 +10,6 @@ class AgimusControllerNodeParameters:
         self.name = rospy.get_param("~name", "robot")
         self.prefix = rospy.get_param("~prefix", "agimus")
         self.rate = rospy.get_param("~rate", 100)
-
-
-class TrajectoryPoint:
-    configuration = None
-    velocity = None
-    acceleration = None
-    effort = None
-    com = None
-    com_vel = None
-    com_acc = None
-    op_frame = []
-    op_frame_vel = []
 
 
 class AgimusControllerNode:
@@ -40,7 +29,7 @@ class AgimusControllerNode:
 
         rospy.loginfo("Spawn the subscribers.")
         self.subscribers = []
-        rospy.loginfo("\t- CoM pos subscriber.")
+        rospy.loginfo("\t- CoM pose subscriber.")
         self.subscribers += [
             rospy.Subscriber(
                 self.params.prefix + "com/" + self.params.name,
@@ -48,7 +37,7 @@ class AgimusControllerNode:
                 self.com_pose_callback,
             )
         ]
-        rospy.loginfo("\t- CoM vel subscriber.")
+        rospy.loginfo("\t- CoM velocity subscriber.")
         self.subscribers += [
             rospy.Subscriber(
                 self.params.prefix + "velocity/com/" + self.params.name,
@@ -57,22 +46,38 @@ class AgimusControllerNode:
             )
         ]
         for op_frame in self.params.op_frames:
-            rospy.loginfo("\t- OP frame pos subscriber.")
+            rospy.loginfo("\t- Operationnal Point (OP) frame pose subscriber.")
             self.subscribers += [
                 rospy.Subscriber(
-                    "agimus/" + op_frame + self.params.name,
+                    self.params.prefix + op_frame + self.params.name,
                     Transform,
                     partial(self.params.op_frames_callback, op_frame),
                 )
             ]
-            rospy.loginfo("\t- OP frame pos velocity.")
+            rospy.loginfo("\t- OP frame pos velocity subscriber.")
             self.subscribers += [
                 rospy.Subscriber(
-                    "agimus/" + op_frame + "/velocity",
+                    self.params.prefix + op_frame + "/velocity",
                     Transform,
                     partial(self.params.op_frames_callback, op_frame),
                 )
             ]
+        rospy.loginfo("\t- Robot configuration subscriber.")
+        self.subscribers += [
+            rospy.Subscriber(
+                self.params.prefix + "position",
+                Vector,
+                self.com_velocity_callback,
+            )
+        ]
+        rospy.loginfo("\t- Robot velocity subscriber.")
+        self.subscribers += [
+            rospy.Subscriber(
+                self.params.prefix + "velocity",
+                Vector,
+                self.com_velocity_callback,
+            )
+        ]
 
     def run(self):
         while not rospy.is_shutdown():
