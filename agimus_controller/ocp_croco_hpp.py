@@ -5,7 +5,7 @@ import example_robot_data
 import mim_solvers
 
 
-class Problem:
+class OCPCrocoHPP:
     def __init__(self, robot_name):
         self.x_cost = 1e-1
         self.u_cost = 1e-4

@@ -1,326 +1,273 @@
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+from .ocp_croco_hpp import OCPCrocoHPP
 
-from mim_robots.pybullet.env import BulletEnvWithGround
-import pinocchio as pin
-import mpc_utils
-import pin_utils
-from ocp import OCPPandaReachingColWithMultipleCol
-from wrapper_panda import PandaRobot
 
-np.set_printoptions(precision=4, linewidth=180)
+class TrajectoryBuffer:
+    def __init__(self, model):
+        self.model = model
+        self.x_plan = []
+        self.a_plan = []
+
+    def add_trajectory_point(self, q, v, a=None):
+        if len(q) != self.model.nq:
+            raise Exception(
+                f"configuration vector size : {len(q)} doesn't match model's nq : {self.model.nq}"
+            )
+        if len(v) != self.model.nv:
+            raise Exception(
+                f"velocity vector size : {len(v)} doesn't match model's nv : {self.model.nv}"
+            )
+        x = np.concatenate([np.array(q), np.array(v)])
+        self.x_plan.append(x)
+        if a is not None:
+            if len(a) != self.model.nv:
+                raise Exception(
+                    f"acceleration vector size : {len(a)} doesn't match model's nv : {self.model.nv}"
+                )
+            self.a_plan.append(np.array(a))
+
+    def get_joint_state_horizon(self):
+        """Return the state reference for the horizon, state is composed of joints positions and velocities"""
+        return self.x_plan
+
+    def get_joint_acceleration_horizon(self):
+        """Return the acceleration reference for the horizon, state is composed of joints positions and velocities"""
+        return self.a_plan
 
 
 class MPC:
-    def __init__(
-        self,
-        robot_simulator: PandaRobot,
-        OCP: OCPPandaReachingColWithMultipleCol,
-        max_iter: int,
-        env: BulletEnvWithGround,
-        TARGET_POSE_1: pin.SE3,
-        TARGET_POSE_2: pin.SE3,
-        T_sim: float,
+    def __init__(self, x_plan, a_plan, robot_name):
+        self.prob = OCPCrocoHPP(robot_name)
+        self.whole_x_plan = x_plan
+        self.whole_a_plan = a_plan
+        self.robot = self.prob.robot
+        self.nq = self.robot.nq
+        self.croco_xs = None
+        self.croco_us = None
+        self.results = {}
+        self.results["xs"] = []
+        self.results["us"] = []
+        self.results["max_us"] = []
+        self.results["max_increase_us"] = []
+        self.results["combination"] = []
+        self.whole_traj_T = x_plan.shape[0]
+
+    def get_trajectory_difference(self, configuration_traj=True):
+        """Compute at each node the absolute difference in position either in cartesian or configuration space and sum it."""
+        if configuration_traj:
+            traj_croco = self.croco_xs[:, : self.nq]
+            traj_hpp = self.prob.x_plan[:, : self.nq]
+        else:
+            traj_croco, traj_hpp = self.get_cartesian_trajectory()
+        diffs = []
+        for idx in range(len(traj_croco)):
+            array_diff = np.abs(np.array(traj_croco[idx]) - np.array(traj_hpp[idx]))
+            diffs.append(np.sum(array_diff))
+        return sum(diffs)
+
+    def max_increase_us(self):
+        """Return control max increase"""
+        increases = np.zeros([self.croco_us.shape[0] - 1, self.robot.nq])
+        for joint_idx in range(self.robot.nq):
+            for idx in range(self.croco_us.shape[0] - 1):
+                increases[idx, joint_idx] = (
+                    self.croco_us[idx + 1, joint_idx] - self.croco_us[idx, joint_idx]
+                )
+        return np.max(np.abs(increases)), np.unravel_index(
+            np.argmax(np.abs(increases), axis=None), increases.shape
+        )
+
+    def get_cartesian_trajectory(self):
+        """Return the vector of gripper pose for both trajectories found by hpp and crocoddyl."""
+        pose_croco = [[] for _ in range(3)]
+        pose_hpp = [[] for _ in range(3)]
+        for idx in range(self.croco_xs.shape[0]):
+            q = self.croco_xs[idx, : self.nq]
+            pose = self.robot.placement(q, self.nq).translation
+            for idx in range(3):
+                pose_croco[idx].append(pose[idx])
+        for idx in range(self.whole_x_plan.shape[0]):
+            q = self.whole_x_plan[idx, : self.nq]
+            pose = self.robot.placement(q, self.nq).translation
+            for idx in range(3):
+                pose_hpp[idx].append(pose[idx])
+        return pose_croco, pose_hpp
+
+    def search_best_costs(
+        self, terminal_idx, use_mim=False, configuration_traj=False, is_mpc=False
     ):
-        """Create the MPC class used to solve the OCP problem.
-
-        Args:
-            robot_simulator (PandaRobot): Wrapper of pinocchio and pybullet robot.
-            OCP (OCPPandaReachingColWithMultipleCol): OCP solved in the MPC.
-            max_iter (int): Number max of iterations of the solver.
-            env (BulletEnvWithGround): Pybullet environement.
-            TARGET_POSE_1 (pin.SE3): First target of the robot.
-            TARGET_POSE_2 (pin.SE3): Second target of the robot.
-            T_sim (float): total time of the simulation.
-        """
-
-        # Robot wrapper
-        self._robot_simulator = robot_simulator
-
-        # Environement of the robot
-        self._env = env
-        self._scene = self._robot_simulator.scene
-
-        # Setting up the OCP to be solved
-        self._OCP = OCP
-        self._sqp = self._OCP()
-
-        # OCP params needed
-        self._T = self._OCP._T  # Number of nodes
-        self._dt = self._OCP._dt  # Time between each node
-        self._x0 = self._OCP._x0  # Initial state of the robot
-        self._xs_init = [
-            self._x0 for i in range(self._T + 1)
-        ]  # Initial trajectory of the robot
-        self._us_init = self._sqp.problem.quasiStatic(
-            self._xs_init[:-1]
-        )  # Initial command of the robot
-        self._max_iter = max_iter  # Number max of iterations of the solver
-        self._TARGET_POSE_1 = TARGET_POSE_1  # First target of the robot
-        self._TARGET_POSE_2 = TARGET_POSE_2  # Second target of the robot
-
-        # Filling the OCP dictionnary used to store all the results
-        self._ocp_params = {}
-        self._ocp_params["N_h"] = self._T
-        self._ocp_params["dt"] = self._dt
-        self._ocp_params["maxiter"] = self._max_iter
-        self._ocp_params["pin_model"] = robot_simulator.pin_robot.model
-        self._ocp_params["armature"] = self._OCP._runningModel.differential.armature
-        self._ocp_params["id_endeff"] = robot_simulator.pin_robot.model.getFrameId(
-            "panda2_leftfinger"
-        )
-        self._ocp_params["active_costs"] = self._sqp.problem.runningModels[
-            0
-        ].differential.costs.active.tolist()
-
-        # Filling the simu parameters dictionnary
-        self._sim_params = {}
-        self._sim_params["sim_freq"] = int(1.0 / env.dt)
-        self._sim_params["mpc_freq"] = 1000
-        self._sim_params["T_sim"] = T_sim
-        self._log_rate = 100
-
-        # Initialize simulation data
-        self._sim_data = mpc_utils.init_sim_data(
-            self._sim_params, self._ocp_params, self._x0
-        )
-
-        # Display target in pybullet
-        mpc_utils.display_ball(
-            self._TARGET_POSE_1.translation, RADIUS=0.05, COLOR=[1.0, 0.0, 0.0, 0.6]
-        )
-        mpc_utils.display_ball(
-            self._TARGET_POSE_2.translation, RADIUS=0.5e-1, COLOR=[1.0, 0.0, 0.0, 0.6]
-        )
-
-        # Boolean describing whether the MPC has already been solved or not
-        self._SOLVE = False
-
-    def solve(self):
-        """Solve the MPC problem and display it in a pybullet GUI."""
-
-        time_calc = []
-        u_list = []
-        # Simulate
-        mpc_cycle = 0
-        TARGET_POSE = self._TARGET_POSE_1
-        for i in range(self._sim_data["N_sim"]):
-            if i % 500 == 0 and i != 0:
-                ### Changing from target pose 1 to target pose 2 or inversely
-                if TARGET_POSE == self._TARGET_POSE_1:
-                    TARGET_POSE = self._TARGET_POSE_2
-                else:
-                    TARGET_POSE = self._TARGET_POSE_1
-
-                for k in range(self._T):
-                    self._sqp.problem.runningModels[k].differential.costs.costs[
-                        "gripperPoseRM"
-                    ].cost.residual.reference = TARGET_POSE.translation
-                self._sqp.problem.terminalModel.differential.costs.costs[
-                    "gripperPose"
-                ].cost.residual.reference = TARGET_POSE.translation
-
-            if i % self._log_rate == 0:
-                print(
-                    "\n SIMU step " + str(i) + "/" + str(self._sim_data["N_sim"]) + "\n"
-                )
-
-            # Solve OCP if we are in a planning cycle (MPC/planning frequency)
-            if (
-                i % int(self._sim_params["sim_freq"] / self._sim_params["mpc_freq"])
-                == 0
-            ):
-                # Set x0 to measured state
-                self._sqp.problem.x0 = self._sim_data["state_mea_SIM_RATE"][i, :]
-                # Warm start using previous solution
-                xs_init = [*list(self._sqp.xs[1:]), self._sqp.xs[-1]]
-                xs_init[0] = self._sim_data["state_mea_SIM_RATE"][i, :]
-                us_init = [*list(self._sqp.us[1:]), self._sqp.us[-1]]
-
-                # Solve OCP & record MPC predictions
-                start = time.process_time()
-                self._sqp.solve(xs_init, us_init, maxiter=self._ocp_params["maxiter"])
-                t_solve = time.process_time() - start
-                time_calc.append(t_solve)
-                self._sim_data["state_pred"][mpc_cycle, :, :] = np.array(self._sqp.xs)
-                self._sim_data["ctrl_pred"][mpc_cycle, :, :] = np.array(self._sqp.us)
-                # Extract relevant predictions for interpolations
-                x_curr = self._sim_data["state_pred"][
-                    mpc_cycle, 0, :
-                ]  # x0* = measured state    (q^,  v^ )
-                x_pred = self._sim_data["state_pred"][
-                    mpc_cycle, 1, :
-                ]  # x1* = predicted state   (q1*, v1*)
-                u_curr = self._sim_data["ctrl_pred"][
-                    mpc_cycle, 0, :
-                ]  # u0* = optimal control   (tau0*)
-                # Record costs references
-                q = self._sim_data["state_pred"][mpc_cycle, 0, : self._sim_data["nq"]]
-                self._sim_data["ctrl_ref"][mpc_cycle, :] = pin_utils.get_u_grav(
-                    q,
-                    self._sqp.problem.runningModels[0].differential.pinocchio,
-                    self._ocp_params["armature"],
-                )
-                self._sim_data["state_ref"][mpc_cycle, :] = (
-                    self._sqp.problem.runningModels[0]
-                    .differential.costs.costs["stateReg"]
-                    .cost.residual.reference
-                )
-                self._sim_data["lin_pos_ee_ref"][mpc_cycle, :] = (
-                    self._sqp.problem.runningModels[0]
-                    .differential.costs.costs["gripperPoseRM"]
-                    .cost.residual.reference
-                )
-
-                # Select reference control and state for the current MPC cycle
-                x_ref_MPC_RATE = x_curr + self._sim_data["ocp_to_mpc_ratio"] * (
-                    x_pred - x_curr
-                )
-                u_ref_MPC_RATE = u_curr
-                if mpc_cycle == 0:
-                    self._sim_data["state_des_MPC_RATE"][mpc_cycle, :] = x_curr
-                self._sim_data["ctrl_des_MPC_RATE"][mpc_cycle, :] = u_ref_MPC_RATE
-                self._sim_data["state_des_MPC_RATE"][mpc_cycle + 1, :] = x_ref_MPC_RATE
-
-                # Increment planning counter
-                mpc_cycle += 1
-
-                # Select reference control and state for the current SIMU cycle
-                x_ref_SIM_RATE = x_curr + self._sim_data["ocp_to_mpc_ratio"] * (
-                    x_pred - x_curr
-                )
-                u_ref_SIM_RATE = u_curr
-
-                # First prediction = measurement = initialization of MPC
-                if i == 0:
-                    self._sim_data["state_des_SIM_RATE"][i, :] = x_curr
-                self._sim_data["ctrl_des_SIM_RATE"][i, :] = u_ref_SIM_RATE
-                self._sim_data["state_des_SIM_RATE"][i + 1, :] = x_ref_SIM_RATE
-
-                # Send torque to simulator & step simulator
-                self._robot_simulator.send_joint_command(u_ref_SIM_RATE)
-                self._env.step()
-                # Measure new state from simulator
-                q_mea_SIM_RATE, v_mea_SIM_RATE = self._robot_simulator.get_state()
-                # Update pinocchio model
-                self._robot_simulator.forward_robot(q_mea_SIM_RATE, v_mea_SIM_RATE)
-                # Record data
-                x_mea_SIM_RATE = np.concatenate([q_mea_SIM_RATE, v_mea_SIM_RATE]).T
-                self._sim_data["state_mea_SIM_RATE"][i + 1, :] = x_mea_SIM_RATE
-                u_list.append(u_curr.tolist())
-
-        self._SOLVE = True
-
-    def plot_collision_distances(self):
-        """Plot the distances between obstacles and shapes of the robot throughout the whole trajectory.
-
-        Raises:
-            NotSolvedError: Call the solve method before the plot one.
-        """
-        if not self._SOLVE:
-            raise NotSolvedError()
-
-        self._shapes_in_collision_with_obstacle = (
-            self._scene.get_shapes_avoiding_collision()
-        )
-        self._obstacles = self._scene._obstacles_name
-
-        self._distances = {}
-
-        # Creating the dictionnary regrouping the distances
-        for obstacle in self._obstacles:
-            self._distances[obstacle] = {}
-            for shapes in self._shapes_in_collision_with_obstacle:
-                self._distances[obstacle][shapes] = []
-
-        # Going through all the trajectory
-        for q in self._sim_data["state_mea_SIM_RATE"]:
-            # Going through the obstacles
-            for obstacle, shape in self._distances.items():
-                for shape_name, distance_between_shape_and_obstacle in shape.items():
-                    id_shape = (
-                        self._robot_simulator.pin_robot.collision_model.getGeometryId(
-                            shape_name
-                        )
+        """Search costs that minimize the gap between hpp and crocoddyl trajectories."""
+        self.best_combination = None
+        self.best_croco_xs = None
+        self.best_croco_us = None
+        self.best_diff = 1e6
+        grip_cost = 0
+        self.prob.use_mim = use_mim
+        if use_mim:
+            for x_exponent in range(0, 8, 2):
+                for u_exponent in range(-32, -26, 2):
+                    start = time.time()
+                    _, x_cost, u_cost, _, _ = self.get_cost_from_exponent(
+                        0, x_exponent, u_exponent, 0, 0
                     )
-                    id_obstacle = (
-                        self._robot_simulator.pin_robot.collision_model.getGeometryId(
-                            obstacle
-                        )
+                    self.try_new_costs(
+                        grip_cost,
+                        x_cost,
+                        u_cost,
+                        terminal_idx,
+                        0,
+                        0,
+                        configuration_traj=configuration_traj,
+                        vel_cost=0,
+                        xlim_cost=0,
+                        is_mpc=is_mpc,
                     )
-                    dist = pin_utils.compute_distance_between_shapes(
-                        self._robot_simulator.pin_robot.model,
-                        self._robot_simulator.pin_robot.collision_model,
-                        id_shape,
-                        id_obstacle,
-                        q[:7],
-                    )
-                    distance_between_shape_and_obstacle.append(dist)
-
-        # Doing the plot blakc magic
-        ncols = 2
-        nrows = (len(self._obstacles) + 1) // 2 if len(self._obstacles) > 1 else 1
-        fig, axes = plt.subplots(nrows, ncols, figsize=(10, 5 * nrows))
-
-        # Flatten axes array for consistent indexing
-        if nrows == 1 and ncols == 1:
-            axes = [[axes]]
-        elif nrows == 1 or ncols == 1:
-            axes = (
-                np.expand_dims(axes, axis=0)
-                if nrows == 1
-                else np.expand_dims(axes, axis=1)
-            )
+                    end = time.time()
+                    print("iteration duration ", end - start)
         else:
-            axes = axes.reshape((nrows, ncols))
+            for grip_exponent in range(25, 50, 5):
+                print("grip expo ", grip_exponent)
+                for x_exponent in range(0, 15, 5):
+                    for u_exponent in range(-35, -25, 5):
+                        # for vel_exponent in range(-6, 14, 4):
+                        grip_cost, x_cost, u_cost, _, _ = self.get_cost_from_exponent(
+                            grip_exponent, x_exponent, u_exponent, 0, 0
+                        )
+                        self.prob.set_costs(grip_cost, x_cost, u_cost, 0, 0)
+                        start = time.time()
+                        self.try_new_costs(
+                            grip_cost,
+                            x_cost,
+                            u_cost,
+                            terminal_idx,
+                            configuration_traj=configuration_traj,
+                            vel_cost=0,
+                            xlim_cost=0,
+                            is_mpc=is_mpc,
+                        )
+                        end = time.time()
+                        print("iteration duration ", end - start)
 
-        # Flatten the 2D axes array for easy iteration
-        flat_axes = axes.flatten()
+        self.croco_xs = self.best_croco_xs
+        self.croco_us = self.best_croco_us
+        print("best diff ", self.best_diff)
+        print("best combination ", self.best_combination)
+        print("max torque ", np.max(np.abs(self.croco_us)))
 
-        for ax, (obstacle, shapes) in zip(flat_axes, self._distances.items()):
-            for shape, values in shapes.items():
-                (handle,) = ax.plot(values, label=shape)
-            ax.plot(np.zeros(len(values)), "-", label="Collision threshold")
-            ax.set_ylabel("Distance from the obstacle")
-            ax.set_xlabel("Timestep of the simulation")
-            ax.set_title(f"Collisions with {obstacle}")
-
-        # Create a single legend outside the plots
-        if nrows > 1:
-            ax.legend(
-                loc="upper center",
-                bbox_to_anchor=(-0.15, -0.3),
-                fancybox=True,
-                shadow=True,
-                ncol=8,
-                prop={"size": 6},
-            )
-        else:
-            ax.legend()
-
-        # Hide any unused subplots
-        for i in range(len(self._distances), len(flat_axes)):
-            fig.delaxes(flat_axes[i])
-
-        # Adjust the layout to make room for legend and title
-        plt.suptitle("Distance between collision shapes & obstacles")
-        fig.subplots_adjust(hspace=0.5)
-        plt.show()
-
-    def plot_mpc_results(self):
-        plot_data = mpc_utils.extract_plot_data_from_sim_data(self._sim_data)
-        mpc_utils.plot_mpc_results(
-            plot_data,
-            which_plots=["all"],
-            PLOT_PREDICTIONS=True,
-            pred_plot_sampling=int(self._sim_params["mpc_freq"] / 10),
+    def get_cost_from_exponent(
+        self, grip_exponent, x_exponent, u_exponent, vel_exponent=0, xlim_exponent=0
+    ):
+        return (
+            10 ** (grip_exponent / 10),
+            10 ** (x_exponent / 10),
+            10 ** (u_exponent / 10),
+            10 ** (vel_exponent / 10),
+            10 ** (xlim_exponent / 10),
         )
 
+    def try_new_costs(
+        self,
+        grip_cost,
+        x_cost,
+        u_cost,
+        terminal_idx,
+        vel_cost=0,
+        xlim_cost=0,
+        configuration_traj=False,
+        is_mpc=False,
+    ):
+        """Set problem, run solver, add result in dict and check if we found a better solution."""
+        if is_mpc:
+            print("doing mpc")
+            self.do_mpc(terminal_idx, 100)
+        else:
+            print("doing ocp")
+            self.set_problem_run_solver(
+                terminal_idx,
+            )
+        max_us = np.max(np.abs(self.croco_us))
+        max_increase_us, _ = self.max_increase_us()
+        self.results["xs"].append(self.croco_xs)
+        self.results["us"].append(self.croco_us)
+        self.results["max_us"].append(max_us)
+        self.results["max_increase_us"].append(max_increase_us)
+        self.results["combination"].append(
+            [grip_cost, x_cost, u_cost, vel_cost, xlim_cost]
+        )
+        diff = self.get_trajectory_difference(terminal_idx, configuration_traj)
+        if diff < self.best_diff and max_us < 100 and max_increase_us < 50:
+            self.best_combination = [grip_cost, x_cost, u_cost, vel_cost, xlim_cost]
+            self.best_diff = diff
+            self.best_croco_xs = self.croco_xs
+            self.best_croco_us = self.croco_us
 
-class NotSolvedError(Exception):
-    """Exception raised when plot is called before solve for the MPC class."""
+    def set_problem_run_solver(self, terminal_idx):
+        """Set OCP problem with new costs then run solver."""
 
-    def __init__(self, message="Solve method must be called before plot."):
-        self.message = message
-        super().__init__(self.message)
+        self.prob.set_models()
+        problem = self.prob.build_ocp_from_plannif(
+            self.whole_x_plan, self.whole_a_plan, self.whole_x_plan[0, :]
+        )
+        self.prob.run_solver(problem, self.prob.x_plan, self.prob.u_ref, 10)
+        self.croco_xs = np.array(self.prob.solver.xs)
+        self.croco_us = np.array(self.prob.solver.us)
+
+    def compute_next_step(self, x, problem):
+        m = problem.runningModels[0]
+        d = m.createData()
+        m.calc(d, x, self.prob.solver.us[0])
+        return d.xnext.copy()
+
+    def do_mpc(self, T, node_idx_breakpoint=None):
+        mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
+        mpc_us = np.zeros([self.whole_traj_T - 1, self.nq])
+        x0 = self.whole_x_plan[0, :]
+        mpc_xs[0, :] = x0
+
+        x_plan = self.whole_x_plan[:T, :]
+        a_plan = self.whole_a_plan[:T, :]
+        x, u0 = self.mpc_first_step(x_plan, a_plan, x0, T)
+        mpc_xs[1, :] = x
+        mpc_us[0, :] = u0
+
+        next_node_idx = T
+
+        for idx in range(1, self.whole_traj_T - 1):
+            x_plan = self.update_planning(x_plan, self.whole_x_plan[next_node_idx, :])
+            a_plan = self.update_planning(a_plan, self.whole_a_plan[next_node_idx, :])
+            x, u = self.mpc_step(x, x_plan, a_plan)
+            if next_node_idx < self.whole_x_plan.shape[0] - 1:
+                next_node_idx += 1
+            mpc_xs[idx + 1, :] = x
+            mpc_us[idx, :] = u
+
+            if idx == node_idx_breakpoint:
+                breakpoint()
+        self.croco_xs = mpc_xs
+        self.croco_us = mpc_us
+
+    def update_planning(self, planning_vec, next_value):
+        planning_vec = np.delete(planning_vec, 0, 0)
+        return np.r_[planning_vec, next_value[np.newaxis, :]]
+
+    def mpc_first_step(self, x_plan, a_plan, x0, T):
+        problem = self.prob.build_ocp_from_plannif(x_plan, a_plan, x0)
+        self.prob.run_solver(
+            problem, list(x_plan), list(self.prob.u_ref[: T - 1]), 1000
+        )
+        x = self.compute_next_step(x0, self.prob.solver.problem)
+        return x, self.prob.solver.us[0]
+
+    def mpc_step(self, x, x_plan, a_plan):
+        u_ref_terminal_node = self.prob.get_inverse_dynamic_control(
+            x_plan[-1], a_plan[-1]
+        )
+        self.prob.reset_ocp(x, x_plan[-1], u_ref_terminal_node)
+        xs_init = list(self.prob.solver.xs[1:]) + [self.prob.solver.xs[-1]]
+        xs_init[0] = x
+        us_init = list(self.prob.solver.us[1:]) + [self.prob.solver.us[-1]]
+        self.prob.solver.problem.x0 = x
+        self.prob.run_solver(self.prob.solver.problem, xs_init, us_init, 1)
+        x = self.compute_next_step(x, self.prob.solver.problem)
+        return x, self.prob.solver.us[0]
