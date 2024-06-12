@@ -62,23 +62,27 @@ class OCPCrocoHPP:
         return u_ref
 
     def set_costs(self, grip_cost, x_cost, u_cost, vel_cost=0, xlim_cost=0):
-        """Set costs of the ddp problem."""
+        """Set costs of the ocp."""
         self.x_cost = x_cost
         self.u_cost = u_cost
         self.grip_cost = grip_cost
         self.vel_cost = vel_cost
         self.xlim_cost = xlim_cost
 
-    def set_models(self):
-        """Set running models and terminal model of the ddp problem."""
+    def set_models(self, x_plan, a_plan):
+        """Set running models and terminal model for the ocp."""
+        self.x_plan = x_plan
+        self.a_plan = a_plan
+        self.T = x_plan.shape[0]
+        self.u_ref = self.get_uref(x_plan, a_plan)
         goal_placement_residual = self.get_placement_residual(
             self.x_plan[-1, : self.nq]
         )
-        self.set_sub_path_running_models()
-        self.set_last_model(goal_placement_residual, self.u_ref[-1])
+        self.set_running_models()
+        self.set_terminal_model(goal_placement_residual, self.u_ref[-1])
 
-    def set_sub_path_running_models(self):
-        """Set running models for one sub path of the ddp problem."""
+    def set_running_models(self):
+        """Set running models based on state and acceleration reference trajectory."""
 
         running_models = []
         # x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
@@ -110,8 +114,8 @@ class OCPCrocoHPP:
             )
         self.running_models = running_models
 
-    def set_last_model(self, goal_placement_residual, u_ref):
-        """Set last model for a sub path."""
+    def set_terminal_model(self, goal_placement_residual, u_ref):
+        """Set terminal model."""
         if self.use_mim:
             last_model = self.get_last_model_with_mim()
         else:
@@ -237,18 +241,20 @@ class OCPCrocoHPP:
         )
 
     def get_control_residual(self, uref):
+        """Return control residual with uref the control reference."""
         return crocoddyl.CostModelResidual(
             self.state, crocoddyl.ResidualModelControl(self.state, uref)
         )
 
     def get_state_residual(self, xref):
+        """Return state residual with xref the state reference."""
         return crocoddyl.CostModelResidual(
             self.state,  # x_reg_weights,
             crocoddyl.ResidualModelState(self.state, xref, self.actuation.nu),
         )
 
     def get_xlimit_residual(self):
-        """Return velocity residual of desired joint."""
+        """Return state limit residual."""
         return crocoddyl.CostModelResidual(
             self.state,
             crocoddyl.ActivationModelQuadraticBarrier(
@@ -272,16 +278,16 @@ class OCPCrocoHPP:
         )
 
     def get_inverse_dynamic_control(self, x, a):
+        """Return inverse dynamic control for a given state and acceleration."""
         return pin.rnea(
             self.robot.model, self.robot.data, x[: self.nq], x[self.nq :], a
         ).copy()
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
-        model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference = new_model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference.copy()
+        """Update model's cost reference and weight by copying new_model's cost."""
+        model.differential.costs.costs[cost_name].cost.residual.reference = (
+            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
+        )
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight
@@ -290,44 +296,40 @@ class OCPCrocoHPP:
         else:
             model.differential.costs.changeCostStatus(cost_name, True)
 
-    def update_model(self, model, new_model):
-        self.update_cost(model, new_model, "xReg")
-        self.update_cost(model, new_model, "gripperPose")
-        self.update_cost(model, new_model, "vel")
-        self.update_cost(model, new_model, "uReg")
-
-    def update_last_running_model(self, model, new_model):
-        self.update_cost(model, new_model, "xReg", False)
-        self.update_cost(model, new_model, "gripperPose", False)
-        self.update_cost(model, new_model, "vel", False)
-        self.update_cost(model, new_model, "uReg", False)
+    def update_model(self, model, new_model, update_weight):
+        """update model's costs by copying new_model's costs."""
+        self.update_cost(model, new_model, "xReg", update_weight)
+        self.update_cost(model, new_model, "gripperPose", update_weight)
+        self.update_cost(model, new_model, "vel", update_weight)
+        self.update_cost(model, new_model, "uReg", update_weight)
 
     def reset_ocp(self, x, x_ref, u_ref):
+        """Reset ocp problem using next reference in state and control."""
         self.solver.problem.x0 = x
         runningModels = list(self.solver.problem.runningModels)
         for node_idx in range(len(runningModels) - 1):
-            self.update_model(runningModels[node_idx], runningModels[node_idx + 1])
-        self.update_last_running_model(
-            runningModels[-1], self.solver.problem.terminalModel
-        )
+            self.update_model(
+                runningModels[node_idx], runningModels[node_idx + 1], True
+            )
+        self.update_model(runningModels[-1], self.solver.problem.terminalModel, False)
         terminal_model = self.get_last_model_without_mim(
             self.get_placement_residual(x_ref[: self.nq]), x_ref, u_ref
         )
-        self.update_model(self.solver.problem.terminalModel, terminal_model)
+        self.update_model(self.solver.problem.terminalModel, terminal_model, True)
 
     def build_ocp_from_plannif(self, x_plan, a_plan, x0):
-        self.x_plan = x_plan
-        self.a_plan = a_plan
-        self.T = x_plan.shape[0]
-        self.u_ref = self.get_uref(x_plan, a_plan)
-        self.set_models()
+        """Set models based on state and acceleration planning, create crocoddyl problem from it."""
+        self.set_models(x_plan, a_plan)
         return crocoddyl.ShootingProblem(x0, self.running_models, self.terminal_model)
 
     def run_solver(self, problem, xs_init, us_init, max_iter, set_callback=False):
         """
-        Run ddp solver
-        start_idx : hpp's sub path idx from which we start to run ddp on
-        terminal_idx : hpp's sub path idx from which we end to run ddp.
+        Run FDDP or CSQP solver
+        problem : crocoddyl ocp problem.
+        xs_init : xs warm start.
+        us_init : us warm start.
+        max_iter : max number of iteration for the solver
+        set_callback : activate solver callback
         """
         # Creating the solver for this OC problem, defining a logger
         if self.use_mim:
@@ -344,8 +346,7 @@ class OCPCrocoHPP:
             solver = crocoddyl.SolverFDDP(problem)
             solver.use_filter_line_search = True
             solver.termination_tolerance = 1e-3
-            if set_callback:
-                solver.setCallbacks([crocoddyl.CallbackVerbose()])
-
+        if set_callback:
+            solver.setCallbacks([crocoddyl.CallbackVerbose()])
         solver.solve(xs_init, us_init, max_iter)
         self.solver = solver

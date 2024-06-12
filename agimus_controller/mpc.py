@@ -180,7 +180,7 @@ class MPC:
         """Set problem, run solver, add result in dict and check if we found a better solution."""
         if is_mpc:
             print("doing mpc")
-            self.do_mpc(terminal_idx, 100)
+            self.simulate_mpc(terminal_idx, 100)
         else:
             print("doing ocp")
             self.set_problem_run_solver(
@@ -213,13 +213,15 @@ class MPC:
         self.croco_xs = np.array(self.prob.solver.xs)
         self.croco_us = np.array(self.prob.solver.us)
 
-    def compute_next_step(self, x, problem):
+    def get_next_state(self, x, problem):
+        """Get state at the next step by doing a crocoddyl integration."""
         m = problem.runningModels[0]
         d = m.createData()
         m.calc(d, x, self.prob.solver.us[0])
         return d.xnext.copy()
 
-    def do_mpc(self, T, node_idx_breakpoint=None):
+    def simulate_mpc(self, T, node_idx_breakpoint=None):
+        """Simulate mpc behavior using crocoddyl integration as a simulator."""
         mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
         mpc_us = np.zeros([self.whole_traj_T - 1, self.nq])
         x0 = self.whole_x_plan[0, :]
@@ -248,18 +250,21 @@ class MPC:
         self.croco_us = mpc_us
 
     def update_planning(self, planning_vec, next_value):
+        """Update numpy array by removing the first value and adding next_value at the end."""
         planning_vec = np.delete(planning_vec, 0, 0)
         return np.r_[planning_vec, next_value[np.newaxis, :]]
 
     def mpc_first_step(self, x_plan, a_plan, x0, T):
+        """Create crocoddyl problem from planning, run solver and get new state."""
         problem = self.prob.build_ocp_from_plannif(x_plan, a_plan, x0)
         self.prob.run_solver(
             problem, list(x_plan), list(self.prob.u_ref[: T - 1]), 1000
         )
-        x = self.compute_next_step(x0, self.prob.solver.problem)
+        x = self.get_next_state(x0, self.prob.solver.problem)
         return x, self.prob.solver.us[0]
 
     def mpc_step(self, x, x_plan, a_plan):
+        """Reset ocp, run solver and get new state."""
         u_ref_terminal_node = self.prob.get_inverse_dynamic_control(
             x_plan[-1], a_plan[-1]
         )
@@ -269,5 +274,5 @@ class MPC:
         us_init = list(self.prob.solver.us[1:]) + [self.prob.solver.us[-1]]
         self.prob.solver.problem.x0 = x
         self.prob.run_solver(self.prob.solver.problem, xs_init, us_init, 1)
-        x = self.compute_next_step(x, self.prob.solver.problem)
+        x = self.get_next_state(x, self.prob.solver.problem)
         return x, self.prob.solver.us[0]
