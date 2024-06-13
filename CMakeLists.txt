@@ -42,6 +42,7 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
       main_mpc.py
       main_optim_traj.py
       mpc_arthur.py
+      mpc_search.py
       mpc_utils.py
       mpc.py
       ocp_croco_hpp.py

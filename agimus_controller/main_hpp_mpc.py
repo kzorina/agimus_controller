@@ -29,7 +29,7 @@ if __name__ == "__main__":
         ball_init_pose,
         chc.prob.DT,
     )
-    print("search duration ", end - start)
+    print("mpc duration ", end - start)
     """
     with open("datas.npy", "wb") as f:
         np.save(f, chc.prob.hpp_paths[0].x_plan)
