@@ -60,15 +60,15 @@ class MPCSearch:
                 pose_hpp[idx].append(pose[idx])
         return pose_croco, pose_hpp
 
-    def search_best_costs(self, use_mim=False, configuration_traj=False):
+    def search_best_costs(self, use_constraints=False, configuration_traj=False):
         """Search costs that minimize the gap between hpp and crocoddyl trajectories."""
         self.best_combination = None
         self.best_croco_xs = None
         self.best_croco_us = None
         self.best_diff = 1e6
         grip_cost = 0
-        self.mpc.prob.use_mim = use_mim
-        if use_mim:
+        self.mpc.prob.use_constraints = use_constraints
+        if use_constraints:
             for x_exponent in range(0, 8, 2):
                 for u_exponent in range(-32, -26, 2):
                     start = time.time()
