@@ -1,4 +1,3 @@
-import time
 import numpy as np
 from .ocp_croco_hpp import OCPCrocoHPP
 
