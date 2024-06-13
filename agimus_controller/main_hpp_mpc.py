@@ -16,7 +16,7 @@ if __name__ == "__main__":
     start = time.time()
     chc.prob.set_costs(10**4, 1, 10**-3, 0, 0)
     # chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
-    chc.do_mpc(100)
+    chc.simulate_mpc(100)
     end = time.time()
     u_plan = chc.prob.get_uref(hpp_interface.x_plan, hpp_interface.a_plan)
     mpc_plots = MPCPlots(
