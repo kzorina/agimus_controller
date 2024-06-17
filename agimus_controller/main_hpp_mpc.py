@@ -25,9 +25,9 @@ if __name__ == "__main__":
         hpp_interface.x_plan,
         u_plan,
         chc.robot,
+        chc.prob.DT,
         vf,
         ball_init_pose,
-        chc.prob.DT,
     )
     print("mpc duration ", end - start)
     """
