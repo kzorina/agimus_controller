@@ -12,9 +12,9 @@ class MPCPlots:
         whole_x_plan,
         whole_u_plan,
         robot,
-        vf,
-        ball_init_pose,
         DT,
+        vf=None,
+        ball_init_pose=None,
     ):
         self.ball_init_pose = ball_init_pose
         if vf is not None:

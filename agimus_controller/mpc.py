@@ -101,7 +101,7 @@ class MPC:
         u_ref_terminal_node = self.prob.get_inverse_dynamic_control(
             x_plan[-1], a_plan[-1]
         )
-        self.prob.reset_ocp(x, x_plan[-1], u_ref_terminal_node)
+        self.prob.reset_ocp(x, x_plan[-1], u_ref_terminal_node[: self.nq])
         xs_init = list(self.prob.solver.xs[1:]) + [self.prob.solver.xs[-1]]
         xs_init[0] = x
         us_init = list(self.prob.solver.us[1:]) + [self.prob.solver.us[-1]]
