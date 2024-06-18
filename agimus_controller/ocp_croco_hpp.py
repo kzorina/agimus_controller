@@ -16,15 +16,25 @@ class OCPCrocoHPP:
         Raises:
             Exception: Unkown robot.
         """
+        
+        # Weights of the different costs
         self._weight_x_reg = 1e-1
         self._weight_u_reg = 1e-4
         self._weight_ee_placement = 1e6
         self._weight_vel_reg = 0
+        
+        # Using the constraints ?
         self.use_constraints = False
+        
+        # Loading the robot
         self.robot = example_robot_data.load(robot_name)
+        
+        # Determining the last joint of the robot depending on their name
         if robot_name in ["ur3", "ur5", "ur10"]:
             self.last_joint_name = "wrist_3_joint"
             print("Collision avoidance is not taken into account for the URs.")
+
+        # The panda 
         elif robot_name == "panda":
             self.last_joint_name = "panda_joint7"
             locked_joints = [
@@ -167,7 +177,7 @@ class OCPCrocoHPP:
         u_reg_cost = self.get_control_residual(u_ref)
         vel_cost = self.get_velocity_residual(self.last_joint_name)
         running_cost_model.addCost("xReg", x_residual, 0)
-        running_cost_model.addCost("vel", vel_cost, 0)
+        running_cost_model.addCost("velReg", vel_cost, 0)
         running_cost_model.addCost("gripperPose", placement_residual, 0)
         running_cost_model.addCost("uReg", u_reg_cost, 0)
 
@@ -276,7 +286,7 @@ class OCPCrocoHPP:
         """update model's costs by copying new_model's costs."""
         self.update_cost(model, new_model, "xReg", update_weight)
         self.update_cost(model, new_model, "gripperPose", update_weight)
-        self.update_cost(model, new_model, "vel", update_weight)
+        self.update_cost(model, new_model, "velReg", update_weight)
         self.update_cost(model, new_model, "uReg", update_weight)
 
     def reset_ocp(self, x, x_ref, u_ref):
