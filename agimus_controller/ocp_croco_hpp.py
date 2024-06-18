@@ -12,7 +12,7 @@ class OCPCrocoHPP:
         self.grip_cost = 1e6
         self.xlim_cost = 0
         self.vel_cost = 0
-        self.use_mim = False
+        self.use_constraints = False
         self.robot = example_robot_data.load(robot_name)
         if robot_name in ["ur3", "ur5", "ur10"]:
             self.last_joint_name = "wrist_3_joint"
@@ -79,7 +79,7 @@ class OCPCrocoHPP:
             self.x_plan[-1, : self.nq]
         )
         self.set_running_models()
-        self.set_terminal_model(goal_placement_residual, self.u_ref[-1])
+        self.set_terminal_model(goal_placement_residual)
 
     def set_running_models(self):
         """Set running models based on state and acceleration reference trajectory."""
@@ -114,17 +114,21 @@ class OCPCrocoHPP:
             )
         self.running_models = running_models
 
-    def set_terminal_model(self, goal_placement_residual, u_ref):
+    def set_terminal_model(self, goal_placement_residual):
         """Set terminal model."""
-        if self.use_mim:
-            last_model = self.get_last_model_with_mim()
+        if self.use_constraints:
+            last_model = self.get_terminal_model_with_constraints(
+                goal_placement_residual, self.x_plan[-1, :], self.u_ref[-1, :]
+            )
         else:
-            last_model = self.get_last_model_without_mim(
-                goal_placement_residual, self.x_plan[-1, :], u_ref
+            last_model = self.get_terminal_model_without_constraints(
+                goal_placement_residual, self.x_plan[-1, :], self.u_ref[-1, :]
             )
         self.terminal_model = last_model
 
-    def get_last_model_without_mim(self, goal_placement_residual, x_ref, u_ref):
+    def get_terminal_model_without_constraints(
+        self, goal_placement_residual, x_ref, u_ref
+    ):
         """Return last model without constraints."""
         running_cost_model = crocoddyl.CostModelSum(self.state)
         running_cost_model.addCost(
@@ -147,23 +151,20 @@ class OCPCrocoHPP:
             self.DT,
         )
 
-    def get_last_model_with_mim(self):
-        """Return last model for a sub path with constraints for mim_solvers."""
+    def get_terminal_model_with_constraints(self, placement_residual, x_ref, u_ref):
+        """Return terminal model with constraints for mim_solvers."""
         running_cost_model = crocoddyl.CostModelSum(self.state)
-        constraints = crocoddyl.ConstraintModelManager(self.state, self.nv)
-
-        # add placement constraint
-        placement_residual = self.get_placement_residual(self.x_plan[-1, : self.nq])
-        placement_constraint = crocoddyl.ConstraintModelResidual(
-            self.state,
-            placement_residual,
-            np.array([0] * 12),
-            np.array([1e-3] * 12),
-        )
-        constraints.addConstraint("gripperPose", placement_constraint)
+        constraints = crocoddyl.ConstraintModelManager(self.state, self.nq)
+        x_residual = self.get_state_residual(x_ref)
+        u_reg_cost = self.get_control_residual(u_ref)
+        vel_cost = self.get_velocity_residual(self.last_joint_name)
+        running_cost_model.addCost("xReg", x_residual, 0)
+        running_cost_model.addCost("vel", vel_cost, 0)
+        running_cost_model.addCost("gripperPose", placement_residual, 0)
+        running_cost_model.addCost("uReg", u_reg_cost, 0)
 
         # add torque constraint
-        """
+
         torque_residual = crocoddyl.ResidualModelJointEffort(
             self.state,
             self.actuation,
@@ -177,39 +178,6 @@ class OCPCrocoHPP:
         )
         constraints.addConstraint("JointsEfforts", torque_constraint)
 
-        # add velocities constraints
-
-        vref = pin.Motion.Zero()
-
-        joint_vel_residual = crocoddyl.ResidualModelFrameVelocity(
-            self.state,
-            self.robot.model.getFrameId(self.last_joint_name),
-            vref,
-            pin.LOCAL,
-        )
-        joint_vel_constraint = crocoddyl.ConstraintModelResidual(
-            self.state,
-            joint_vel_residual,
-            np.array([0] * self.nv),
-            np.array([1e-3] * self.nv),
-        )
-        constraints.addConstraint("shoulder_lift_joint_velocity", joint_vel_constraint)
-
-        for joint_name in self.robot.model.names:
-            joint_vel_residual = crocoddyl.ResidualModelFrameVelocity(
-                self.state,
-                self.robot.model.getFrameId(joint_name),
-                vref,
-                pin.LOCAL,
-            )
-            joint_vel_constraint = crocoddyl.ConstraintModelResidual(
-                self.state,
-                joint_vel_residual,
-                np.array([-1e-6] * self.nv),
-                np.array([1e-6] * self.nv),
-            )
-            constraints.addConstraint(f"{joint_name}_velocity", joint_vel_constraint)
-        """
         return crocoddyl.IntegratedActionModelEuler(
             crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self.state, self.actuation, running_cost_model, constraints
@@ -314,9 +282,14 @@ class OCPCrocoHPP:
                 runningModels[node_idx], runningModels[node_idx + 1], True
             )
         self.update_model(runningModels[-1], self.solver.problem.terminalModel, False)
-        terminal_model = self.get_last_model_without_mim(
-            self.get_placement_residual(x_ref[: self.nq]), x_ref, u_ref
-        )
+        if self.use_constraints:
+            terminal_model = self.get_terminal_model_with_constraints(
+                self.get_placement_residual(x_ref[: self.nq]), x_ref, u_ref
+            )
+        else:
+            terminal_model = self.get_terminal_model_without_constraints(
+                self.get_placement_residual(x_ref[: self.nq]), x_ref, u_ref
+            )
         self.update_model(self.solver.problem.terminalModel, terminal_model, True)
 
     def build_ocp_from_plannif(self, x_plan, a_plan, x0):
@@ -334,7 +307,7 @@ class OCPCrocoHPP:
         set_callback : activate solver callback
         """
         # Creating the solver for this OC problem, defining a logger
-        if self.use_mim:
+        if self.use_constraints:
             solver = mim_solvers.SolverCSQP(problem)
             solver.use_filter_line_search = True
             solver.termination_tolerance = 1e-3

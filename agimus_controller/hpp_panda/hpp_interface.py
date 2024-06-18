@@ -1,26 +1,15 @@
 import time
 import numpy as np
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
 
 from agimus_controller.hpp_panda.planner import Planner
 from agimus_controller.hpp_panda.scenes import Scene
 from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
 
-from agimus_controller.mpc import MPC
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.trajectory_point import TrajectoryPoint
-import time
 
 
 class HppInterfacePanda:
-
     def __init__(self) -> None:
         # Creating the robot
 
@@ -123,7 +112,6 @@ class HppInterfacePanda:
     def display_path(self, croco_xs, v, nq, DT):
         """Display in Gepetto Viewer the trajectory found with crocoddyl."""
         for x in croco_xs:
-
             self.planner._v(list(x)[:nq] + [0] * 5 + [1])  # + self.ball_init_pose
             time.sleep(DT)
 
