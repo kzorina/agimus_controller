@@ -4,7 +4,7 @@ import numpy as np
 from agimus_controller.hpp_panda.planner import Planner
 from agimus_controller.hpp_panda.scenes import Scene
 from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
-
+from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.trajectory_point import TrajectoryPoint
 
 
@@ -30,8 +30,7 @@ class HppInterfacePanda:
         self.time_calc.append(self.t_solve)
         self.results.append([self.q_init, self.q_goal, self.X])
 
-    def get_hpp_plan(self, DT, nq):
-        ps = self.planner._ps
+    def _get_hpp_plan(self, DT, nq, ps):
         p = ps.client.problem.getPath(ps.numberPaths() - 1)
         path = p.pathAtRank(0)
         T = int(np.round(path.length() / DT))
@@ -92,3 +91,8 @@ class HppInterfacePanda:
         for x in croco_xs:
             self.planner._v(list(x)[:nq] + [0] * 5 + [1])  # + self.ball_init_pose
             time.sleep(DT)
+
+    def get_hpp_plan(self, dt, nq):
+        hpp_interface = HppInterface()
+        hpp_interface.ps = self.planner._ps
+        return self._get_hpp_plan(dt, nq, hpp_interface.ps)

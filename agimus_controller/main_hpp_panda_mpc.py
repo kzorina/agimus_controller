@@ -1,5 +1,5 @@
 import time
-from agimus_controller.hpp_panda.hpp_interface import HppInterfacePanda
+from agimus_controller.hpp_panda.hpp_interface_panda import HppInterfacePanda
 from agimus_controller.mpc import MPC
 from agimus_controller.plots import MPCPlots
 
