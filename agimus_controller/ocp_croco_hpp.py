@@ -85,21 +85,16 @@ class OCPCrocoHPP:
         """Set running models based on state and acceleration reference trajectory."""
 
         running_models = []
-        # x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
-        #     np.array([1] * self.nq + [10] * self.nv) ** 2
-        # )
         for idx in range(self.T - 1):
             running_cost_model = crocoddyl.CostModelSum(self.state)
             x_ref = self.x_plan[idx, :]
             x_residual = self.get_state_residual(x_ref)
             u_residual = self.get_control_residual(self.u_ref[idx, :])
-            # xLimit_residual = self.get_xlimit_residual()
             frame_velocity_residual = self.get_velocity_residual(self.last_joint_name)
             placemment_residual = self.get_placement_residual(x_ref[: self.nq])
 
             running_cost_model.addCost("xReg", x_residual, self.x_cost)
             running_cost_model.addCost("uReg", u_residual, self.u_cost)
-            # running_cost_model.addCost("xlimitReg", xLimit_residual, self.xlim_cost)
             running_cost_model.addCost("vel", frame_velocity_residual, self.vel_cost)
             running_cost_model.addCost(
                 "gripperPose", placemment_residual, 0
@@ -312,11 +307,6 @@ class OCPCrocoHPP:
             solver.use_filter_line_search = True
             solver.termination_tolerance = 1e-3
             solver.max_qp_iters = 100
-            # solver.eps_rel = 0
-            # solver.eps_abs = 1e-6
-            # solver.with_callbacks = True
-            # solver.reset_rho = True
-            # solver.reset_y = True
         else:
             solver = crocoddyl.SolverFDDP(problem)
             solver.use_filter_line_search = True
