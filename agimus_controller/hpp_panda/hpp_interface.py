@@ -24,36 +24,16 @@ class HppInterfacePanda:
         )
         self.time_calc = []
         self.results = []
-        self.n_samples = 6000
-        # Use custom progress bar
-        # with progress_bar as p:
-        # for i in p.track(range(n_samples)):
-        # Do something here
-        # try:
         self.planner = Planner(self.rmodel, self.cmodel, self.scene, self.T)
         self.start = time.process_time()
         self.q_init, self.q_goal, self.X = self.planner.solve_and_optimize()
         self.t_solve = time.process_time() - self.start
         self.time_calc.append(self.t_solve)
         self.results.append([self.q_init, self.q_goal, self.X])
-        """
-        except:
-            print("failed solve, retrying")
-            i -= 1
-            continue
-        """
-        np.save(
-            f"results_{self.name_scene}_{self.n_samples}.npy",
-            np.array(self.results, dtype=object),
-            allow_pickle=True,
-        )
-        np.save(
-            f"time_result_{self.name_scene}_{self.n_samples}.npy",
-            np.array(self.time_calc, dtype=object),
-            allow_pickle=True,
-        )
 
-    def _get_hpp_plan(self, DT, nq, ps):
+
+    def get_hpp_plan(self, DT, nq):
+        ps = self.planner._ps
         p = ps.client.problem.getPath(ps.numberPaths() - 1)
         path = p.pathAtRank(0)
         T = int(np.round(path.length() / DT))
@@ -115,7 +95,3 @@ class HppInterfacePanda:
             self.planner._v(list(x)[:nq] + [0] * 5 + [1])  # + self.ball_init_pose
             time.sleep(DT)
 
-    def get_hpp_plan(self, dt, nq):
-        hpp_interface = HppInterface()
-        hpp_interface.ps = self.planner._ps
-        return self._get_hpp_plan(dt, nq, hpp_interface.ps)
