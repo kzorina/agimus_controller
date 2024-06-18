@@ -16,25 +16,25 @@ class OCPCrocoHPP:
         Raises:
             Exception: Unkown robot.
         """
-        
+
         # Weights of the different costs
         self._weight_x_reg = 1e-1
         self._weight_u_reg = 1e-4
         self._weight_ee_placement = 1e6
         self._weight_vel_reg = 0
-        
+
         # Using the constraints ?
         self.use_constraints = False
-        
+
         # Loading the robot
         self.robot = example_robot_data.load(robot_name)
-        
+
         # Determining the last joint of the robot depending on their name
         if robot_name in ["ur3", "ur5", "ur10"]:
             self.last_joint_name = "wrist_3_joint"
             print("Collision avoidance is not taken into account for the URs.")
 
-        # The panda 
+        # The panda
         elif robot_name == "panda":
             self.last_joint_name = "panda_joint7"
             locked_joints = [
@@ -152,9 +152,7 @@ class OCPCrocoHPP:
         )
         vel_cost = self.get_velocity_residual(self.last_joint_name)
         if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
-            running_cost_model.addCost(
-                "velReg", vel_cost, self._weight_ee_placement
-            )
+            running_cost_model.addCost("velReg", vel_cost, self._weight_ee_placement)
         else:
             running_cost_model.addCost("velReg", vel_cost, 0)
         x_residual = self.get_state_residual(x_ref)
@@ -271,9 +269,11 @@ class OCPCrocoHPP:
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
         """Update model's cost reference and weight by copying new_model's cost."""
-        model.differential.costs.costs[cost_name].cost.residual.reference = (
-            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
-        )
+        model.differential.costs.costs[
+            cost_name
+        ].cost.residual.reference = new_model.differential.costs.costs[
+            cost_name
+        ].cost.residual.reference.copy()
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight

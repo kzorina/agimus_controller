@@ -32,7 +32,7 @@ class MPCPlots:
 
         self._ee_frame_name = ee_frame_name
         self._id_ee_frame_name = self._rmodel.getFrameId(self._ee_frame_name)
-        
+
     def update_croco_predictions(self, croco_xs, croco_us):
         self.croco_xs = croco_xs
         self.croco_us = croco_us
@@ -149,11 +149,11 @@ class MPCPlots:
             croco_placement.translation,
         )
 
-    def get_trajectory_difference(self, configuration_traj=True):  
+    def get_trajectory_difference(self, configuration_traj=True):
         """Compute at each node the absolute difference in position either in cartesian or configuration space and sum it."""
         if configuration_traj:
             traj_croco = self.croco_xs[:, : self.nq]
-            traj_hpp = self.prob.x_plan[:, : self.nq] ### TODO for Théo
+            traj_hpp = self.prob.x_plan[:, : self.nq]  ### TODO for Théo
         else:
             traj_croco, traj_hpp = self.get_cartesian_trajectory()
         diffs = []
@@ -173,7 +173,7 @@ class MPCPlots:
                 pose_croco[idx].append(pose[idx])
         for idx in range(self.whole_x_plan.shape[0]):
             q = self.whole_x_plan[idx, : self.nq]
-            pin.framesForwardKinematics(self._rmodel, self._rdata,q)
+            pin.framesForwardKinematics(self._rmodel, self._rdata, q)
             pose = self._get_ee_pose_from_configuration(q).translation
             for idx in range(3):
                 pose_hpp[idx].append(pose[idx])
@@ -200,12 +200,12 @@ class MPCPlots:
             plt.plot(t_xs[:-1], us[:, idx], label="u" + idx)
         plt.show()
 
-    def _get_ee_pose_from_configuration(self, q:np.ndarray):
+    def _get_ee_pose_from_configuration(self, q: np.ndarray):
         """Returns the SE3 describing the position of the end effector of the robot.
 
         Args:
             q (np.ndarray): configuration of the robot
         """
-        pin.framesForwardKinematics(self._rmodel, self._rdata,q)
+        pin.framesForwardKinematics(self._rmodel, self._rdata, q)
         pose = self._rdata.oMf[self._id_ee_frame_name]
         return pose

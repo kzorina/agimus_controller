@@ -7,7 +7,6 @@ from wrapper_panda import PandaWrapper
 from ocp_croco_hpp import OCPCrocoHPP
 
 if __name__ == "__main__":
-    
     pandawrapper = PandaWrapper()
     rmodel, cmodel, vmodel = pandawrapper.create_robot()
     ee_frame_name = pandawrapper.get_ee_frame_name()
@@ -21,6 +20,12 @@ if __name__ == "__main__":
     end = time.time()
     u_plan = chc._ocp.get_uref(x_plan, a_plan)
     mpc_plots = MPCPlots(
-        chc.croco_xs, chc.croco_us, x_plan, u_plan,rmodel, chc._ocp.DT, ee_frame_name=ee_frame_name
+        chc.croco_xs,
+        chc.croco_us,
+        x_plan,
+        u_plan,
+        rmodel,
+        chc._ocp.DT,
+        ee_frame_name=ee_frame_name,
     )
     mpc_plots.plot_traj()

@@ -1,10 +1,9 @@
 import numpy as np
-from .ocp_croco_hpp import OCPCrocoHPP
 
 
 class TrajectoryBuffer:
-    """List of variable size in which the HPP trajectory nodes will be.
-    """
+    """List of variable size in which the HPP trajectory nodes will be."""
+
     def __init__(self, model):
         self.model = model
         self.x_plan = []
@@ -38,9 +37,9 @@ class TrajectoryBuffer:
 
 
 class MPC:
-    """Create the MPC problem
-    """
-    def __init__(self, ocp, x_plan:np.ndarray, a_plan:np.ndarray, rmodel, cmodel):
+    """Create the MPC problem"""
+
+    def __init__(self, ocp, x_plan: np.ndarray, a_plan: np.ndarray, rmodel, cmodel):
         """Initiate the MPC problem.
 
         Args:
