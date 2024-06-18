@@ -39,7 +39,9 @@ class TrajectoryBuffer:
 class MPC:
     """Create the MPC problem"""
 
-    def __init__(self, ocp, x_plan: np.ndarray, a_plan: np.ndarray, rmodel, cmodel):
+    def __init__(
+        self, ocp, x_plan: np.ndarray, a_plan: np.ndarray, rmodel, cmodel=None
+    ):
         """Initiate the MPC problem.
 
         Args:
