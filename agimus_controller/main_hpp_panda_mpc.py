@@ -1,10 +1,7 @@
 import time
-import numpy as np
 from agimus_controller.hpp_panda.hpp_interface import HppInterfacePanda
 from agimus_controller.mpc import MPC
 from agimus_controller.plots import MPCPlots
-from agimus_controller.trajectory_point import TrajectoryPoint
-import time
 
 
 def main():

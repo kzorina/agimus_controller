@@ -32,7 +32,6 @@ class Planner:
         self._T = T
 
     def _create_planning_scene(self):
-
         obstacle_urdf, urdf_robot_path, srdf_robot_path = self._get_urdf_srdf_paths()
         Robot.urdfFilename = urdf_robot_path
         Robot.srdfFilename = srdf_robot_path
@@ -58,7 +57,6 @@ class Planner:
         self._v = vf.createViewer(collisionURDF=True)
 
     def _setup_planner(self):
-
         self._create_planning_scene()
 
         self._q_init = self._generate_feasible_configurations_array()
@@ -81,7 +79,6 @@ class Planner:
         self._ps.addGoalConfig(q_goal_list)
 
     def solve_and_optimize(self):
-
         self._setup_planner()
         self._ps.solve()
         self._ps.getAvailable("pathoptimizer")
@@ -106,7 +103,6 @@ class Planner:
         return q
 
     def _generate_feasible_configurations_array(self):
-
         col = True
         while col:
             q = np.zeros(self._rmodel.nq)
@@ -187,7 +183,7 @@ class Planner:
         Returns:
             tuple: tuple of strings.
         """
-        pinocchio_model_dir = dirname(dirname(((str(abspath(__file__))))))
+        pinocchio_model_dir = dirname(dirname((str(abspath(__file__)))))
         model_path = join(pinocchio_model_dir, "robot_description")
         self._mesh_dir = join(model_path, "meshes")
         urdf_filename = "franka2.urdf"
