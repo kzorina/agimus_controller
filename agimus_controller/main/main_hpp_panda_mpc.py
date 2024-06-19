@@ -24,7 +24,7 @@ if __name__ == "__main__":
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
     mpc.simulate_mpc(100)
     end = time.time()
-    u_plan = mpc.ocp.get_uref(x_plan, a_plan)
+    u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
     mpc_plots = MPCPlots(
         mpc.croco_xs,
         mpc.croco_us,
