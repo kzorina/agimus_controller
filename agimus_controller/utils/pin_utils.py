@@ -246,7 +246,7 @@ def get_ee_pose_from_configuration(rmodel: pin.Model, rdata:pin.Data, id_ee_fram
         q (np.ndarray): configuration of the robot.
 
     Returns:
-        pin.SE3: _description_
+        pin.SE3: SE3 of the position of the end effector of the robot.
     """
     pin.framesForwardKinematics(rmodel, rdata, q)
     pose = rdata.oMf[id_ee_frame_id]
