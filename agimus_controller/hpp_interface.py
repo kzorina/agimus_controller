@@ -24,6 +24,9 @@ from hpp.gepetto.manipulation import ViewerFactory
 from hpp.corbaserver import loadServerPlugin
 from hpp_idl.hpp import Equality, EqualToZero
 from agimus_controller.trajectory_point import TrajectoryPoint
+from agimus_controller.hpp_panda.planner import Planner
+from agimus_controller.hpp_panda.scenes import Scene
+from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
 
 
 class Sphere(object):
@@ -45,7 +48,7 @@ class Ground(object):
 class HppInterface:
     def __init__(self):
         self.trajectory = []
-        self.set_ur3_problem_solver()
+        # self.set_ur3_problem_solver()
 
     def set_ur3_problem_solver(self):
         parser = ArgumentParser()
@@ -244,15 +247,28 @@ class HppInterface:
         self.ps = ps
         self.vf = vf
 
-    def get_hpp_plan(self, DT, nq):
-        p = self.ps.client.basic.problem.getPath(self.ps.numberPaths() - 1)
-        path = p.pathAtRank(0)
+    def get_panda_planner(self):
+        self.T = 20
+        self.robot_wrapper = PandaWrapper(capsule=True, auto_col=True)
+        self.rmodel, self.cmodel, self.vmodel = self.robot_wrapper()
+
+        self.name_scene = "wall"
+        self.scene = Scene(self.name_scene)
+        self.rmodel, self.cmodel, self.target, self.target2, self.q0 = (
+            self.scene.create_scene_from_urdf(self.rmodel, self.cmodel)
+        )
+        self.planner = Planner(self.rmodel, self.cmodel, self.scene, self.T)
+        self.q_init, self.q_goal, self.X = self.planner.solve_and_optimize()
+        return self.planner._ps
+
+    def get_hpp_plan(self, DT, nq, hpp_path):
+        path = hpp_path.pathAtRank(0)
         T = int(np.round(path.length() / DT))
         x_plan, a_plan, subpath = self.get_xplan_aplan(T, path, nq)
         self.trajectory = subpath
         whole_traj_T = 0
-        for path_idx in range(1, p.numberPaths()):
-            path = p.pathAtRank(path_idx)
+        for path_idx in range(1, hpp_path.numberPaths()):
+            path = hpp_path.pathAtRank(path_idx)
             T = int(np.round(path.length() / DT))
             if T == 0:
                 continue
@@ -261,6 +277,7 @@ class HppInterface:
             a_plan = np.concatenate([a_plan, subpath_a_plan], axis=0)
             self.trajectory += subpath
             whole_traj_T += T
+        return x_plan, a_plan, whole_traj_T
         self.x_plan = x_plan
         self.a_plan = a_plan
 
