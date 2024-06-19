@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from math import pi
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.mpc import MPC
 from agimus_controller.hpp_interface import HppInterface
@@ -9,7 +9,8 @@ import time
 
 if __name__ == "__main__":
     hpp_interface = HppInterface()
-    hpp_interface.set_ur3_problem_solver()
+    q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
+    hpp_interface.set_ur3_problem_solver(q_init)
     ps = hpp_interface.ps
     vf = hpp_interface.vf
     ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
@@ -23,18 +24,17 @@ if __name__ == "__main__":
     ocp = OCPCrocoHPP("ur3")
     chc = MPC(ocp, x_plan, a_plan, ocp.robot.model)
     start = time.time()
-    chc._ocp.set_weights(10**4, 1, 10**-3, 0)
-    # chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
+    chc.ocp.set_weights(10**4, 1, 10**-3, 0)
     chc.simulate_mpc(100, True)
     end = time.time()
-    u_plan = chc._ocp.get_uref(x_plan, a_plan)
+    u_plan = chc.ocp.get_uref(x_plan, a_plan)
     mpc_plots = MPCPlots(
         chc.croco_xs,
         chc.croco_us,
         x_plan,
         u_plan,
         ocp.robot.model,
-        chc._ocp.DT,
+        chc.ocp.DT,
         "wrist_3_joint",
         vf,
         ball_init_pose,

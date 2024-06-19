@@ -51,7 +51,7 @@ class MPC:
             rmodel (pin.Model): Pinocchio model of the robot
             cmodel (pin.CollisionModel): Pinocchio collision model.w
         """
-        self._ocp = ocp
+        self.ocp = ocp
         self.whole_x_plan = x_plan
         self.whole_a_plan = a_plan
         self.rmodel = rmodel
@@ -65,12 +65,12 @@ class MPC:
         """Get state at the next step by doing a crocoddyl integration."""
         m = problem.runningModels[0]
         d = m.createData()
-        m.calc(d, x, self._ocp.solver.us[0])
+        m.calc(d, x, self.ocp.solver.us[0])
         return d.xnext.copy()
 
     def simulate_mpc(self, T, use_constraints=False, node_idx_breakpoint=None):
         """Simulate mpc behavior using crocoddyl integration as a simulator."""
-        self._ocp.use_constraints = use_constraints
+        self.ocp.use_constraints = use_constraints
         mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
         mpc_us = np.zeros([self.whole_traj_T - 1, self.nq])
         x0 = self.whole_x_plan[0, :]
@@ -105,23 +105,21 @@ class MPC:
 
     def mpc_first_step(self, x_plan, a_plan, x0, T):
         """Create crocoddyl problem from planning, run solver and get new state."""
-        problem = self._ocp.build_ocp_from_plannif(x_plan, a_plan, x0)
-        self._ocp.run_solver(
-            problem, list(x_plan), list(self._ocp.u_ref[: T - 1]), 1000
-        )
-        x = self.get_next_state(x0, self._ocp.solver.problem)
-        return x, self._ocp.solver.us[0]
+        problem = self.ocp.build_ocp_from_plannif(x_plan, a_plan, x0)
+        self.ocp.run_solver(problem, list(x_plan), list(self.ocp.u_ref[: T - 1]), 1000)
+        x = self.get_next_state(x0, self.ocp.solver.problem)
+        return x, self.ocp.solver.us[0]
 
     def mpc_step(self, x, x_plan, a_plan):
         """Reset ocp, run solver and get new state."""
-        u_ref_terminal_node = self._ocp.get_inverse_dynamic_control(
+        u_ref_terminal_node = self.ocp.get_inverse_dynamic_control(
             x_plan[-1], a_plan[-1]
         )
-        self._ocp.reset_ocp(x, x_plan[-1], u_ref_terminal_node[: self.nq])
-        xs_init = list(self._ocp.solver.xs[1:]) + [self._ocp.solver.xs[-1]]
+        self.ocp.reset_ocp(x, x_plan[-1], u_ref_terminal_node[: self.nq])
+        xs_init = list(self.ocp.solver.xs[1:]) + [self.ocp.solver.xs[-1]]
         xs_init[0] = x
-        us_init = list(self._ocp.solver.us[1:]) + [self._ocp.solver.us[-1]]
-        self._ocp.solver.problem.x0 = x
-        self._ocp.run_solver(self._ocp.solver.problem, xs_init, us_init, 1)
-        x = self.get_next_state(x, self._ocp.solver.problem)
-        return x, self._ocp.solver.us[0]
+        us_init = list(self.ocp.solver.us[1:]) + [self.ocp.solver.us[-1]]
+        self.ocp.solver.problem.x0 = x
+        self.ocp.run_solver(self.ocp.solver.problem, xs_init, us_init, 1)
+        x = self.get_next_state(x, self.ocp.solver.problem)
+        return x, self.ocp.solver.us[0]
