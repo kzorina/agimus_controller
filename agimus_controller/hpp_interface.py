@@ -46,11 +46,13 @@ class Ground(object):
 
 
 class HppInterface:
-    def __init__(self):
+    def __init__(
+        self, q_init=[pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
+    ):
         self.trajectory = []
-        # self.set_ur3_problem_solver()
+        self.set_ur3_problem_solver(q_init)
 
-    def set_ur3_problem_solver(self):
+    def set_ur3_problem_solver(self, q_init):
         parser = ArgumentParser()
         parser.add_argument("-N", default=20, type=int)
         args = parser.parse_args()
@@ -152,7 +154,6 @@ class HppInterface:
                 [False, False, True, True, True, False],
             )
             ps.setConstantRightHandSide(preplacementName, True)
-        q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
         q_goal = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.3, 0, 0.02, 0, 0, 0, 1]
         lang = "py"
         if lang == "cxx":
