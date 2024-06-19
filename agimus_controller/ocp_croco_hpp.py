@@ -6,16 +6,35 @@ import mim_solvers
 
 
 class OCPCrocoHPP:
-    def __init__(self, robot_name):
-        self.x_cost = 1e-1
-        self.u_cost = 1e-4
-        self.grip_cost = 1e6
-        self.xlim_cost = 0
-        self.vel_cost = 0
+    def __init__(self, robot_name: str):
+        """Class to define the OCP linked witha HPP generated trajectory.
+
+        Args:
+            robot_name (str): Name of the robot, can be chosen between 'ur3', 'ur5', 'ur10' and 'panda'.
+            The collision avoidance OCP only works for the panda.
+
+        Raises:
+            Exception: Unkown robot.
+        """
+
+        # Weights of the different costs
+        self._weight_x_reg = 1e-1
+        self._weight_u_reg = 1e-4
+        self._weight_ee_placement = 1e6
+        self._weight_vel_reg = 0
+
+        # Using the constraints ?
         self.use_constraints = False
+
+        # Loading the robot
         self.robot = example_robot_data.load(robot_name)
+
+        # Determining the last joint of the robot depending on their name
         if robot_name in ["ur3", "ur5", "ur10"]:
             self.last_joint_name = "wrist_3_joint"
+            print("Collision avoidance is not taken into account for the URs.")
+
+        # The panda
         elif robot_name == "panda":
             self.last_joint_name = "panda_joint7"
             locked_joints = [
@@ -27,7 +46,7 @@ class OCPCrocoHPP:
             )
             self.robot.model = robot_model_reduced
         else:
-            raise Exception("Unkown robot")
+            raise Exception("Unkown robot!")
         self.robot_data = self.robot.model.createData()
         self.state = crocoddyl.StateMultibody(self.robot.model)
         self.actuation = crocoddyl.ActuationModelFull(self.state)
@@ -61,13 +80,14 @@ class OCPCrocoHPP:
             u_ref[idx, :] = tau[: self.nq]
         return u_ref
 
-    def set_costs(self, grip_cost, x_cost, u_cost, vel_cost=0, xlim_cost=0):
+    def set_weights(
+        self, weight_ee_placement, weight_x_reg, weight_u_reg, weight_vel_reg
+    ):
         """Set costs of the ocp."""
-        self.x_cost = x_cost
-        self.u_cost = u_cost
-        self.grip_cost = grip_cost
-        self.vel_cost = vel_cost
-        self.xlim_cost = xlim_cost
+        self._weight_ee_placement = weight_ee_placement
+        self._weight_x_reg = weight_x_reg
+        self._weight_u_reg = weight_u_reg
+        self._weight_vel_reg = weight_vel_reg
 
     def set_models(self, x_plan, a_plan):
         """Set running models and terminal model for the ocp."""
@@ -85,22 +105,18 @@ class OCPCrocoHPP:
         """Set running models based on state and acceleration reference trajectory."""
 
         running_models = []
-        # x_reg_weights = crocoddyl.ActivationModelWeightedQuad(
-        #     np.array([1] * self.nq + [10] * self.nv) ** 2
-        # )
         for idx in range(self.T - 1):
             running_cost_model = crocoddyl.CostModelSum(self.state)
             x_ref = self.x_plan[idx, :]
             x_residual = self.get_state_residual(x_ref)
             u_residual = self.get_control_residual(self.u_ref[idx, :])
-            # xLimit_residual = self.get_xlimit_residual()
             frame_velocity_residual = self.get_velocity_residual(self.last_joint_name)
             placemment_residual = self.get_placement_residual(x_ref[: self.nq])
-
-            running_cost_model.addCost("xReg", x_residual, self.x_cost)
-            running_cost_model.addCost("uReg", u_residual, self.u_cost)
-            # running_cost_model.addCost("xlimitReg", xLimit_residual, self.xlim_cost)
-            running_cost_model.addCost("vel", frame_velocity_residual, self.vel_cost)
+            running_cost_model.addCost("xReg", x_residual, self._weight_x_reg)
+            running_cost_model.addCost("uReg", u_residual, self._weight_u_reg)
+            running_cost_model.addCost(
+                "velReg", frame_velocity_residual, self._weight_vel_reg
+            )
             running_cost_model.addCost(
                 "gripperPose", placemment_residual, 0
             )  # useful for mpc to reset ocp
@@ -132,13 +148,13 @@ class OCPCrocoHPP:
         """Return last model without constraints."""
         running_cost_model = crocoddyl.CostModelSum(self.state)
         running_cost_model.addCost(
-            "gripperPose", goal_placement_residual, self.grip_cost
+            "gripperPose", goal_placement_residual, self._weight_ee_placement
         )
         vel_cost = self.get_velocity_residual(self.last_joint_name)
         if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
-            running_cost_model.addCost("vel", vel_cost, self.grip_cost)
+            running_cost_model.addCost("velReg", vel_cost, self._weight_ee_placement)
         else:
-            running_cost_model.addCost("vel", vel_cost, 0)
+            running_cost_model.addCost("velReg", vel_cost, 0)
         x_residual = self.get_state_residual(x_ref)
         running_cost_model.addCost("xReg", x_residual, 0)
 
@@ -159,7 +175,7 @@ class OCPCrocoHPP:
         u_reg_cost = self.get_control_residual(u_ref)
         vel_cost = self.get_velocity_residual(self.last_joint_name)
         running_cost_model.addCost("xReg", x_residual, 0)
-        running_cost_model.addCost("vel", vel_cost, 0)
+        running_cost_model.addCost("velReg", vel_cost, 0)
         running_cost_model.addCost("gripperPose", placement_residual, 0)
         running_cost_model.addCost("uReg", u_reg_cost, 0)
 
@@ -270,7 +286,7 @@ class OCPCrocoHPP:
         """update model's costs by copying new_model's costs."""
         self.update_cost(model, new_model, "xReg", update_weight)
         self.update_cost(model, new_model, "gripperPose", update_weight)
-        self.update_cost(model, new_model, "vel", update_weight)
+        self.update_cost(model, new_model, "velReg", update_weight)
         self.update_cost(model, new_model, "uReg", update_weight)
 
     def reset_ocp(self, x, x_ref, u_ref):
@@ -312,11 +328,6 @@ class OCPCrocoHPP:
             solver.use_filter_line_search = True
             solver.termination_tolerance = 1e-3
             solver.max_qp_iters = 100
-            # solver.eps_rel = 0
-            # solver.eps_abs = 1e-6
-            # solver.with_callbacks = True
-            # solver.reset_rho = True
-            # solver.reset_y = True
         else:
             solver = crocoddyl.SolverFDDP(problem)
             solver.use_filter_line_search = True

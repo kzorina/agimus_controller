@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from agimus_controller.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.mpc import MPC
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.plots import MPCPlots
@@ -12,20 +13,22 @@ if __name__ == "__main__":
     vf = hpp_interface.vf
     ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
     hpp_interface.get_hpp_plan(1e-2, 6)
-    chc = MPC(hpp_interface.x_plan, hpp_interface.a_plan, "ur5")
+    ocp = OCPCrocoHPP("ur3")
+    chc = MPC(ocp, hpp_interface.x_plan, hpp_interface.a_plan, ocp.robot.model)
     start = time.time()
-    chc.prob.set_costs(10**4, 1, 10**-3, 0, 0)
+    chc._ocp.set_weights(10**4, 1, 10**-3, 0)
     # chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
     chc.simulate_mpc(100, True)
     end = time.time()
-    u_plan = chc.prob.get_uref(hpp_interface.x_plan, hpp_interface.a_plan)
+    u_plan = chc._ocp.get_uref(hpp_interface.x_plan, hpp_interface.a_plan)
     mpc_plots = MPCPlots(
         chc.croco_xs,
         chc.croco_us,
         hpp_interface.x_plan,
         u_plan,
-        chc.robot,
-        chc.prob.DT,
+        ocp.robot.model,
+        chc._ocp.DT,
+        "wrist_3_joint",
         vf,
         ball_init_pose,
     )

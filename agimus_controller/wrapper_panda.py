@@ -28,12 +28,6 @@ import numpy as np
 import pinocchio as pin
 import hppfcl
 
-import pybullet
-from mim_robots.pybullet.wrapper import PinBulletWrapper
-from pinocchio.robot_wrapper import RobotWrapper
-
-from .scenes import Scene
-
 # This class is for unwrapping an URDF and converting it to a model. It is also possible to add objects in the model,
 # such as a ball at a specific position.
 
@@ -71,7 +65,7 @@ class PandaWrapper:
         # Transforming the robot from cylinders/spheres to capsules
         self._capsule = capsule
 
-    def __call__(self):
+    def create_robot(self):
         """Create a robot.
 
         Returns:
@@ -167,165 +161,5 @@ class PandaWrapper:
             ):
                 self._cmodel_reduced.removeGeometryObject(geom_object.name)
 
-
-class PandaRobot(PinBulletWrapper):
-    """
-    Pinocchio-PyBullet wrapper class for the Panda
-    """
-
-    def __init__(
-        self,
-        capsule=True,
-        auto_col=False,
-        qref=np.zeros(7),
-        pos_robot=None,
-        pos_obs=None,
-        name_scene="box",
-    ):
-        """Pinocchio-PyBullet wrapper class for the Panda
-
-        Args:
-            capsule (bool, optional): Transform the spheres and cylinder of the robot into capsules. Defaults to True.
-            auto_col (bool, optional): Include the auto collision in the collision model. Defaults to False.
-            qref (_type_, optional): Initial configuration. Defaults to np.zeros(7).
-            pos_robot (_type_, optional): Position of the URDF describing the robot in the world frame of pybullet. Defaults to None.
-            pos_obs (_type_, optional): Position of the URDF describing the obstacles in the world frame of pybullet. Defaults to None.
-            name_scene (str, optional): Name of the scene describing the obstacles. Defaults to "box".
-        """
-        # Load the robot
-
-        # Create the robot and the scene surrounding the robot.
-        robot_wrapper = PandaWrapper(capsule=capsule, auto_col=auto_col)
-        rmodel, cmodel, vmodel = robot_wrapper()
-        self.scene = Scene(name_scene, obstacle_pose=pos_obs)
-        rmodel, cmodel, self.TARGET_POSE1, self.TARGET_POSE2, self.q0 = (
-            self.scene.create_scene_from_urdf(
-                rmodel,
-                cmodel,
-            )
-        )
-        robot_full = RobotWrapper(rmodel, cmodel, vmodel)
-
-        # Loading the URDF of the robot to display it in pybullet.
-        package_model_dir = dirname(dirname((str(abspath(__file__)))))
-        model_path = join(package_model_dir, "robot_description")
-        urdf_filename = "franka2.urdf"
-        self._urdf_path = join(join(model_path, "urdf"), urdf_filename)
-
-        # Position of the URDF describing the robot in the world frame of pybullet.
-        if pos_robot is None:
-            pos_robot = [0.0, 0, 0.0]
-            orn_robot = pybullet.getQuaternionFromEuler([0, 0, 0])
-
-        self.robotId = pybullet.loadURDF(
-            self._urdf_path,
-            pos_robot,
-            orn_robot,
-            useFixedBase=True,
-        )
-
-        # Loading the URDF of the obstacle to display it in pybullet.
-        if self.scene.urdf_filename is not None:
-            self._urdf_path_obs = join(
-                join(model_path, "urdf/obstacles"), self.scene.urdf_filename
-            )
-            # Position of the URDF describing the obstacle in the world frame of pybullet.
-            pos_obs_quat = pin.SE3ToXYZQUATtuple(pos_obs)
-            self.obstacleId = pybullet.loadURDF(
-                self._urdf_path_obs,
-                pos_obs_quat[:3],
-                pos_obs_quat[3:],
-                useFixedBase=True,
-            )
-
-        pybullet.getBasePositionAndOrientation(self.robotId)
-
-        # Query all the joints.
-        num_joints = pybullet.getNumJoints(self.robotId)
-
-        for ji in range(num_joints):
-            pybullet.changeDynamics(
-                self.robotId,
-                ji,
-                linearDamping=0.04,
-                angularDamping=0.04,
-                restitution=0.0,
-                lateralFriction=0.5,
-            )
-
-        self.pin_robot = robot_full
-        controlled_joints_names = [
-            "panda2_joint1",
-            "panda2_joint2",
-            "panda2_joint3",
-            "panda2_joint4",
-            "panda2_joint5",
-            "panda2_joint6",
-            "panda2_joint7",
-        ]
-
-        self.base_link_name = "support_joint"
-        self.end_eff_ids = []
-        self.end_eff_ids.append(self.pin_robot.model.getFrameId("panda2_rightfinger"))
-        self.nb_ee = len(self.end_eff_ids)
-        self.joint_names = controlled_joints_names
-
-        # Creates the wrapper by calling the super.__init__.
-        super().__init__(
-            self.robotId,
-            self.pin_robot,
-            controlled_joints_names,
-            ["panda2_finger_joint1"],
-            useFixedBase=True,
-        )
-        self.nb_dof = self.nv
-
-    def forward_robot(self, q=None, dq=None):
-        if q is None:
-            q, dq = self.get_state()
-        elif dq is None:
-            raise ValueError("Need to provide q and dq or non of them.")
-
-        self.pin_robot.forwardKinematics(q, dq)
-        self.pin_robot.computeJointJacobians(q)
-        self.pin_robot.framesForwardKinematics(q)
-        self.pin_robot.centroidalMomentum(q, dq)
-
-    def start_recording(self, file_name):
-        self.file_name = file_name
-        pybullet.startStateLogging(pybullet.STATE_LOGGING_VIDEO_MP4, self.file_name)
-
-    def stop_recording(self):
-        pybullet.stopStateLogging(pybullet.STATE_LOGGING_VIDEO_MP4, self.file_name)
-
-
-if __name__ == "__main__":
-    from agimus_controller.wrapper_meshcat import MeshcatWrapper
-
-    # Creating the robot
-    robot_wrapper = PandaWrapper(capsule=True, auto_col=True)
-    rmodel, cmodel, vmodel = robot_wrapper()
-    rdata = rmodel.createData()
-    cdata = cmodel.createData()
-    # Generating the meshcat visualizer
-    MeshcatVis = MeshcatWrapper()
-    vis = MeshcatVis.visualize(
-        robot_model=rmodel, robot_visual_model=cmodel, robot_collision_model=cmodel
-    )
-    # vis[0].display(pin.randomConfiguration(rmodel))
-    vis[0].display(np.array([0.5] * 7))
-
-    pin.computeCollisions(rmodel, rdata, cmodel, cdata, pin.neutral(rmodel), False)
-    for k in range(len(cmodel.collisionPairs)):
-        cr = cdata.collisionResults[k]
-        cp = cmodel.collisionPairs[k]
-        print(
-            "collision pair:",
-            cmodel.geometryObjects[cp.first].name,
-            ",",
-            cmodel.geometryObjects[cp.second].name,
-            "- collision:",
-            "Yes" if cr.isCollision() else "No",
-        )
-    q = pin.randomConfiguration(rmodel)
-    vis[0].display(pin.randomConfiguration(rmodel))
+    def get_ee_frame_name(self):
+        return "panda2_leftfinger"
