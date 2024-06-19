@@ -82,6 +82,7 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
   set(project_python_utils_files
       pin_utils.py
       plots.py
+      ros_np_multiarray.py
       scenes.py
       wrapper_meshcat.py
       wrapper_panda.py)
