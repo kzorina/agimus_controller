@@ -5,7 +5,13 @@ import pinocchio as pin
 import numpy as np
 import mim_solvers
 
-from pin_utils import get_ee_pose_from_configuration, get_last_joint
+from colmpc import ResidualDistanceCollision
+
+from agimus_controller.utils.pin_utils import (
+    get_ee_pose_from_configuration,
+    get_last_joint,
+)
+
 
 class OCPCrocoHPP:
     def __init__(self, rmodel: pin.Model, cmodel: pin.GeometryModel) -> None:
@@ -26,7 +32,9 @@ class OCPCrocoHPP:
         self._rdata = self._rmodel.createData()
 
         # Obtaining the last joint name and joint id
-        self._last_joint_name,self._last_joint_id, self._last_joint_frame_id = get_last_joint(self._rmodel)
+        self._last_joint_name, self._last_joint_id, self._last_joint_frame_id = (
+            get_last_joint(self._rmodel)
+        )
 
         # Weights of the different costs
         self._weight_x_reg = 1e-1
@@ -36,6 +44,9 @@ class OCPCrocoHPP:
 
         # Using the constraints ?
         self.use_constraints = False
+
+        # Safety marging for the collisions
+        self._safety_margin = 1e-3
 
         # Creating the state and actuation models
         self.state = crocoddyl.StateMultibody(self._rmodel)
@@ -197,21 +208,21 @@ class OCPCrocoHPP:
         self, placement_residual, x_ref: np.ndarray, u_plan: np.ndarray
     ):
         """Return terminal model with constraints for mim_solvers."""
-        running_cost_model = crocoddyl.CostModelSum(self.state)
-        constraints = crocoddyl.ConstraintModelManager(self.state, self.nq)
+        terminal_cost_model = crocoddyl.CostModelSum(self.state)
+        constraint_model_manager = crocoddyl.ConstraintModelManager(self.state, self.nq)
         x_residual = self.get_state_residual(x_ref)
         u_reg_cost = self.get_control_residual(u_plan)
         vel_cost = self.get_velocity_residual(self._last_joint_name)
-        running_cost_model.addCost("xReg", x_residual, 0)
-        running_cost_model.addCost("velReg", vel_cost, 0)
-        running_cost_model.addCost("gripperPose", placement_residual, 0)
-        running_cost_model.addCost("uReg", u_reg_cost, 0)
+        terminal_cost_model.addCost("xReg", x_residual, 0)
+        terminal_cost_model.addCost("velReg", vel_cost, 0)
+        terminal_cost_model.addCost("gripperPose", placement_residual, 0)
+        terminal_cost_model.addCost("uReg", u_reg_cost, 0)
 
-        # add torque constraint
+        # Add torque constraint
         # Joints torque limits given by the manufactor
         lower_joints_torque_limit = np.array([-87] * 4 + [-12] * 3)
         upper_joints_torque_limit = np.array([87] * 4 + [12] * 3)
-        
+
         torque_residual = crocoddyl.ResidualModelJointEffort(
             self.state,
             self.actuation,
@@ -220,21 +231,57 @@ class OCPCrocoHPP:
         torque_constraint = crocoddyl.ConstraintModelResidual(
             self.state,
             torque_residual,
-            lower_joints_torque_limit, 
+            lower_joints_torque_limit,
             upper_joints_torque_limit,
         )
-        constraints.addConstraint("JointsEfforts", torque_constraint)
+        constraint_model_manager.addConstraint("JointsEfforts", torque_constraint)
+
+        # Add collision constraint
+        if len(self._cmodel.collisionPairs) != 0:
+            for col_idx in range(len(self._cmodel.collisionPairs)):
+                collision_constraint = self._get_collision_constraint(
+                    col_idx, self._safety_margin
+                )
+                # Adding the constraint to the constraint manager
+                constraint_model_manager.addConstraint(
+                    "col_term_" + str(col_idx), collision_constraint
+                )
 
         return crocoddyl.IntegratedActionModelEuler(
             crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self.state, self.actuation, running_cost_model, constraints
+                self.state, self.actuation, terminal_cost_model, constraint_model_manager
             ),
             self.DT,
         )
 
+    def _get_collision_constraint(self, col_idx: int, safety_margin: float) -> "crocoddyl.ConstraintModelResidual":
+        """Returns the collision constraint that will be in the constraint model manager.
+
+        Args:
+            col_idx (int): index of the collision pair.
+            safety_margin (float): Lower bound of the constraint, ie the safety margin.
+            
+        Returns:
+            _type_: _description_
+        """
+        obstacleDistanceResidual = ResidualDistanceCollision(
+            self.state, 7, self._cmodel, col_idx
+        )
+
+        # Creating the inequality constraint
+        constraint = crocoddyl.ConstraintModelResidual(
+            self.state,
+            obstacleDistanceResidual,
+            np.array([safety_margin]),
+            np.array([np.inf]),
+        )
+        return constraint
+
     def get_placement_residual(self, q):
         """Return placement residual to the last position of the sub path."""
-        target = get_ee_pose_from_configuration(self._rmodel, self._rdata, self._last_joint_frame_id, q)
+        target = get_ee_pose_from_configuration(
+            self._rmodel, self._rdata, self._last_joint_frame_id, q
+        )
         return crocoddyl.CostModelResidual(
             self.state,
             crocoddyl.ResidualModelFramePlacement(
@@ -285,7 +332,9 @@ class OCPCrocoHPP:
     def get_translation_residual(self):
         """Return translation residual to the last position of the sub path."""
         q_final = self.x_plan[-1, : self.nq]
-        target = get_ee_pose_from_configuration(self._rmodel, self._rdata, self._last_joint_frame_id, q_final)
+        target = get_ee_pose_from_configuration(
+            self._rmodel, self._rdata, self._last_joint_frame_id, q_final
+        )
         return crocoddyl.ResidualModelFrameTranslation(
             self.state,
             self._last_joint_id,

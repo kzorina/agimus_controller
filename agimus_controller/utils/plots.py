@@ -3,7 +3,7 @@ import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
 
-from pin_utils import get_ee_pose_from_configuration, get_last_joint
+from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration, get_last_joint
 
 class MPCPlots:
     def __init__(
