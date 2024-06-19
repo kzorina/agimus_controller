@@ -27,7 +27,6 @@ from agimus_controller.trajectory_point import TrajectoryPoint
 from agimus_controller.hpp_panda.planner import Planner
 from agimus_controller.hpp_panda.scenes import Scene
 from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
-from agimus_controller.trajectory_point import TrajectoryPoint
 
 
 class Sphere(object):
