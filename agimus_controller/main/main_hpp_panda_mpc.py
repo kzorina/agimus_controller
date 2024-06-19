@@ -18,7 +18,7 @@ if __name__ == "__main__":
     x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_plan(
         1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
     )
-    ocp = OCPCrocoHPP("panda")
+    ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=True)
     mpc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
     start = time.time()
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)

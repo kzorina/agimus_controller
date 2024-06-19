@@ -14,7 +14,7 @@ from agimus_controller.utils.pin_utils import (
 
 
 class OCPCrocoHPP:
-    def __init__(self, rmodel: pin.Model, cmodel: pin.GeometryModel) -> None:
+    def __init__(self, rmodel: pin.Model, cmodel: pin.GeometryModel, use_constraints = False) -> None:
         """Class to define the OCP linked witha HPP generated trajectory.
 
         Args:
@@ -43,7 +43,7 @@ class OCPCrocoHPP:
         self._weight_vel_reg = 0
 
         # Using the constraints ?
-        self.use_constraints = False
+        self.use_constraints = use_constraints
 
         # Safety marging for the collisions
         self._safety_margin = 1e-3
@@ -139,6 +139,13 @@ class OCPCrocoHPP:
         self.set_terminal_model(goal_placement_residual)
 
     def set_running_models(self):
+            """Set terminal model."""
+            if self.use_constraints:
+                self.get_running_models_with_constraint()
+            else:
+                self.get_running_models_without_constraint()
+
+    def get_running_models_without_constraint(self):
         """Set running models based on state and acceleration reference trajectory."""
 
         running_models = []
@@ -166,6 +173,54 @@ class OCPCrocoHPP:
                 )
             )
         self.running_models = running_models
+        return self.running_models
+    
+    def get_running_models_with_constraint(self):
+        """Set running models based on state and acceleration reference trajectory."""
+
+        running_models = []
+        for idx in range(self.T - 1):
+            running_cost_model = crocoddyl.CostModelSum(self.state)
+            x_ref = self.x_plan[idx, :]
+            x_residual = self.get_state_residual(x_ref)
+            u_residual = self.get_control_residual(self.u_plan[idx, :])
+            frame_velocity_residual = self.get_velocity_residual(self._last_joint_name)
+            placemment_residual = self.get_placement_residual(x_ref[: self.nq])
+            running_cost_model.addCost("xReg", x_residual, self._weight_x_reg)
+            running_cost_model.addCost("uReg", u_residual, self._weight_u_reg)
+            running_cost_model.addCost(
+                "velReg", frame_velocity_residual, self._weight_vel_reg
+            )
+            running_cost_model.addCost(
+                "gripperPose", placemment_residual, 0
+            )  # useful for mpc to reset ocp
+
+            # Adding the constraints
+            constraints = crocoddyl.ConstraintModelManager(self.state, self.nq)
+            # Add torque constraint
+            torque_residual = crocoddyl.ResidualModelJointEffort(
+                self.state,
+                self.actuation,
+                np.array([0] * 6),  # np.array([0] * 6)
+            )
+            torque_constraint = crocoddyl.ConstraintModelResidual(
+                self.state,
+                torque_residual,
+                np.array([-87] * 4 + [-12] * 3),
+                np.array([87] * 4 + [12] * 3),
+            )
+            constraints.addConstraint("JointsEfforts", torque_constraint)
+
+            running_models.append(
+                crocoddyl.IntegratedActionModelEuler(
+                    crocoddyl.DifferentialActionModelFreeFwdDynamics(
+                        self.state, self.actuation, running_cost_model
+                    ),
+                    self.DT,
+                )
+            )
+        self.running_models = running_models
+        return self.running_models
 
     def set_terminal_model(self, goal_placement_residual):
         """Set terminal model."""
