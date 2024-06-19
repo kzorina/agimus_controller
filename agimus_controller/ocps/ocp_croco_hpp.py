@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import crocoddyl
 import pinocchio as pin
 import numpy as np
@@ -14,7 +12,9 @@ from agimus_controller.utils.pin_utils import (
 
 
 class OCPCrocoHPP:
-    def __init__(self, rmodel: pin.Model, cmodel: pin.GeometryModel, use_constraints = False) -> None:
+    def __init__(
+        self, rmodel: pin.Model, cmodel: pin.GeometryModel, use_constraints=False
+    ) -> None:
         """Class to define the OCP linked witha HPP generated trajectory.
 
         Args:
@@ -139,11 +139,11 @@ class OCPCrocoHPP:
         self.set_terminal_model(goal_placement_residual)
 
     def set_running_models(self):
-            """Set terminal model."""
-            if self.use_constraints:
-                self.get_running_models_with_constraint()
-            else:
-                self.get_running_models_without_constraint()
+        """Set terminal model."""
+        if self.use_constraints:
+            self.get_running_models_with_constraint()
+        else:
+            self.get_running_models_without_constraint()
 
     def get_running_models_without_constraint(self):
         """Set running models based on state and acceleration reference trajectory."""
@@ -174,7 +174,7 @@ class OCPCrocoHPP:
             )
         self.running_models = running_models
         return self.running_models
-    
+
     def get_running_models_with_constraint(self):
         """Set running models based on state and acceleration reference trajectory."""
 
@@ -304,18 +304,23 @@ class OCPCrocoHPP:
 
         return crocoddyl.IntegratedActionModelEuler(
             crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self.state, self.actuation, terminal_cost_model, constraint_model_manager
+                self.state,
+                self.actuation,
+                terminal_cost_model,
+                constraint_model_manager,
             ),
             self.DT,
         )
 
-    def _get_collision_constraint(self, col_idx: int, safety_margin: float) -> "crocoddyl.ConstraintModelResidual":
+    def _get_collision_constraint(
+        self, col_idx: int, safety_margin: float
+    ) -> "crocoddyl.ConstraintModelResidual":
         """Returns the collision constraint that will be in the constraint model manager.
 
         Args:
             col_idx (int): index of the collision pair.
             safety_margin (float): Lower bound of the constraint, ie the safety margin.
-            
+
         Returns:
             _type_: _description_
         """
@@ -402,9 +407,11 @@ class OCPCrocoHPP:
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
         """Update model's cost reference and weight by copying new_model's cost."""
-        model.differential.costs.costs[cost_name].cost.residual.reference = (
-            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
-        )
+        model.differential.costs.costs[
+            cost_name
+        ].cost.residual.reference = new_model.differential.costs.costs[
+            cost_name
+        ].cost.residual.reference.copy()
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight
