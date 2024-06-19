@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import hppfcl
 import numpy as np
 import pinocchio as pin
@@ -233,3 +235,48 @@ def compute_distance_between_shapes(
     )
 
     return distance
+
+def get_ee_pose_from_configuration(rmodel: pin.Model, rdata:pin.Data, id_ee_frame_id: int ,q: np.ndarray) -> pin.SE3:
+    """Returns the SE3 describing the position of the end effector of the robot.
+
+    Args:
+        rmodel (pin.Model): Pinocchio Model of the robot.
+        rdata (pin.Data): Pinocchio data of the robot
+        id_ee_frame_name (int): ID of the frame of the end effector.
+        q (np.ndarray): configuration of the robot.
+
+    Returns:
+        pin.SE3: _description_
+    """
+    pin.framesForwardKinematics(rmodel, rdata, q)
+    pose = rdata.oMf[id_ee_frame_id]
+    return pose
+
+
+def get_last_joint(rmodel) -> Tuple[str, int, int]:
+        """Returns the name of the last joint and it's id, with regards to the robot's type.
+
+        Raises:
+            UserWarning: Use of the UR instead of the panda for collision avoidance will not work.
+            AttributeError: The pinocchio robot model given in the instanciation of the class has no last joint name
+            similar to either the panda or the URs.
+
+        Returns:
+            Tuple[str, int, int]: Name of the last joint, ID of the last joint, ID of the last joint in the frames list.
+        """
+
+        if rmodel.existJointName("panda2_joint7"):
+            last_joint_name = "panda2_joint7"
+        elif rmodel.existJointName("wrist_3_joint"):
+            last_joint_name = "wrist_3_joint" 
+            raise UserWarning(
+                "Due to the no convexification of the geometry model, collisions will not be taken into consideration here."
+            )
+        else:
+            raise AttributeError(
+                "No known last joint name was found. Check the robot model."
+            )
+        last_joint_id = rmodel.getJointId(last_joint_name)
+        last_joint_frame_id = rmodel.getFrameId(last_joint_name)
+          
+        return (last_joint_name, last_joint_id, last_joint_frame_id)

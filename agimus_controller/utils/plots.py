@@ -3,6 +3,7 @@ import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
 
+from pin_utils import get_ee_pose_from_configuration, get_last_joint
 
 class MPCPlots:
     def __init__(
@@ -23,6 +24,9 @@ class MPCPlots:
         self.DT = DT
         self._rmodel = rmodel
         self._rdata = self._rmodel.createData()
+        
+        self._last_joint_name,self._last_joint_id, self._last_joint_frame_id = get_last_joint(self._rmodel)
+
         self.nq = self._rmodel.nq
         self.croco_xs = croco_xs
         self.croco_us = croco_us
@@ -132,7 +136,7 @@ class MPCPlots:
     def print_final_placement(self):
         """Print final gripper position for both hpp and crocoddyl trajectories."""
         q_final_hpp = self.whole_x_plan[-1][: self.nq]
-        hpp_placement = self._get_ee_pose_from_configuration(q_final_hpp)
+        hpp_placement = get_ee_pose_from_configuration(self._rmodel, self._rdata, self._last_joint_frame_id ,q_final_hpp)
         print("Last node placement ")
         print(
             "hpp rot ",
@@ -141,7 +145,7 @@ class MPCPlots:
             hpp_placement.translation,
         )
         q_final_croco = self.croco_xs[-1][: self.nq]
-        croco_placement = self._get_ee_pose_from_configuration(q_final_croco)
+        croco_placement = get_ee_pose_from_configuration(self._rmodel, self._rdata, self._last_joint_frame_id , q_final_croco)
         print(
             "croco rot ",
             pin.log(croco_placement.rotation),
@@ -168,13 +172,13 @@ class MPCPlots:
         pose_hpp = [[] for _ in range(3)]
         for idx in range(self.croco_xs.shape[0]):
             q = self.croco_xs[idx, : self.nq]
-            pose = self._get_ee_pose_from_configuration(q).translation
+            pose = get_ee_pose_from_configuration(self._rmodel, self._rdata, self._last_joint_frame_id , q).translation
             for idx in range(3):
                 pose_croco[idx].append(pose[idx])
         for idx in range(self.whole_x_plan.shape[0]):
             q = self.whole_x_plan[idx, : self.nq]
             pin.framesForwardKinematics(self._rmodel, self._rdata, q)
-            pose = self._get_ee_pose_from_configuration(q).translation
+            pose = get_ee_pose_from_configuration(self._rmodel, self._rdata, self._last_joint_frame_id , q).translation
             for idx in range(3):
                 pose_hpp[idx].append(pose[idx])
         return pose_croco, pose_hpp
@@ -186,7 +190,7 @@ class MPCPlots:
         poses = np.zeros([len(xs), 3])
         for idx in range(xs.shape[0]):
             q_idx = xs[idx, : self.nq]
-            pose = self._get_ee_pose_from_configuration(q_idx).translation
+            pose = get_ee_pose_from_configuration(self._rmodel, self._rdata, self._last_joint_frame_id , q_idx).translation
             poses[idx, :] = pose
         t_xs = np.linspace(0, (len(xs) - 1), int(1 / dt))
         # for idx in range(3):
@@ -200,12 +204,3 @@ class MPCPlots:
             plt.plot(t_xs[:-1], us[:, idx], label="u" + idx)
         plt.show()
 
-    def _get_ee_pose_from_configuration(self, q: np.ndarray):
-        """Returns the SE3 describing the position of the end effector of the robot.
-
-        Args:
-            q (np.ndarray): configuration of the robot
-        """
-        pin.framesForwardKinematics(self._rmodel, self._rdata, q)
-        pose = self._rdata.oMf[self._id_ee_frame_name]
-        return pose
