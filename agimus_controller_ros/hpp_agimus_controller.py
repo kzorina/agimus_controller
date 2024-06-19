@@ -6,13 +6,13 @@ from copy import deepcopy
 from threading import Lock
 from std_msgs.msg import Duration
 from linear_feedback_controller_msgs.msg import Control, Sensor
-from agimus_controller.hpp_panda.hpp_interface import HppInterfacePanda
+from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 
 
-class CrocoMotionServer:
+class HppAgimusController:
     def __init__(self) -> None:
-        self.hpp_interface = HppInterfacePanda()
+        self.hpp_interface = HppInterface()
         self.robot_model = self.hpp_interface.rmodel
         self.robot_data = pin.Data(self.robot_model)
 
@@ -108,44 +108,41 @@ class CrocoMotionServer:
 
     def solve_and_send(self):
         pass
-        # sensor_msg = self.get_sensor_msg()
-        # x0 = np.concatenate(
-        #     [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
-        # )
-        # self.croco_reaching.set_posture_ref(x0)
-        # x_guess, u_guess, nb_iteration_max = self.warm_start(sensor_msg)
-        # self.croco_reaching.solve(x_guess, u_guess, nb_iteration_max)
-        """
+        sensor_msg = self.get_sensor_msg()
+        x0 = np.concatenate(
+            [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
+        )
+        self.croco_reaching.set_posture_ref(x0)
+        x_guess, u_guess, nb_iteration_max = self.warm_start(sensor_msg)
+        self.croco_reaching.solve(x_guess, u_guess, nb_iteration_max)
+        
         self.mpc.simulate_mpc(100)
         u_plan = self.mpc.prob.get_uref(self.x_plan, self.a_plan)
-        """
-        # x_plan = self.mpc.update_planning(
-        #     x_plan, self.mpc.whole_x_plan[self.next_node_idx, :]
-        # )
-        # a_plan = self.mpc.update_planning(
-        #     a_plan, self.mpc.whole_a_plan[self.next_node_idx, :]
-        # )
-        # x, u = self.mpc.mpc_step(x, x_plan, a_plan)
-        # if self.next_node_idx < self.mpc.whole_x_plan.shape[0] - 1:
-        #     self.next_node_idx += 1
-        #     self.mpc_xs[idx + 1, :] = x
-        #     self.mpc_us[idx, :] = u
-
-        #     if idx == node_idx_breakpoint:
-        #         breakpoint()
-        # self.croco_xs = mpc_xs
-        # self.croco_us = mpc_us
-        # self.mpc.simulate_mpc()
-
-        # self.control_msg.header = Header()
-        # self.control_msg.header.stamp = rospy.Time.now()
-        # self.control_msg.feedback_gain = to_multiarray_f64(ricatti_mat)
-        # self.control_msg.feedforward = to_multiarray_f64(tau_ff)
-        # self.control_msg.initial_state = sensor_msg
-        # self.control_publisher.publish(self.control_msg)
-        # self.nb_iteration += 1
-
-    def get_sensor_msg(self):
+        
+        x_plan = self.mpc.update_planning(
+            x_plan, self.mpc.whole_x_plan[self.next_node_idx, :]
+        )
+        a_plan = self.mpc.update_planning(
+            a_plan, self.mpc.whole_a_plan[self.next_node_idx, :]
+        )
+        x, u = self.mpc.mpc_step(x, x_plan, a_plan)
+        if self.next_node_idx < self.mpc.whole_x_plan.shape[0] - 1:
+            self.next_node_idx += 1
+            self.mpc_xs[idx + 1, :] = x
+            self.mpc_us[idx, :] = u
+           if idx == node_idx_breakpoint:
+                breakpoint()
+        self.croco_xs = mpc_xs
+        self.croco_us = mpc_us
+        self.mpc.simulate_mpc()
+        self.control_msg.header = Header()
+        self.control_msg.header.stamp = rospy.Time.now()
+        self.control_msg.feedback_gain = to_multiarray_f64(ricatti_mat)
+        self.control_msg.feedforward = to_multiarray_f64(tau_ff)
+        self.control_msg.initial_state = sensor_msg
+        self.control_publisher.publish(self.control_msg)
+        self.nb_iteration += 1
+   def get_sensor_msg(self):
         with self.mutex:
             sensor_msg = deepcopy(self.sensor_msg)
         return sensor_msg
@@ -163,7 +160,7 @@ class CrocoMotionServer:
 
 def crocco_motion_server_node():
     rospy.init_node("croccodyl_motion_server_node_py", anonymous=True)
-    node = CrocoMotionServer()
+    node = HppAgimusController()
     node.run()
 
 
