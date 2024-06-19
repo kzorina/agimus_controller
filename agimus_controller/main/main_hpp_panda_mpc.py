@@ -1,10 +1,10 @@
 import time
 from agimus_controller.hpp_panda.hpp_interface_panda import HppInterfacePanda
 from agimus_controller.mpc import MPC
-from agimus_controller.plots import MPCPlots
+from agimus_controller.utils.plots import MPCPlots
 
-from agimus_controller.wrapper_panda import PandaWrapper
-from agimus_controller.ocp_croco_hpp import OCPCrocoHPP
+from agimus_controller.utils.wrapper_panda import PandaWrapper
+from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
 if __name__ == "__main__":
     pandawrapper = PandaWrapper()

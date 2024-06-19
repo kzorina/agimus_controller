@@ -26,8 +26,8 @@ Once the code is built one can run these in several terminals inside the docker:
 - `hppcorbaserver`
 - `gepetto-gui`
 - run the script:
-    - with python3: `python3 -i -m agimus_controller.main_hpp_mpc -N=1`
-    - with ipython3: `ipython3 -i -m agimus_controller.main_hpp_mpc -- -N=1`
+    - with python3: `python3 -i -m agimus_controller.main.main_hpp_mpc -N=1`
+    - with ipython3: `ipython3 -i -m agimus_controller.main.main_hpp_mpc -- -N=1`
 
 For one to simply run the node individually.
 

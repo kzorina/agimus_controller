@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from agimus_controller.ocp_croco_hpp import OCPCrocoHPP
+from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.mpc import MPC
 from agimus_controller.hpp_interface import HppInterface
-from agimus_controller.plots import MPCPlots
+from agimus_controller.utils.plots import MPCPlots
 import time
 
 
