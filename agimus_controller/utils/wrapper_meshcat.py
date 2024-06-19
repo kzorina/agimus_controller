@@ -152,7 +152,7 @@ class MeshcatWrapper:
 
 
 if __name__ == "__main__":
-    from agimus_controller.wrapper_panda import PandaWrapper
+    from croco_hpp_connection.agimus_controller.utils.wrapper_panda import PandaWrapper
 
     # Creating the robot
     robot_wrapper = PandaWrapper(capsule=True)
