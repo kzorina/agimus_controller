@@ -208,7 +208,10 @@ class OCPCrocoHPP:
         running_cost_model.addCost("uReg", u_reg_cost, 0)
 
         # add torque constraint
-
+        # Joints torque limits given by the manufactor
+        lower_joints_torque_limit = np.array([-87] * 4 + [-12] * 3)
+        upper_joints_torque_limit = np.array([87] * 4 + [12] * 3)
+        
         torque_residual = crocoddyl.ResidualModelJointEffort(
             self.state,
             self.actuation,
@@ -217,8 +220,8 @@ class OCPCrocoHPP:
         torque_constraint = crocoddyl.ConstraintModelResidual(
             self.state,
             torque_residual,
-            np.array([-87] * 4 + [-12] * 3),
-            np.array([87] * 4 + [12] * 3),
+            lower_joints_torque_limit, 
+            upper_joints_torque_limit,
         )
         constraints.addConstraint("JointsEfforts", torque_constraint)
 
