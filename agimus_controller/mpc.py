@@ -77,7 +77,7 @@ class MPC:
     def mpc_first_step(self, x_plan, a_plan, x0, T):
         """Create crocoddyl problem from planning, run solver and get new state."""
         problem = self.ocp.build_ocp_from_plannif(x_plan, a_plan, x0)
-        self.ocp.run_solver(problem, list(x_plan), list(self.ocp.u_ref[: T - 1]), 1000)
+        self.ocp.run_solver(problem, list(x_plan), list(self.ocp.u_plan[: T - 1]), 1000)
         x = self.get_next_state(x0, self.ocp.solver.problem)
         return x, self.ocp.solver.us[0]
 
