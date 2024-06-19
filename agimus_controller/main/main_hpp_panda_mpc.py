@@ -1,5 +1,5 @@
 import time
-from agimus_controller.hpp_panda.hpp_interface_panda import HppInterfacePanda
+from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
 
@@ -10,8 +10,13 @@ if __name__ == "__main__":
     pandawrapper = PandaWrapper()
     rmodel, cmodel, vmodel = pandawrapper.create_robot()
     ee_frame_name = pandawrapper.get_ee_frame_name()
-    hpp_interface = HppInterfacePanda()
-    x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_plan(1e-2, 7)
+    hpp_interface = HppInterface()
+    ps = hpp_interface.get_panda_planner()
+    hpp_interface.set_ur3_problem_solver()  # TODO See what it changes
+    x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_plan(
+        1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
+    )
+    hpp_interface.get_hpp_plan(1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1))
     ocp = OCPCrocoHPP("panda")
     chc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
     start = time.time()

@@ -9,22 +9,29 @@ import time
 
 if __name__ == "__main__":
     hpp_interface = HppInterface()
+    hpp_interface.set_ur3_problem_solver()
     ps = hpp_interface.ps
     vf = hpp_interface.vf
     ball_init_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]
-    hpp_interface.get_hpp_plan(1e-2, 6)
+    x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_plan(
+        1e-2,
+        6,
+        hpp_interface.ps.client.basic.problem.getPath(
+            hpp_interface.ps.numberPaths() - 1
+        ),
+    )
     ocp = OCPCrocoHPP("ur3")
-    chc = MPC(ocp, hpp_interface.x_plan, hpp_interface.a_plan, ocp.robot.model)
+    chc = MPC(ocp, x_plan, a_plan, ocp.robot.model)
     start = time.time()
     chc._ocp.set_weights(10**4, 1, 10**-3, 0)
     # chc.search_best_costs(chc.prob.nb_paths - 1, False, False, True)
     chc.simulate_mpc(100, True)
     end = time.time()
-    u_plan = chc._ocp.get_uref(hpp_interface.x_plan, hpp_interface.a_plan)
+    u_plan = chc._ocp.get_uref(x_plan, a_plan)
     mpc_plots = MPCPlots(
         chc.croco_xs,
         chc.croco_us,
-        hpp_interface.x_plan,
+        x_plan,
         u_plan,
         ocp.robot.model,
         chc._ocp.DT,
