@@ -1,6 +1,5 @@
 from __future__ import annotations
 import numpy as np
-from agimus_controller.trajectory_buffer import TrajectoryBuffer, PointAttribute
 
 
 class MPC:
