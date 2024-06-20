@@ -61,7 +61,7 @@ class TrajectoryPoint:
         return not np.array_equal(self.a, np.zeros(self.nv))
 
     def tau_is_valid(self):
-        return not np.array_equal(self.tau, np.zeros(self.nv)) 
+        return not np.array_equal(self.tau, np.zeros(self.nv))
 
     def com_pos_is_valid(self):
         return not np.array_equal(self.com_pos, np.zeros(3))
