@@ -1,6 +1,6 @@
+from __future__ import annotations
 import numpy as np
 from enum import Enum
-from __future__ import annotations
 
 
 class PointAttribute(Enum):
@@ -52,19 +52,19 @@ class TrajectoryPoint:
         return self.attribute_validation_dict[attribute]()
 
     def q_is_valid(self):
-        if self.q == np.zeros(self.nq):
+        if np.array_equal(self.q, np.zeros(self.nq)):
             return False
         else:
             return True
 
     def v_is_valid(self):
-        if self.v == np.zeros(self.nv):
+        if np.array_equal(self.v, np.zeros(self.nv)):
             return False
         else:
             return True
 
     def a_is_valid(self):
-        if self.a == np.zeros(self.nv):
+        if np.array_equal(self.a, np.zeros(self.nv)):
             return False
         else:
             return True

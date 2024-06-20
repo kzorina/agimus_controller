@@ -1,39 +1,6 @@
+from __future__ import annotations
 import numpy as np
-
-
-class TrajectoryBuffer:
-    """List of variable size in which the HPP trajectory nodes will be."""
-
-    def __init__(self, model):
-        self.model = model
-        self.x_plan = []
-        self.a_plan = []
-
-    def add_trajectory_point(self, q, v, a=None):
-        if len(q) != self.model.nq:
-            raise Exception(
-                f"configuration vector size : {len(q)} doesn't match model's nq : {self.model.nq}"
-            )
-        if len(v) != self.model.nv:
-            raise Exception(
-                f"velocity vector size : {len(v)} doesn't match model's nv : {self.model.nv}"
-            )
-        x = np.concatenate([np.array(q), np.array(v)])
-        self.x_plan.append(x)
-        if a is not None:
-            if len(a) != self.model.nv:
-                raise Exception(
-                    f"acceleration vector size : {len(a)} doesn't match model's nv : {self.model.nv}"
-                )
-            self.a_plan.append(np.array(a))
-
-    def get_joint_state_horizon(self):
-        """Return the state reference for the horizon, state is composed of joints positions and velocities"""
-        return self.x_plan
-
-    def get_joint_acceleration_horizon(self):
-        """Return the acceleration reference for the horizon, state is composed of joints positions and velocities"""
-        return self.a_plan
+from agimus_controller.trajectory_buffer import TrajectoryBuffer, PointAttribute
 
 
 class MPC:
@@ -57,6 +24,8 @@ class MPC:
         self.rmodel = rmodel
         self.cmodel = cmodel
         self.nq = self.rmodel.nq
+        self.nv = self.rmodel.nv
+        self.nx = self.nq + self.nv
         self.croco_xs = None
         self.croco_us = None
         self.whole_traj_T = x_plan.shape[0]
@@ -87,7 +56,7 @@ class MPC:
         for idx in range(1, self.whole_traj_T - 1):
             x_plan = self.update_planning(x_plan, self.whole_x_plan[next_node_idx, :])
             a_plan = self.update_planning(a_plan, self.whole_a_plan[next_node_idx, :])
-            x, u = self.mpc_step(x, x_plan, a_plan)
+            x, u = self.mpc_step(x, x_plan[-1], a_plan[-1])
             if next_node_idx < self.whole_x_plan.shape[0] - 1:
                 next_node_idx += 1
             mpc_xs[idx + 1, :] = x
@@ -110,16 +79,14 @@ class MPC:
         x = self.get_next_state(x0, self.ocp.solver.problem)
         return x, self.ocp.solver.us[0]
 
-    def mpc_step(self, x, x_plan, a_plan):
+    def mpc_step(self, x0, new_x_ref, new_a_ref):
         """Reset ocp, run solver and get new state."""
-        u_ref_terminal_node = self.ocp.get_inverse_dynamic_control(
-            x_plan[-1], a_plan[-1]
-        )
-        self.ocp.reset_ocp(x, x_plan[-1], u_ref_terminal_node[: self.nq])
+        u_ref_terminal_node = self.ocp.get_inverse_dynamic_control(new_x_ref, new_a_ref)
+        self.ocp.reset_ocp(x0, new_x_ref, u_ref_terminal_node[: self.nq])
         xs_init = list(self.ocp.solver.xs[1:]) + [self.ocp.solver.xs[-1]]
-        xs_init[0] = x
+        xs_init[0] = x0
         us_init = list(self.ocp.solver.us[1:]) + [self.ocp.solver.us[-1]]
-        self.ocp.solver.problem.x0 = x
+        self.ocp.solver.problem.x0 = x0
         self.ocp.run_solver(self.ocp.solver.problem, xs_init, us_init, 1)
-        x = self.get_next_state(x, self.ocp.solver.problem)
-        return x, self.ocp.solver.us[0]
+        x0 = self.get_next_state(x0, self.ocp.solver.problem)
+        return x0, self.ocp.solver.us[0]

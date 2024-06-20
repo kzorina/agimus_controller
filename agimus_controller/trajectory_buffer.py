@@ -1,7 +1,7 @@
+from __future__ import annotations
 import numpy as np
 from copy import deepcopy
 from collections import deque
-from __future__ import annotations
 
 from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
 
@@ -10,7 +10,8 @@ class TrajectoryBuffer:
     """List of variable size in which the HPP trajectory nodes will be."""
 
     def __init__(self):
-        self._buffer: deque[TrajectoryPoint] = []
+        self._buffer: deque[TrajectoryPoint] = deque()
+        print("type ", type(self._buffer))
         self.size = 0
         self.nq = 0
         self.nv = 0
@@ -22,7 +23,7 @@ class TrajectoryBuffer:
         self.nq = start.q.shape[0]
         self.nv = start.v.shape[0]
         self.nx = self.nq + self.nv
-        for i in range(len(self.buffer)):
+        for i in range(len(self._buffer)):
             self._buffer[i] = deepcopy(start)
 
     def add_trajectory_point(self, trajectory_point: TrajectoryPoint):
