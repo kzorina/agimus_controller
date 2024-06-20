@@ -71,6 +71,9 @@ class MPC:
         planning_vec = np.delete(planning_vec, 0, 0)
         return np.r_[planning_vec, next_value[np.newaxis, :]]
 
+    def get_mpc_output(self):
+        return self.ocp.solver.problem.x0, self.ocp.solver.us[0], self.ocp.solver.K[0]
+
     def mpc_first_step(self, x_plan, a_plan, x0, T):
         """Create crocoddyl problem from planning, run solver and get new state."""
         problem = self.ocp.build_ocp_from_plannif(x_plan, a_plan, x0)
