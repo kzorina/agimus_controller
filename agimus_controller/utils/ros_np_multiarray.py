@@ -2,6 +2,8 @@ import numpy as np
 from std_msgs.msg import MultiArrayDimension
 from std_msgs.msg import Float64MultiArray
 
+from functools import partial
+
 
 def _numpy_to_multiarray(multiarray_type, np_array):
     multiarray = multiarray_type()
@@ -35,8 +37,6 @@ def _multiarray_to_numpy(pytype, dtype, multiarray):
     dims = tuple(map(lambda x: x.size, multiarray.layout.dim))
     return np.array(multiarray.data, dtype=pytype).reshape(dims).astype(dtype)
 
-
-from functools import partial
 
 to_multiarray_f64 = partial(_numpy_to_multiarray, Float64MultiArray)
 to_numpy_f64 = partial(_multiarray_to_numpy, float, np.float64)

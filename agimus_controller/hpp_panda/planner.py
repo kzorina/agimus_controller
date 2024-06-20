@@ -44,7 +44,7 @@ class Planner:
 
         vf.loadObstacleModel(obstacle_urdf, self._scene._name_scene)
 
-        obstacles_list = self._scene._obstacles_name
+        # obstacles_list = self._scene._obstacles_name
         for obstacle in self._cmodel.geometryObjects:
             if "obstacle" in obstacle.name:
                 name = join(self._scene._name_scene, obstacle.name)
@@ -62,14 +62,14 @@ class Planner:
         self._q_init = self._generate_feasible_configurations_array()
         self._q_goal = self._generate_feasible_configurations_array()
 
-        rdata = self._rmodel.createData()
-        cdata = self._cmodel.createData()
-        col = pin.computeCollisions(
-            self._rmodel, rdata, self._cmodel, cdata, self._q_init, True
-        )
-        col1 = pin.computeCollisions(
-            self._rmodel, rdata, self._cmodel, cdata, self._q_goal, True
-        )
+        # rdata = self._rmodel.createData()
+        # cdata = self._cmodel.createData()
+        # col = pin.computeCollisions(
+        #     self._rmodel, rdata, self._cmodel, cdata, self._q_init, True
+        # )
+        # col1 = pin.computeCollisions(
+        #     self._rmodel, rdata, self._cmodel, cdata, self._q_goal, True
+        # )
         q_init_list = self._q_init.tolist() + [0] + [0]
         q_goal_list = self._q_goal.tolist() + [0] + [0]
         self._v(q_init_list)

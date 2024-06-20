@@ -1,7 +1,6 @@
 from __future__ import annotations
 import numpy as np
 from collections import deque
-from __future__ import annotations
 
 from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
 
