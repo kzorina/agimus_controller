@@ -52,37 +52,19 @@ class TrajectoryPoint:
         return self.attribute_validation_dict[attribute]()
 
     def q_is_valid(self):
-        if np.array_equal(self.q, np.zeros(self.nq)):
-            return False
-        else:
-            return True
+        return not np.array_equal(self.q, np.zeros(self.nq))
 
     def v_is_valid(self):
-        if np.array_equal(self.v, np.zeros(self.nv)):
-            return False
-        else:
-            return True
+        return not np.array_equal(self.v, np.zeros(self.nv))
 
     def a_is_valid(self):
-        if np.array_equal(self.a, np.zeros(self.nv)):
-            return False
-        else:
-            return True
+        return not np.array_equal(self.a, np.zeros(self.nv))
 
     def tau_is_valid(self):
-        if self.tau == np.zeros(self.nv):
-            return False
-        else:
-            return True
+        return not np.array_equal(self.tau, np.zeros(self.nv)) 
 
     def com_pos_is_valid(self):
-        if self.com_pos == np.zeros(3):
-            return False
-        else:
-            return True
+        return not np.array_equal(self.com_pos, np.zeros(3))
 
     def com_vel_is_valid(self):
-        if self.com_vel == np.zeros(3):
-            return False
-        else:
-            return True
+        return not np.array_equal(self.com_vel, np.zeros(3))
