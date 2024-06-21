@@ -46,9 +46,9 @@ package.
 
 Start gazebo:
 ```bash
-$ hppcorbaserver
-$ gepetto-gui
-$ roslaunch panda_torque_mpc simulation.launch arm_id:=panda simulate_camera:=false
-$ roslaunch panda_torque_mpc obstacle_visualizer.launch spawn_in_gz:=true
-$ ROS_NAMESPACE=/ctrl_mpc_linearized rosrun agimus_controller hpp_agimus_controller_node
+hppcorbaserver
+gepetto-gui
+roslaunch panda_torque_mpc simulation.launch arm_id:=panda simulate_camera:=false
+roslaunch panda_torque_mpc sim_controllers.launch controller:=ctrl_mpc_linearized
+ROS_NAMESPACE=/ctrl_mpc_linearized rosrun agimus_controller hpp_agimus_controller_node
 ```

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import numpy as np
+import time
 
 
 class MPC:
@@ -36,6 +37,15 @@ class MPC:
         m.calc(d, x, self.ocp.solver.us[0])
         return d.xnext.copy()
 
+    def get_reference(self):
+        model = self.ocp.solver.problem.runningModels[0]
+        x_ref = model.differential.costs.costs["xReg"].cost.residual.reference
+        p_ref = model.differential.costs.costs[
+            "gripperPose"
+        ].cost.residual.reference.translation
+        u_ref = model.differential.costs.costs["uReg"].cost.residual.reference
+        return x_ref, p_ref, u_ref
+
     def simulate_mpc(self, T, save_predictions=False, node_idx_breakpoint=None):
         """Simulate mpc behavior using crocoddyl integration as a simulator."""
         mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
@@ -55,11 +65,21 @@ class MPC:
             mpc_pred_us = np.zeros([self.whole_traj_T, T - 1, self.nq])
             mpc_pred_xs[0, :, :] = np.array(self.ocp.solver.xs)
             mpc_pred_us[0, :, :] = np.array(self.ocp.solver.us)
+            self.state_refs = np.zeros([self.whole_traj_T, 2 * self.nq])
+            self.translation_refs = np.zeros([self.whole_traj_T, 3])
+            self.control_refs = np.zeros([self.whole_traj_T, self.nq])
+            x_ref, p_ref, u_ref = self.get_reference()
+            self.state_refs[0, :] = x_ref
+            self.translation_refs[0, :] = p_ref
+            self.control_refs[0, :] = u_ref
 
         for idx in range(1, self.whole_traj_T - 1):
             x_plan = self.update_planning(x_plan, self.whole_x_plan[next_node_idx, :])
             a_plan = self.update_planning(a_plan, self.whole_a_plan[next_node_idx, :])
+            start = time.time()
             x, u = self.mpc_step(x, x_plan[-1], a_plan[-1])
+            end = time.time()
+            # print("step time ", end - start)
             if next_node_idx < self.whole_x_plan.shape[0] - 1:
                 next_node_idx += 1
             mpc_xs[idx + 1, :] = x
@@ -68,14 +88,22 @@ class MPC:
             if save_predictions:
                 mpc_pred_xs[idx, :, :] = np.array(self.ocp.solver.xs)
                 mpc_pred_us[idx, :, :] = np.array(self.ocp.solver.us)
+                x_ref, p_ref, u_ref = self.get_reference()
+                self.state_refs[idx, :] = x_ref
+                self.translation_refs[idx, :] = p_ref
+                self.control_refs[idx, :] = u_ref
 
             if idx == node_idx_breakpoint:
                 breakpoint()
         self.croco_xs = mpc_xs
         self.croco_us = mpc_us
         if save_predictions:
-            np.save("xs_pred.npy", mpc_pred_xs, allow_pickle=True)
-            np.save("us_pred.npy", mpc_pred_us, allow_pickle=True)
+            print("saving")
+            np.save("mpc_xs_sim.npy", mpc_pred_xs, allow_pickle=True)
+            np.save("mpc_us_sim.npy", mpc_pred_us, allow_pickle=True)
+            np.save("state_refs_sim.npy", self.state_refs)
+            np.save("translation_refs_sim.npy", self.translation_refs)
+            np.save("control_refs_sim.npy", self.control_refs)
 
     def update_planning(self, planning_vec, next_value):
         """Update numpy array by removing the first value and adding next_value at the end."""
