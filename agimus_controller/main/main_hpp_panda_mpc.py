@@ -9,6 +9,7 @@ from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 if __name__ == "__main__":
     pandawrapper = PandaWrapper(auto_col=True)
     rmodel, cmodel, vmodel = pandawrapper.create_robot()
+
     ee_frame_name = pandawrapper.get_ee_frame_name()
     q_init = [
         0.13082259440720514,
@@ -18,8 +19,6 @@ if __name__ == "__main__":
         -0.02303564961006244,
         2.51523530644841,
         0.33466451573454664,
-        0.03969024494290352,
-        0.03969024494290352,
     ]
     q_goal = [1.9542, -1.1679, -2.0741, -1.8046, 0.0149, 2.1971, 2.0056]
 
@@ -33,7 +32,7 @@ if __name__ == "__main__":
     mpc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
     start = time.time()
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
-    mpc.simulate_mpc(100)  # , node_idx_breakpoint=whole_traj_T - 30
+    mpc.simulate_mpc(100, save_predictions=True)
     end = time.time()
     u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
     mpc_plots = MPCPlots(

@@ -270,6 +270,8 @@ def get_last_joint(rmodel) -> Tuple[str, int, int]:
 
     if rmodel.existJointName("panda2_joint7"):
         last_joint_name = "panda2_joint7"
+    elif rmodel.existJointName("panda_joint7"):
+        last_joint_name = "panda_joint7"
     elif rmodel.existJointName("wrist_3_joint"):
         last_joint_name = "wrist_3_joint"
         raise UserWarning(
