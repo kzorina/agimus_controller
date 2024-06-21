@@ -36,7 +36,7 @@ class MPC:
         m.calc(d, x, self.ocp.solver.us[0])
         return d.xnext.copy()
 
-    def simulate_mpc(self, T, node_idx_breakpoint=None):
+    def simulate_mpc(self, T, save_predictions=False, node_idx_breakpoint=None):
         """Simulate mpc behavior using crocoddyl integration as a simulator."""
         mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
         mpc_us = np.zeros([self.whole_traj_T - 1, self.nq])
@@ -48,8 +48,13 @@ class MPC:
         x, u0 = self.mpc_first_step(x_plan, a_plan, x0, T)
         mpc_xs[1, :] = x
         mpc_us[0, :] = u0
-
         next_node_idx = T
+
+        if save_predictions:
+            mpc_pred_xs = np.zeros([self.whole_traj_T, T, 2 * self.nq])
+            mpc_pred_us = np.zeros([self.whole_traj_T, T - 1, self.nq])
+            mpc_pred_xs[0, :, :] = np.array(self.ocp.solver.xs)
+            mpc_pred_us[0, :, :] = np.array(self.ocp.solver.us)
 
         for idx in range(1, self.whole_traj_T - 1):
             x_plan = self.update_planning(x_plan, self.whole_x_plan[next_node_idx, :])
@@ -60,10 +65,17 @@ class MPC:
             mpc_xs[idx + 1, :] = x
             mpc_us[idx, :] = u
 
+            if save_predictions:
+                mpc_pred_xs[idx, :, :] = np.array(self.ocp.solver.xs)
+                mpc_pred_us[idx, :, :] = np.array(self.ocp.solver.us)
+
             if idx == node_idx_breakpoint:
                 breakpoint()
         self.croco_xs = mpc_xs
         self.croco_us = mpc_us
+        if save_predictions:
+            np.save("xs_pred.npy", mpc_pred_xs, allow_pickle=True)
+            np.save("us_pred.npy", mpc_pred_us, allow_pickle=True)
 
     def update_planning(self, planning_vec, next_value):
         """Update numpy array by removing the first value and adding next_value at the end."""

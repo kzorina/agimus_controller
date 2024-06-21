@@ -2,6 +2,7 @@ from os.path import dirname, join, abspath
 
 import numpy as np
 
+
 from hpp.corbaserver import Client, Robot, ProblemSolver
 from hpp.gepetto import ViewerFactory
 
@@ -59,7 +60,9 @@ class Planner:
     def _setup_planner(self):
         self._create_planning_scene()
 
-        self._q_init = self._generate_feasible_configurations_array()
+        self._q_init = np.array(
+            [0, -np.pi / 2, 0, -1 * np.pi / 4, 0, np.pi / 2, np.pi / 4]
+        )  #  self._generate_feasible_configurations_array()
         self._q_goal = self._generate_feasible_configurations_array()
 
         # rdata = self._rmodel.createData()
@@ -80,8 +83,14 @@ class Planner:
 
     def solve_and_optimize(self):
         self._setup_planner()
+        self._ps.setRandomSeed(1)
         self._ps.solve()
         self._ps.getAvailable("pathoptimizer")
+        self._ps.selectPathValidation("Dichotomy", 0)
+        self._ps.addPathOptimizer("SimpleTimeParameterization")
+        self._ps.setParameter("SimpleTimeParameterization/maxAcceleration", 1.0)
+        self._ps.setParameter("SimpleTimeParameterization/order", 2)
+        self._ps.setParameter("SimpleTimeParameterization/safety", 0.9)
         self._ps.addPathOptimizer("RandomShortcut")
         self._ps.solve()
         path_length = self._ps.pathLength(2)

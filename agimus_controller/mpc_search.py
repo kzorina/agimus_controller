@@ -1,15 +1,19 @@
 import time
 import numpy as np
 from .mpc import MPC
+import pinocchio as pin
 
 
 class MPCSearch:
-    def __init__(self, mpc: MPC):
+    def __init__(self, mpc: MPC, rmodel, ee_frame_name):
         self.mpc = mpc
         self.whole_x_plan = self.mpc.whole_x_plan
         self.whole_a_plan = self.mpc.whole_a_plan
-        self.robot = self.mpc.robot
-        self.nq = self.robot.nq
+        self._rmodel = rmodel
+        self._rdata = self._rmodel.createData()
+        self.nq = rmodel.nq
+        self._ee_frame_name = ee_frame_name
+        self._id_ee_frame_name = self._rmodel.getFrameId(self._ee_frame_name)
         self.croco_xs = None
         self.croco_us = None
         self.results = {}
@@ -34,8 +38,8 @@ class MPCSearch:
 
     def max_increase_us(self):
         """Return control max increase"""
-        increases = np.zeros([self.croco_us.shape[0] - 1, self.robot.nq])
-        for joint_idx in range(self.robot.nq):
+        increases = np.zeros([self.croco_us.shape[0] - 1, self.nq])
+        for joint_idx in range(self.nq):
             for idx in range(self.croco_us.shape[0] - 1):
                 increases[idx, joint_idx] = (
                     self.croco_us[idx + 1, joint_idx] - self.croco_us[idx, joint_idx]
@@ -50,12 +54,12 @@ class MPCSearch:
         pose_hpp = [[] for _ in range(3)]
         for idx in range(self.croco_xs.shape[0]):
             q = self.croco_xs[idx, : self.nq]
-            pose = self.robot.placement(q, self.nq).translation
+            pose = self._get_ee_pose_from_configuration(q).translation
             for idx in range(3):
                 pose_croco[idx].append(pose[idx])
         for idx in range(self.whole_x_plan.shape[0]):
             q = self.whole_x_plan[idx, : self.nq]
-            pose = self.robot.placement(q, self.nq).translation
+            pose = self._get_ee_pose_from_configuration(q).translation
             for idx in range(3):
                 pose_hpp[idx].append(pose[idx])
         return pose_croco, pose_hpp
@@ -67,7 +71,7 @@ class MPCSearch:
         self.best_croco_us = None
         self.best_diff = 1e6
         grip_cost = 0
-        self.mpc.prob.use_constraints = use_constraints
+        self.mpc.ocp.use_constraints = use_constraints
         if use_constraints:
             for x_exponent in range(0, 8, 2):
                 for u_exponent in range(-32, -26, 2):
@@ -101,7 +105,7 @@ class MPCSearch:
                             " u : ",
                             u_cost,
                         )
-                        self.mpc.prob.set_costs(grip_cost, x_cost, u_cost, 0, 0)
+                        self.mpc.ocp.set_weights(grip_cost, x_cost, u_cost, 0)
                         start = time.time()
                         self.try_new_costs(
                             grip_cost,
@@ -159,3 +163,13 @@ class MPCSearch:
             self.best_diff = diff
             self.best_croco_xs = self.croco_xs
             self.best_croco_us = self.croco_us
+
+    def _get_ee_pose_from_configuration(self, q: np.ndarray):
+        """Returns the SE3 describing the position of the end effector of the robot.
+
+        Args:
+            q (np.ndarray): configuration of the robot
+        """
+        pin.framesForwardKinematics(self._rmodel, self._rdata, q)
+        pose = self._rdata.oMf[self._id_ee_frame_name]
+        return pose
