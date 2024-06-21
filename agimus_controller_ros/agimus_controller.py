@@ -9,11 +9,9 @@ from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
-from agimus_controller.trajectory_buffer import TrajectoryBuffer
-from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
+from agimus_controller.trajectory_point import PointAttribute
 
 from agimus_controller_ros.hpp_subscriber import HPPSubscriber
-
 
 
 class AgimusControllerNodeParameters:
@@ -26,7 +24,7 @@ class AgimusControllerNode:
     def __init__(self) -> None:
         rospy.loginfo("Load parameters")
         self.params = AgimusControllerNodeParameters()
-        
+
         self.pandawrapper = PandaWrapper(auto_col=False)
         self.rmodel, self.cmodel, self.vmodel = self.pandawrapper.create_robot()
         self.ee_frame_name = self.pandawrapper.get_ee_frame_name()
@@ -54,12 +52,12 @@ class AgimusControllerNode:
         self.ocp_solve_time_pub = rospy.Publisher(
             "ocp_solve_time", Duration, queue_size=1
         )
-        self.hpp_subscriber=HPPSubscriber()
+        self.hpp_subscriber = HPPSubscriber()
         self.start_time = 0.0
         self.first_solve = False
         self.first_robot_sensor_msg_received = False
         self.first_pose_ref_msg_received = True
-        self.point_attributes  = [PointAttribute.Q]
+        self.point_attributes = [PointAttribute.Q]
 
     def sensor_callback(self, sensor_msg):
         with self.mutex:
@@ -87,7 +85,7 @@ class AgimusControllerNode:
             rospy.loginfo_once("Start controller")
             self.rate.sleep()
         return wait_for_input
-    
+
     def wait_twice_control_horizon_from_plan(self):
         for _ in range(self.params.horizon_size * 2):
             tp = self.hpp_subscriber.get_trajectory_point()
@@ -97,13 +95,15 @@ class AgimusControllerNode:
         sensor_msg = self.get_sensor_msg()
 
         # Get 1 horizon from the plan.
-        horizon_points = self.traj_buffer.get_points(self.params.horizon_size, self.point_attributes)
+        horizon_points = self.traj_buffer.get_points(
+            self.params.horizon_size, self.point_attributes
+        )
         self.x_plan = np.zeros([self.params.horizon_size, self.mpc.nx])
         self.a_plan = np.zeros([self.params.horizon_size, self.mpc.nv])
         for idx_point, point in enumerate(horizon_points):
             self.x_plan[idx_point, :] = point.get_x_as_q_v()
             self.a_plan[idx_point, :] = point.a
-        
+
         # First solve
         x0 = np.concatenate(
             [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
