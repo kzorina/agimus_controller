@@ -12,17 +12,16 @@ from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
 if __name__ == "__main__":
     nq = 7
     nv = 7
-    pandawrapper = PandaWrapper()
+    pandawrapper = PandaWrapper(auto_col=True)
     rmodel, cmodel, vmodel = pandawrapper.create_robot()
     ee_frame_name = pandawrapper.get_ee_frame_name()
     hpp_interface = HppInterface()
     ps = hpp_interface.get_panda_planner()
     q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
-    hpp_interface.set_ur3_problem_solver(q_init)  # TODO See what it changes
     whole_x_plan, whole_a_plan, whole_traj_T = hpp_interface.get_hpp_plan(
         1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
     )
-    ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=True)
+    ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=False)
     mpc = MPC(ocp, whole_x_plan, whole_a_plan, rmodel, cmodel)
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
 
@@ -71,7 +70,7 @@ if __name__ == "__main__":
             mpc_xs[idx - 2 * T, :] = x
             mpc_us[idx - 2 * T - 1, :] = u
 
-    u_plan = mpc.ocp.get_uref(whole_x_plan, whole_a_plan)
+    u_plan = mpc.ocp.get_u_plan(whole_x_plan, whole_a_plan)
     mpc_plots = MPCPlots(
         mpc_xs,
         mpc_us,

@@ -48,7 +48,6 @@ class HppAgimusController:
         self.nb_iteration = 0
         ps = self.hpp_interface.get_panda_planner()
         q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
-        self.hpp_interface.set_ur3_problem_solver(q_init)
         x_plan, a_plan, whole_traj_T = self.hpp_interface.get_hpp_plan(
             1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
         )
