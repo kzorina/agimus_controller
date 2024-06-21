@@ -74,8 +74,8 @@ class MPC:
         self.croco_xs = mpc_xs
         self.croco_us = mpc_us
         if save_predictions:
-            np.save(f"xs_pred.npy", mpc_pred_xs, allow_pickle=True)
-            np.save(f"us_pred.npy", mpc_pred_us, allow_pickle=True)
+            np.save("xs_pred.npy", mpc_pred_xs, allow_pickle=True)
+            np.save("us_pred.npy", mpc_pred_us, allow_pickle=True)
 
     def update_planning(self, planning_vec, next_value):
         """Update numpy array by removing the first value and adding next_value at the end."""
