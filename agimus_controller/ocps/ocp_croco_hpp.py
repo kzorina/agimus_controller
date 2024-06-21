@@ -361,10 +361,6 @@ class OCPCrocoHPP:
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight
-        if model.differential.costs.costs[cost_name].weight == 0:
-            model.differential.costs.changeCostStatus(cost_name, False)
-        else:
-            model.differential.costs.changeCostStatus(cost_name, True)
 
     def update_model(self, model, new_model, update_weight):
         """update model's costs by copying new_model's costs."""
@@ -379,7 +375,7 @@ class OCPCrocoHPP:
         runningModels = list(self.solver.problem.runningModels)
         for node_idx in range(len(runningModels) - 1):
             self.update_model(
-                runningModels[node_idx], runningModels[node_idx + 1], True
+                runningModels[node_idx], runningModels[node_idx + 1], False
             )
         self.update_model(runningModels[-1], self.solver.problem.terminalModel, False)
         if self.use_constraints:
