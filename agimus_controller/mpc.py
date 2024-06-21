@@ -36,9 +36,8 @@ class MPC:
         m.calc(d, x, self.ocp.solver.us[0])
         return d.xnext.copy()
 
-    def simulate_mpc(self, T, use_constraints=False, node_idx_breakpoint=None):
+    def simulate_mpc(self, T, node_idx_breakpoint=None):
         """Simulate mpc behavior using crocoddyl integration as a simulator."""
-        self.ocp.use_constraints = use_constraints
         mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
         mpc_us = np.zeros([self.whole_traj_T - 1, self.nq])
         x0 = self.whole_x_plan[0, :]

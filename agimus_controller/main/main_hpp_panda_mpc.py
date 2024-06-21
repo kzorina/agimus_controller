@@ -8,13 +8,13 @@ from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
 if __name__ == "__main__":
-    pandawrapper = PandaWrapper()
+    pandawrapper = PandaWrapper(auto_col=True)
     rmodel, cmodel, vmodel = pandawrapper.create_robot()
     ee_frame_name = pandawrapper.get_ee_frame_name()
     hpp_interface = HppInterface()
     ps = hpp_interface.get_panda_planner()
     q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
-    hpp_interface.set_ur3_problem_solver(q_init)  # TODO See what it changes
+    # hpp_interface.set_ur3_problem_solver(q_init)  # TODO See what it changes
     x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_plan(
         1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
     )
