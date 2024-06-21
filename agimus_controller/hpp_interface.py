@@ -249,21 +249,24 @@ class HppInterface:
         self.ps = ps
         self.vf = vf
 
-    def get_panda_planner(self):
+    def get_panda_planner(self, q_init):
         loadServerPlugin("corbaserver", "manipulation-corba.so")
         self.T = 20
         self.robot_wrapper = PandaWrapper(capsule=True, auto_col=True)
         self.rmodel, self.cmodel, self.vmodel = self.robot_wrapper()
 
         self.name_scene = "wall"
-        self.scene = Scene(self.name_scene)
+        self.scene = Scene(self.name_scene, q_init)
         self.rmodel, self.cmodel, self.target, self.target2, self.q0 = (
             self.scene.create_scene_from_urdf(self.rmodel, self.cmodel)
         )
         self.planner = Planner(self.rmodel, self.cmodel, self.scene, self.T)
-        self.q_init, self.q_goal, self.X = self.planner.solve_and_optimize()
+        self.q_init, self.q_goal, self.X = self.planner.solve_and_optimize(self.q0)
         self.planner._ps.optimizePath(self.planner._ps.numberPaths() - 1)
         return self.planner._ps
+
+    def get_viewer(self):
+        return self.planner._v
 
     def get_hpp_plan(self, DT, nq, hpp_path):
         path = hpp_path.pathAtRank(0)
@@ -282,8 +285,6 @@ class HppInterface:
             self.trajectory += subpath
             whole_traj_T += T
         return x_plan, a_plan, whole_traj_T
-        self.x_plan = x_plan
-        self.a_plan = a_plan
 
     def get_xplan_aplan(self, T, path, nq):
         """Return x_plan the state and a_plan the acceleration of hpp's trajectory."""

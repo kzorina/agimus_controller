@@ -57,13 +57,12 @@ class Planner:
                 vf.moveObstacle(name, pos)
         self._v = vf.createViewer(collisionURDF=True)
 
-    def _setup_planner(self):
+    def _setup_planner(self, q_init):
         self._create_planning_scene()
 
-        self._q_init = np.array(
-            [0, -np.pi / 2, 0, -1 * np.pi / 4, 0, np.pi / 2, np.pi / 4]
-        )  #  self._generate_feasible_configurations_array()
-        self._q_goal = self._generate_feasible_configurations_array()
+        # Joints 8, and 9 are locked
+        self._q_init = [*q_init, 0, 0]
+        self._q_goal = self._generate_feasible_configurations_array().tolist() + [0, 0]
 
         # rdata = self._rmodel.createData()
         # cdata = self._cmodel.createData()
@@ -73,16 +72,16 @@ class Planner:
         # col1 = pin.computeCollisions(
         #     self._rmodel, rdata, self._cmodel, cdata, self._q_goal, True
         # )
-        q_init_list = self._q_init.tolist() + [0] + [0]
-        q_goal_list = self._q_goal.tolist() + [0] + [0]
+        q_init_list = self._q_init
+        q_goal_list = self._q_goal
         self._v(q_init_list)
         self._ps.selectPathPlanner("BiRRT*")
         self._ps.setMaxIterPathPlanning(100)
         self._ps.setInitialConfig(q_init_list)
         self._ps.addGoalConfig(q_goal_list)
 
-    def solve_and_optimize(self):
-        self._setup_planner()
+    def solve_and_optimize(self, q_init):
+        self._setup_planner(q_init)
         self._ps.setRandomSeed(1)
         self._ps.solve()
         self._ps.getAvailable("pathoptimizer")
@@ -116,9 +115,12 @@ class Planner:
         while col:
             q = np.zeros(self._rmodel.nq)
             for i, qi in enumerate(q):
+                lb = self._rmodel.lowerPositionLimit[i]
+                ub = self._rmodel.upperPositionLimit[i]
+                margin = 0.2 * abs(ub - lb) / 2
                 q[i] = np.random.uniform(
-                    self._rmodel.lowerPositionLimit[i],
-                    self._rmodel.upperPositionLimit[i],
+                    self._rmodel.lowerPositionLimit[i] + margin,
+                    self._rmodel.upperPositionLimit[i] - margin,
                     1,
                 )
             col = self._check_collisions(q)

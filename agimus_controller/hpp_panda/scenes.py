@@ -11,6 +11,7 @@ class Scene:
     def __init__(
         self,
         name_scene: str,
+        q_init,
         obstacle_pose=None,
     ) -> None:
         """Create the scene that encapsulates the obstacles.
@@ -25,6 +26,7 @@ class Scene:
 
         self._name_scene = name_scene
         self.obstacle_pose = obstacle_pose
+        self._q0 = q_init
         if self._name_scene == "box":
             self.urdf_filename = "box.urdf"
             self._TARGET_POSE1 = pin.SE3(
@@ -32,9 +34,6 @@ class Scene:
             )
             self._TARGET_POSE2 = pin.SE3(
                 pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85])
-            )
-            self._q0 = np.array(
-                [6.2e-01, 1.7e00, 1.5e00, 6.9e-01, -1.3e00, 1.1e00, 1.5e-01]
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
@@ -47,7 +46,6 @@ class Scene:
             self._TARGET_POSE2 = pin.SE3(
                 pin.utils.rotate("x", np.pi), np.array([0, -0.4, 1.5])
             )
-            self._q0 = np.zeros(7)
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
                 self.obstacle_pose.translation = np.array([0.25, -0.4, 1.5])
@@ -58,9 +56,6 @@ class Scene:
             )
             self._TARGET_POSE2 = pin.SE3(
                 pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85])
-            )
-            self._q0 = np.array(
-                [6.2e-01, 1.7e00, 1.5e00, 6.9e-01, -1.3e00, 1.1e00, 1.5e-01]
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
