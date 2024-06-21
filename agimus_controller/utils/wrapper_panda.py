@@ -77,9 +77,7 @@ class PandaWrapper:
             self._rmodel,
             self._cmodel,
             self._vmodel,
-        ) = pin.buildModelsFromUrdf(
-            self._urdf_model_path, self._mesh_dir, pin.JointModelFreeFlyer()
-        )
+        ) = pin.buildModelsFromUrdf(self._urdf_model_path, self._mesh_dir)
 
         q0 = pin.neutral(self._rmodel)
 
@@ -93,6 +91,9 @@ class PandaWrapper:
             list_of_joints_to_lock=jointsToLockIDs,
             reference_configuration=q0,
         )
+
+        q0 = pin.neutral(self._model_reduced)
+        assert q0.shape[0] == 7
 
         self._vmodel_reduced, self._cmodel_reduced = (
             geometric_models_reduced[0],

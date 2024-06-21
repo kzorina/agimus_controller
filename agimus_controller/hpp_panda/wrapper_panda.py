@@ -31,7 +31,7 @@ import hppfcl
 try:
     import pybullet
     from mim_robots.pybullet.wrapper import PinBulletWrapper
-except:
+except ImportError:
     print("pybullet not installed")
 from pinocchio.robot_wrapper import RobotWrapper
 

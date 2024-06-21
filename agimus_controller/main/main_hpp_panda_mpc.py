@@ -1,5 +1,4 @@
 import time
-from math import pi
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
@@ -8,23 +7,35 @@ from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
 if __name__ == "__main__":
-    pandawrapper = PandaWrapper()
+    pandawrapper = PandaWrapper(auto_col=True)
     rmodel, cmodel, vmodel = pandawrapper.create_robot()
     ee_frame_name = pandawrapper.get_ee_frame_name()
+    q_init = [
+        0.13082259440720514,
+        -1.150735366655217,
+        -0.6975751204881672,
+        -2.835918304210108,
+        -0.02303564961006244,
+        2.51523530644841,
+        0.33466451573454664,
+        0.03969024494290352,
+        0.03969024494290352,
+    ]
+    q_goal = [1.9542, -1.1679, -2.0741, -1.8046, 0.0149, 2.1971, 2.0056]
+
     hpp_interface = HppInterface()
-    ps = hpp_interface.get_panda_planner()
-    q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
-    hpp_interface.set_ur3_problem_solver(q_init)  # TODO See what it changes
+    ps = hpp_interface.get_panda_planner(q_init, q_goal)
     x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_plan(
         1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
     )
-    ocp = OCPCrocoHPP("panda")
+    ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=False)
+
     mpc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
     start = time.time()
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
-    mpc.simulate_mpc(100)
+    mpc.simulate_mpc(100)  # , node_idx_breakpoint=whole_traj_T - 30
     end = time.time()
-    u_plan = mpc.ocp.get_uref(x_plan, a_plan)
+    u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
     mpc_plots = MPCPlots(
         mpc.croco_xs,
         mpc.croco_us,
@@ -33,5 +44,6 @@ if __name__ == "__main__":
         rmodel,
         mpc.ocp.DT,
         ee_frame_name=ee_frame_name,
+        v=hpp_interface.get_viewer(),
     )
     mpc_plots.plot_traj()

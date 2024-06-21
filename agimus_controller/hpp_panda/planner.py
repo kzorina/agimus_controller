@@ -2,6 +2,7 @@ from os.path import dirname, join, abspath
 
 import numpy as np
 
+
 from hpp.corbaserver import Client, Robot, ProblemSolver
 from hpp.gepetto import ViewerFactory
 
@@ -44,7 +45,7 @@ class Planner:
 
         vf.loadObstacleModel(obstacle_urdf, self._scene._name_scene)
 
-        obstacles_list = self._scene._obstacles_name
+        # obstacles_list = self._scene._obstacles_name
         for obstacle in self._cmodel.geometryObjects:
             if "obstacle" in obstacle.name:
                 name = join(self._scene._name_scene, obstacle.name)
@@ -56,32 +57,39 @@ class Planner:
                 vf.moveObstacle(name, pos)
         self._v = vf.createViewer(collisionURDF=True)
 
-    def _setup_planner(self):
+    def _setup_planner(self, q_init, q_goal):
         self._create_planning_scene()
 
-        self._q_init = self._generate_feasible_configurations_array()
-        self._q_goal = self._generate_feasible_configurations_array()
+        # Joints 8, and 9 are locked
+        self._q_init = [*q_init, 0.03969, 0.03969]
+        self._q_goal = [*q_goal, 0.03969, 0.03969]
 
-        rdata = self._rmodel.createData()
-        cdata = self._cmodel.createData()
-        col = pin.computeCollisions(
-            self._rmodel, rdata, self._cmodel, cdata, self._q_init, True
-        )
-        col1 = pin.computeCollisions(
-            self._rmodel, rdata, self._cmodel, cdata, self._q_goal, True
-        )
-        q_init_list = self._q_init.tolist() + [0] + [0]
-        q_goal_list = self._q_goal.tolist() + [0] + [0]
+        # rdata = self._rmodel.createData()
+        # cdata = self._cmodel.createData()
+        # col = pin.computeCollisions(
+        #     self._rmodel, rdata, self._cmodel, cdata, self._q_init, True
+        # )
+        # col1 = pin.computeCollisions(
+        #     self._rmodel, rdata, self._cmodel, cdata, self._q_goal, True
+        # )
+        q_init_list = self._q_init
+        q_goal_list = self._q_goal
         self._v(q_init_list)
         self._ps.selectPathPlanner("BiRRT*")
         self._ps.setMaxIterPathPlanning(100)
         self._ps.setInitialConfig(q_init_list)
         self._ps.addGoalConfig(q_goal_list)
 
-    def solve_and_optimize(self):
-        self._setup_planner()
+    def solve_and_optimize(self, q_init, q_goal):
+        self._setup_planner(q_init, q_goal)
+        self._ps.setRandomSeed(1)
         self._ps.solve()
         self._ps.getAvailable("pathoptimizer")
+        self._ps.selectPathValidation("Dichotomy", 0)
+        self._ps.addPathOptimizer("SimpleTimeParameterization")
+        self._ps.setParameter("SimpleTimeParameterization/maxAcceleration", 1.0)
+        self._ps.setParameter("SimpleTimeParameterization/order", 2)
+        self._ps.setParameter("SimpleTimeParameterization/safety", 0.9)
         self._ps.addPathOptimizer("RandomShortcut")
         self._ps.solve()
         path_length = self._ps.pathLength(2)
@@ -107,9 +115,12 @@ class Planner:
         while col:
             q = np.zeros(self._rmodel.nq)
             for i, qi in enumerate(q):
+                lb = self._rmodel.lowerPositionLimit[i]
+                ub = self._rmodel.upperPositionLimit[i]
+                margin = 0.2 * abs(ub - lb) / 2
                 q[i] = np.random.uniform(
-                    self._rmodel.lowerPositionLimit[i],
-                    self._rmodel.upperPositionLimit[i],
+                    self._rmodel.lowerPositionLimit[i] + margin,
+                    self._rmodel.upperPositionLimit[i] - margin,
                     1,
                 )
             col = self._check_collisions(q)

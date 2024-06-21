@@ -1,39 +1,5 @@
+from __future__ import annotations
 import numpy as np
-
-
-class TrajectoryBuffer:
-    """List of variable size in which the HPP trajectory nodes will be."""
-
-    def __init__(self, model):
-        self.model = model
-        self.x_plan = []
-        self.a_plan = []
-
-    def add_trajectory_point(self, q, v, a=None):
-        if len(q) != self.model.nq:
-            raise Exception(
-                f"configuration vector size : {len(q)} doesn't match model's nq : {self.model.nq}"
-            )
-        if len(v) != self.model.nv:
-            raise Exception(
-                f"velocity vector size : {len(v)} doesn't match model's nv : {self.model.nv}"
-            )
-        x = np.concatenate([np.array(q), np.array(v)])
-        self.x_plan.append(x)
-        if a is not None:
-            if len(a) != self.model.nv:
-                raise Exception(
-                    f"acceleration vector size : {len(a)} doesn't match model's nv : {self.model.nv}"
-                )
-            self.a_plan.append(np.array(a))
-
-    def get_joint_state_horizon(self):
-        """Return the state reference for the horizon, state is composed of joints positions and velocities"""
-        return self.x_plan
-
-    def get_joint_acceleration_horizon(self):
-        """Return the acceleration reference for the horizon, state is composed of joints positions and velocities"""
-        return self.a_plan
 
 
 class MPC:
@@ -57,6 +23,8 @@ class MPC:
         self.rmodel = rmodel
         self.cmodel = cmodel
         self.nq = self.rmodel.nq
+        self.nv = self.rmodel.nv
+        self.nx = self.nq + self.nv
         self.croco_xs = None
         self.croco_us = None
         self.whole_traj_T = x_plan.shape[0]
@@ -68,9 +36,8 @@ class MPC:
         m.calc(d, x, self.ocp.solver.us[0])
         return d.xnext.copy()
 
-    def simulate_mpc(self, T, use_constraints=False, node_idx_breakpoint=None):
+    def simulate_mpc(self, T, save_predictions=False, node_idx_breakpoint=None):
         """Simulate mpc behavior using crocoddyl integration as a simulator."""
-        self.ocp.use_constraints = use_constraints
         mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
         mpc_us = np.zeros([self.whole_traj_T - 1, self.nq])
         x0 = self.whole_x_plan[0, :]
@@ -81,45 +48,58 @@ class MPC:
         x, u0 = self.mpc_first_step(x_plan, a_plan, x0, T)
         mpc_xs[1, :] = x
         mpc_us[0, :] = u0
-
         next_node_idx = T
+
+        if save_predictions:
+            mpc_pred_xs = np.zeros([self.whole_traj_T, T, 2 * self.nq])
+            mpc_pred_us = np.zeros([self.whole_traj_T, T - 1, self.nq])
+            mpc_pred_xs[0, :, :] = np.array(self.ocp.solver.xs)
+            mpc_pred_us[0, :, :] = np.array(self.ocp.solver.us)
 
         for idx in range(1, self.whole_traj_T - 1):
             x_plan = self.update_planning(x_plan, self.whole_x_plan[next_node_idx, :])
             a_plan = self.update_planning(a_plan, self.whole_a_plan[next_node_idx, :])
-            x, u = self.mpc_step(x, x_plan, a_plan)
+            x, u = self.mpc_step(x, x_plan[-1], a_plan[-1])
             if next_node_idx < self.whole_x_plan.shape[0] - 1:
                 next_node_idx += 1
             mpc_xs[idx + 1, :] = x
             mpc_us[idx, :] = u
 
+            if save_predictions:
+                mpc_pred_xs[idx, :, :] = np.array(self.ocp.solver.xs)
+                mpc_pred_us[idx, :, :] = np.array(self.ocp.solver.us)
+
             if idx == node_idx_breakpoint:
                 breakpoint()
         self.croco_xs = mpc_xs
         self.croco_us = mpc_us
+        if save_predictions:
+            np.save("xs_pred.npy", mpc_pred_xs, allow_pickle=True)
+            np.save("us_pred.npy", mpc_pred_us, allow_pickle=True)
 
     def update_planning(self, planning_vec, next_value):
         """Update numpy array by removing the first value and adding next_value at the end."""
         planning_vec = np.delete(planning_vec, 0, 0)
         return np.r_[planning_vec, next_value[np.newaxis, :]]
 
+    def get_mpc_output(self):
+        return self.ocp.solver.problem.x0, self.ocp.solver.us[0], self.ocp.solver.K[0]
+
     def mpc_first_step(self, x_plan, a_plan, x0, T):
         """Create crocoddyl problem from planning, run solver and get new state."""
         problem = self.ocp.build_ocp_from_plannif(x_plan, a_plan, x0)
-        self.ocp.run_solver(problem, list(x_plan), list(self.ocp.u_ref[: T - 1]), 1000)
+        self.ocp.run_solver(problem, list(x_plan), list(self.ocp.u_plan[: T - 1]), 1000)
         x = self.get_next_state(x0, self.ocp.solver.problem)
         return x, self.ocp.solver.us[0]
 
-    def mpc_step(self, x, x_plan, a_plan):
+    def mpc_step(self, x0, new_x_ref, new_a_ref):
         """Reset ocp, run solver and get new state."""
-        u_ref_terminal_node = self.ocp.get_inverse_dynamic_control(
-            x_plan[-1], a_plan[-1]
-        )
-        self.ocp.reset_ocp(x, x_plan[-1], u_ref_terminal_node[: self.nq])
+        u_ref_terminal_node = self.ocp.get_inverse_dynamic_control(new_x_ref, new_a_ref)
+        self.ocp.reset_ocp(x0, new_x_ref, u_ref_terminal_node[: self.nq])
         xs_init = list(self.ocp.solver.xs[1:]) + [self.ocp.solver.xs[-1]]
-        xs_init[0] = x
+        xs_init[0] = x0
         us_init = list(self.ocp.solver.us[1:]) + [self.ocp.solver.us[-1]]
-        self.ocp.solver.problem.x0 = x
+        self.ocp.solver.problem.x0 = x0
         self.ocp.run_solver(self.ocp.solver.problem, xs_init, us_init, 1)
-        x = self.get_next_state(x, self.ocp.solver.problem)
-        return x, self.ocp.solver.us[0]
+        x0 = self.get_next_state(x0, self.ocp.solver.problem)
+        return x0, self.ocp.solver.us[0]

@@ -35,6 +35,20 @@ For one to simply run the node individually.
 rosrun agimus_controller agimus_controller_node
 ```
 
+```bash
+
+roslaunch agimus_controller hpp_agimus_controller.launch
+```
+
 For a more complete setup see the
 https://github.com/agimus-project/agimus_pick_and_place
 package.
+
+Start gazebo:
+```bash
+$ hppcorbaserver
+$ gepetto-gui
+$ roslaunch panda_torque_mpc simulation.launch arm_id:=panda simulate_camera:=false
+$ roslaunch panda_torque_mpc obstacle_visualizer.launch spawn_in_gz:=true
+$ ROS_NAMESPACE=/ctrl_mpc_linearized rosrun agimus_controller hpp_agimus_controller_node
+```
