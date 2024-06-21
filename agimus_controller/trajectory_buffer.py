@@ -11,21 +11,9 @@ class TrajectoryBuffer:
     def __init__(self):
         self._buffer: deque[TrajectoryPoint] = deque()
         print("type ", type(self._buffer))
-        self.size = 0
-        self.nq = 0
-        self.nv = 0
-        self.nx = 0
-
-    def initialize(self, start: TrajectoryPoint):
-        self._buffer.append(start)
-        self.nq = start.q.shape[0]
-        self.nv = start.v.shape[0]
-        self.nx = self.nq + self.nv
 
     def add_trajectory_point(self, trajectory_point: TrajectoryPoint):
         """Add trajectory point to the buffer if it matches the size of q and v"""
-        assert self.nq == trajectory_point.q.shape[0]
-        assert self.nv == trajectory_point.v.shape[0]
         self._buffer.append(trajectory_point)
 
     def get_size(self, attributes: list[PointAttribute]):
@@ -51,7 +39,8 @@ class TrajectoryBuffer:
 
     def get_state_horizon_planning(self):
         """Return the state planning for the horizon, state is composed of joints positions and velocities"""
-        x_plan = np.zeros([len(self._buffer), self.nx])
+        nx = len(self._buffer[0].q) + len(self._buffer[0].v)
+        x_plan = np.zeros([len(self._buffer), nx])
         for idx, point in enumerate(self._buffer):
             x_plan[idx, :] = np.concatenate([point.q, point.v])
         return x_plan
