@@ -110,7 +110,7 @@ class HppAgimusController:
             self.next_node_idx += 1
         _, u, k = self.mpc.get_mpc_output()
         mpc_duration = rospy.Time.now() - mpc_duration
-        rospy.loginfo_throttle(1000, "mpc_duration = ", mpc_duration)
+        rospy.loginfo_throttle(1, "mpc_duration = %s", str(mpc_duration))
 
         self.control_msg.header = Header()
         self.control_msg.header.stamp = rospy.Time.now()
