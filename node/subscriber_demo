@@ -7,7 +7,7 @@ def run():
     rospy.init_node('talker', anonymous=True)
     sub = HPPSubscriber()
     rate = rospy.Rate(100)
-    
+
     while not rospy.is_shutdown():
         tp = sub.get_trajectory_point()
         print("tp.q = ", tp.q)

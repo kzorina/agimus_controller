@@ -1,6 +1,4 @@
 import rospy
-from functools import partial
-from geometry_msgs.msg import Vector3, Transform
 from dynamic_graph_bridge_msgs.msg import Vector
 from collections import deque
 from threading import Lock
@@ -14,6 +12,7 @@ class HPPSubscriberParameters:
         self.prefix = rospy.get_param("~prefix", "agimus")
         self.rate = rospy.get_param("~rate", 100)
 
+
 class FIFO:
     def __init__(self):
         self.deque = deque()
@@ -22,15 +21,16 @@ class FIFO:
     def push_back(self, msg):
         with self.mutex:
             self.deque.append(msg)
-    
+
     def pop_front(self):
         with self.mutex:
             ret = self.deque.popleft()
         return ret
-    
+
     def get_size(self):
         with self.mutex:
             return len(self.deque)
+
 
 class HPPSubscriber:
     def __init__(self) -> None:
@@ -48,13 +48,13 @@ class HPPSubscriber:
         self.params.name.replace("/", "")
 
         rospy.loginfo("Create FIFO for all elements of trajectory_point")
-        self.fifo_q = FIFO() #q
-        self.fifo_v = FIFO() #v
-        self.fifo_a = FIFO() #a
-        self.fifo_com_pose = FIFO() #com_pos
-        self.fifo_com_velocity = FIFO() #com_vel
-        self.fifo_op_frame_pose = FIFO() #op_pos
-        self.fifo_op_frame_velocity = FIFO() #op_vel
+        self.fifo_q = FIFO()  # q
+        self.fifo_v = FIFO()  # v
+        self.fifo_a = FIFO()  # a
+        self.fifo_com_pose = FIFO()  # com_pos
+        self.fifo_com_velocity = FIFO()  # com_vel
+        self.fifo_op_frame_pose = FIFO()  # op_pos
+        self.fifo_op_frame_velocity = FIFO()  # op_vel
 
         self.index = 0
 
@@ -65,7 +65,7 @@ class HPPSubscriber:
         rospy.loginfo("\t- Robot configuration subscriber.")
         self.subscribers += [
             rospy.Subscriber(
-                "/hpp/target/position", # self.params.prefix + "position",
+                "/hpp/target/position",  # self.params.prefix + "position",
                 Vector,
                 self.position_callback,
             )
@@ -74,7 +74,7 @@ class HPPSubscriber:
         rospy.loginfo("\t- Robot velocity subscriber.")
         self.subscribers += [
             rospy.Subscriber(
-                 "/hpp/target/velocity", # self.params.prefix + "velocity",
+                "/hpp/target/velocity",  # self.params.prefix + "velocity",
                 Vector,
                 self.velocity_callback,
             )
@@ -83,7 +83,7 @@ class HPPSubscriber:
         rospy.loginfo("\t- Robot acceleration subscriber.")
         self.subscribers += [
             rospy.Subscriber(
-                 "/hpp/target/acceleration", # self.params.prefix + "acceleration",
+                "/hpp/target/acceleration",  # self.params.prefix + "acceleration",
                 Vector,
                 self.acceleration_callback,
             )
@@ -152,23 +152,23 @@ class HPPSubscriber:
         rospy.logdebug("Op frame = ", msg)
         rospy.logdebug(op_frame)
         self.fifo_op_frame_pose.push_back(msg)
-    
+
     def min_all_deque(self):
-        return min(self.fifo_q.get_size(),
-                self.fifo_v.get_size(),
-                self.fifo_a.get_size(),
-                # self.fifo_com_pose.get_size(),
-                # self.fifo_com_velocity.get_size(),
-                # self.fifo_op_frame_pose.get_size(),
-                # self.fifo_op_frame_velocity.get_size()
-                )
-        
+        return min(
+            self.fifo_q.get_size(),
+            self.fifo_v.get_size(),
+            self.fifo_a.get_size(),
+            # self.fifo_com_pose.get_size(),
+            # self.fifo_com_velocity.get_size(),
+            # self.fifo_op_frame_pose.get_size(),
+            # self.fifo_op_frame_velocity.get_size()
+        )
 
     def get_trajectory_point(self):
         while self.min_all_deque() == 0:
             self.wait_subscribers.sleep()
-            print("min all deque size : ",self.min_all_deque())
-        
+            print("min all deque size : ", self.min_all_deque())
+
         q = self.fifo_q.pop_front().data
         v = self.fifo_v.pop_front().data
         tp = TrajectoryPoint(time=self.index, nq=len(q), nv=len(v))
