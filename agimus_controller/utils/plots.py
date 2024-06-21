@@ -142,7 +142,7 @@ class MPCPlots:
             if self.ball_init_pose is not None:
                 self.v(list(x)[: self.nq] + self.ball_init_pose)
             else:
-                self.v(list(x)[: self.nq])
+                self.v(list(x)[: self.nq] + [0, 0])
             time.sleep(self.DT)
 
     def print_final_placement(self):

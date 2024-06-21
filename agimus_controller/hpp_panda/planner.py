@@ -57,12 +57,12 @@ class Planner:
                 vf.moveObstacle(name, pos)
         self._v = vf.createViewer(collisionURDF=True)
 
-    def _setup_planner(self, q_init):
+    def _setup_planner(self, q_init, q_goal):
         self._create_planning_scene()
 
         # Joints 8, and 9 are locked
-        self._q_init = [*q_init, 0, 0]
-        self._q_goal = self._generate_feasible_configurations_array().tolist() + [0, 0]
+        self._q_init = [*q_init, 0.03969, 0.03969]
+        self._q_goal = [*q_goal, 0.03969, 0.03969]
 
         # rdata = self._rmodel.createData()
         # cdata = self._cmodel.createData()
@@ -80,8 +80,8 @@ class Planner:
         self._ps.setInitialConfig(q_init_list)
         self._ps.addGoalConfig(q_goal_list)
 
-    def solve_and_optimize(self, q_init):
-        self._setup_planner(q_init)
+    def solve_and_optimize(self, q_init, q_goal):
+        self._setup_planner(q_init, q_goal)
         self._ps.setRandomSeed(1)
         self._ps.solve()
         self._ps.getAvailable("pathoptimizer")
