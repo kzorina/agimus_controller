@@ -20,10 +20,13 @@ class MPCPlots:
         DT,
         ee_frame_name: str,
         vf=None,
+        v=None,
         ball_init_pose=None,
     ):
         self.ball_init_pose = ball_init_pose
-        if vf is not None:
+        if v is not None:
+            self.v = v
+        elif vf is not None:
             self.v = vf.createViewer()
         self.DT = DT
         self._rmodel = rmodel
@@ -136,7 +139,10 @@ class MPCPlots:
     def display_path(self):
         """Display in Gepetto Viewer the trajectory found with crocoddyl."""
         for x in self.croco_xs:
-            self.v(list(x)[: self.nq] + self.ball_init_pose)  # + self.ball_init_pose
+            if self.ball_init_pose is not None:
+                self.v(list(x)[: self.nq] + self.ball_init_pose)
+            else:
+                self.v(list(x)[: self.nq])
             time.sleep(self.DT)
 
     def print_final_placement(self):

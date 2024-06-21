@@ -35,6 +35,11 @@ For one to simply run the node individually.
 rosrun agimus_controller agimus_controller_node
 ```
 
+```bash
+
+roslaunch agimus_controller hpp_agimus_controller.launch
+```
+
 For a more complete setup see the
 https://github.com/agimus-project/agimus_pick_and_place
 package.

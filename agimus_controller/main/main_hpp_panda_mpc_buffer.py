@@ -79,5 +79,7 @@ if __name__ == "__main__":
         rmodel,
         mpc.ocp.DT,
         ee_frame_name=ee_frame_name,
+        v=hpp_interface.planner._v,
+        ball_init_pose=[-0.2, 0, 0.02, 0, 0, 0, 1],
     )
     mpc_plots.plot_traj()
