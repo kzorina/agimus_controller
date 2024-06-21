@@ -249,19 +249,22 @@ class HppInterface:
         self.ps = ps
         self.vf = vf
 
-    def get_panda_planner(self, q_init):
+    def get_panda_planner(self, q_init, q_goal):
+        self.q_init = q_init
+        self.q_goal = q_goal
+
         loadServerPlugin("corbaserver", "manipulation-corba.so")
         self.T = 20
         self.robot_wrapper = PandaWrapper(capsule=True, auto_col=True)
         self.rmodel, self.cmodel, self.vmodel = self.robot_wrapper()
 
         self.name_scene = "wall"
-        self.scene = Scene(self.name_scene, q_init)
-        self.rmodel, self.cmodel, self.target, self.target2, self.q0 = (
+        self.scene = Scene(self.name_scene, self.q_init)
+        self.rmodel, self.cmodel, self.target, self.target2, _ = (
             self.scene.create_scene_from_urdf(self.rmodel, self.cmodel)
         )
         self.planner = Planner(self.rmodel, self.cmodel, self.scene, self.T)
-        self.q_init, self.q_goal, self.X = self.planner.solve_and_optimize(self.q0)
+        _, _, self.X = self.planner.solve_and_optimize(self.q_init, self.q_goal)
         self.planner._ps.optimizePath(self.planner._ps.numberPaths() - 1)
         return self.planner._ps
 
