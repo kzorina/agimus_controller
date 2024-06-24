@@ -13,7 +13,7 @@ from agimus_controller.utils.pin_utils import (
 
 class OCPCrocoHPP:
     def __init__(
-        self, rmodel: pin.Model, cmodel: pin.GeometryModel, use_constraints=False
+        self, rmodel: pin.Model, cmodel: pin.GeometryModel = None, use_constraints=False
     ) -> None:
         """Class to define the OCP linked witha HPP generated trajectory.
 
@@ -353,11 +353,9 @@ class OCPCrocoHPP:
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
         """Update model's cost reference and weight by copying new_model's cost."""
-        model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference = new_model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference.copy()
+        model.differential.costs.costs[cost_name].cost.residual.reference = (
+            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
+        )
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight
