@@ -28,7 +28,7 @@ Once the code is built, you can run the mpc either with or without ros, without 
 then you can you choose one of the mains :
     - ur3 script : `python3 -m agimus_controller.main.main_hpp_mpc -N=1`
     - panda script : `python3 -m agimus_controller.main.main_hpp_panda_mpc -N=1`
-    - panda script with buffer management : 
+    - panda script with buffer management :
     `python3 -m agimus_controller.main.main_hpp_panda_mpc -N=1`
 
 For one to simply run the node individually.
