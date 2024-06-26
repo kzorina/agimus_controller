@@ -46,11 +46,8 @@ class Ground(object):
 
 
 class HppInterface:
-    def __init__(
-        self, q_init=[pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
-    ):
+    def __init__(self):
         self.trajectory = []
-        # self.set_ur3_problem_solver(q_init)
 
     def set_ur3_problem_solver(self, q_init):
         parser = ArgumentParser()

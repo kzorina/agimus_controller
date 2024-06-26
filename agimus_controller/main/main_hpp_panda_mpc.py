@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     mpc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
     start = time.time()
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
-    mpc.simulate_mpc(100, save_predictions=True)
+    mpc.simulate_mpc(T=100, save_predictions=False)
     end = time.time()
     u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
     mpc_plots = MPCPlots(

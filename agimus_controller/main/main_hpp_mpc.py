@@ -22,7 +22,7 @@ if __name__ == "__main__":
     mpc = MPC(ocp, x_plan, a_plan, rmodel)
     start = time.time()
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
-    mpc.simulate_mpc(100, True)
+    mpc.simulate_mpc(T=100, save_predictions=False)
     end = time.time()
     u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
     mpc_plots = MPCPlots(
