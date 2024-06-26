@@ -60,7 +60,6 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
     python_install_on_site(${PROJECT_NAME}/ocps ${file})
   endforeach()
 
-
   # Install the utils files.
   set(project_python_utils_files pin_utils.py plots.py ros_np_multiarray.py
                                  scenes.py wrapper_meshcat.py wrapper_panda.py)
