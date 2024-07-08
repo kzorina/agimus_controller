@@ -133,12 +133,3 @@ def get_collision_model(rmodel, urdf_path, yaml_file):
     parser = ObstacleParamsParser(yaml_file, collision_model)
     parser.add_collisions()
     return parser.collision_model
-
-
-if __name__ == "__main__":
-    robot = example_robot_data.load("panda")
-    urdf_path = "/home/gepetto/ros_ws/src/agimus_controller/urdf/robot.urdf"
-    srdf_path = "/home/gepetto/ros_ws/src/agimus_controller/srdf/demo.srdf"
-    rmodel = get_robot_model(robot, urdf_path, srdf_path)
-    yaml_file = os.path.join("../main", "param.yaml")
-    cmodel = get_collision_model(rmodel, urdf_path)
