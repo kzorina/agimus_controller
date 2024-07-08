@@ -1,9 +1,7 @@
 import yaml
 import pinocchio as pin
-import example_robot_data
 from hppfcl import Sphere, Box, Cylinder, Capsule
 import numpy as np
-import os
 from panda_torque_mpc_pywrap.panda_torque_mpc_pywrap import ReduceCollisionModel
 
 
