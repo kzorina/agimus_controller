@@ -137,7 +137,7 @@ class HppAgimusController:
         _, u, k = self.mpc.get_mpc_output()
         return sensor_msg, u, k
 
-    def solve_and_send(self):
+    def solve(self):
         sensor_msg = self.get_sensor_msg()
         x0 = np.concatenate(
             [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
@@ -170,7 +170,7 @@ class HppAgimusController:
             np.save("control_refs.npy", self.control_refs)
         _, u, k = self.mpc.get_mpc_output()
 
-        self.send(sensor_msg, u, k)
+        return sensor_msg, u, k
 
     def get_sensor_msg(self):
         with self.mutex:
@@ -193,7 +193,8 @@ class HppAgimusController:
         self.rate.sleep()
         while not rospy.is_shutdown():
             start_compute_time = rospy.Time.now()
-            self.solve_and_send()
+            sensor_msg, u, k = self.solve()
+            self.send(sensor_msg, u, k)
             self.rate.sleep()
             self.ocp_solve_time.data = rospy.Time.now() - start_compute_time
             self.ocp_solve_time_pub.publish(self.ocp_solve_time)
