@@ -91,11 +91,11 @@ class HppAgimusController:
         # Plan
         q_init = [*sensor_msg.joint_state.position]
         self.hpp_interface.set_panda_planning(q_init, self.q_goal)
-        self.ps = self.hpp_interface.ps
+        ps = self.hpp_interface.ps
         whole_x_plan, whole_a_plan, _ = self.hpp_interface.get_hpp_x_a_planning(
             self.dt,
             self.rmodel.nq,
-            self.ps.client.problem.getPath(self.ps.numberPaths() - 1),
+            ps.client.problem.getPath(ps.numberPaths() - 1),
         )
 
         # First solve
