@@ -180,11 +180,6 @@ class HppAgimusController:
         self.translation_refs[idx, :] = p_ref
         self.control_refs[idx, :] = u_ref
 
-    def get_sensor_msg(self):
-        with self.mutex:
-            sensor_msg = deepcopy(self.sensor_msg)
-        return sensor_msg
-
     def run(self):
         self.wait_first_sensor_msg()
         sensor_msg, u, k = self.plan_and_first_solve()
