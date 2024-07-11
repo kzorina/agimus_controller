@@ -34,7 +34,10 @@ class HppAgimusController:
         self.pandawrapper = PandaWrapper(auto_col=True)
         self.ee_frame_name = self.pandawrapper.get_ee_frame_name()
         self.hpp_interface = HppInterface()
-        self.ocp = OCPCrocoHPP(self.rmodel, self.cmodel, use_constraints=False)
+        self.armature = np.array([0.01] * self.rmodel.nq)
+        self.ocp = OCPCrocoHPP(
+            self.rmodel, self.cmodel, use_constraints=False, armature=self.armature
+        )
         self.ocp.set_weights(10**4, 10, 10**-3, 0)
         self.mpc_iter = 0
         self.save_predictions_and_refs = False

@@ -1,6 +1,7 @@
 import time
 import os
 import example_robot_data
+import numpy as np
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
@@ -27,7 +28,8 @@ if __name__ == "__main__":
     x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_x_a_planning(
         1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
     )
-    ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=False)
+    armature = np.zeros(rmodel.nq)
+    ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=False, armature=armature)
 
     mpc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
     start = time.time()
