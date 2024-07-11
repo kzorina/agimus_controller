@@ -166,7 +166,6 @@ class HppAgimusController:
             np.save("mpc_data.npy", self.mpc_data)
 
     def create_mpc_data(self):
-
         self.mpc_data["preds_xs"] = np.zeros(
             [self.nb_mpc_iter_to_save, self.horizon_size, 2 * self.rmodel.nq]
         )
