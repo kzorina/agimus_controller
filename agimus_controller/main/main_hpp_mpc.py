@@ -2,6 +2,7 @@
 from math import pi
 import time
 import example_robot_data
+import numpy as np
 
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.mpc import MPC
@@ -18,7 +19,10 @@ if __name__ == "__main__":
     ps, viewer = hpp_interface.get_problem_solver_and_viewer()
     hpp_path = ps.client.basic.problem.getPath(hpp_interface.ps.numberPaths() - 1)
     x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_x_a_planning(1e-2, 6, hpp_path)
-    ocp = OCPCrocoHPP(rmodel=rmodel, cmodel=None, use_constraints=False)
+    armature = np.zeros(rmodel.nq)
+    ocp = OCPCrocoHPP(
+        rmodel=rmodel, cmodel=None, use_constraints=False, armature=armature
+    )
     mpc = MPC(ocp, x_plan, a_plan, rmodel)
     start = time.time()
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)

@@ -13,13 +13,19 @@ from agimus_controller.utils.pin_utils import (
 
 class OCPCrocoHPP:
     def __init__(
-        self, rmodel: pin.Model, cmodel: pin.GeometryModel = None, use_constraints=False
+        self,
+        rmodel: pin.Model,
+        cmodel: pin.GeometryModel = None,
+        use_constraints: bool = False,
+        armature: np.ndarray = None,
     ) -> None:
         """Class to define the OCP linked witha HPP generated trajectory.
 
         Args:
             rmodel (pin.Model): Pinocchio model of the robot.
             cmodel (pin.GeometryModel): Pinocchio geometry model of the robot. Must have been convexified for the collisions to work.
+            use_constraints : boolean to activate collision avoidance constraints.
+            armature : armature of the robot.
 
         Raises:
             Exception: Unkown robot.
@@ -53,6 +59,7 @@ class OCPCrocoHPP:
         self.actuation = crocoddyl.ActuationModelFull(self.state)
 
         # Setting up variables necessary for the OCP
+        self.armature = armature
         self.DT = 1e-2  # Time step of the OCP
         self.nq = self._rmodel.nq  # Number of joints of the robot
         self.nv = self._rmodel.nv  # Dimension of the speed of the robot
@@ -160,24 +167,17 @@ class OCPCrocoHPP:
 
             if self.use_constraints:
                 constraints = self.get_constraints()
-
-                running_models.append(
-                    crocoddyl.IntegratedActionModelEuler(
-                        crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                            self.state, self.actuation, running_cost_model, constraints
-                        ),
-                        self.DT,
-                    )
+                running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
+                    self.state, self.actuation, running_cost_model, constraints
                 )
             else:
-                running_models.append(
-                    crocoddyl.IntegratedActionModelEuler(
-                        crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                            self.state, self.actuation, running_cost_model
-                        ),
-                        self.DT,
-                    )
+                running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
+                    self.state, self.actuation, running_cost_model
                 )
+            running_DAM.armature = self.armature
+            running_models.append(
+                crocoddyl.IntegratedActionModelEuler(running_DAM, self.DT)
+            )
         self.running_models = running_models
         return self.running_models
 
@@ -210,26 +210,25 @@ class OCPCrocoHPP:
         self, goal_placement_residual, x_ref: np.ndarray, u_plan: np.ndarray
     ):
         """Return last model without constraints."""
-        running_cost_model = crocoddyl.CostModelSum(self.state)
-        running_cost_model.addCost(
+        terminal_cost_model = crocoddyl.CostModelSum(self.state)
+        terminal_cost_model.addCost(
             "gripperPose", goal_placement_residual, self._weight_ee_placement
         )
         vel_cost = self.get_velocity_residual(self._last_joint_name)
         if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
-            running_cost_model.addCost("velReg", vel_cost, self._weight_ee_placement)
+            terminal_cost_model.addCost("velReg", vel_cost, self._weight_ee_placement)
         else:
-            running_cost_model.addCost("velReg", vel_cost, 0)
+            terminal_cost_model.addCost("velReg", vel_cost, 0)
         x_residual = self.get_state_residual(x_ref)
-        running_cost_model.addCost("xReg", x_residual, 0)
+        terminal_cost_model.addCost("xReg", x_residual, 0)
 
         u_reg_cost = self.get_control_residual(u_plan)
-        running_cost_model.addCost("uReg", u_reg_cost, 0)
-        return crocoddyl.IntegratedActionModelEuler(
-            crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self.state, self.actuation, running_cost_model
-            ),
-            self.DT,
+        terminal_cost_model.addCost("uReg", u_reg_cost, 0)
+        terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
+            self.state, self.actuation, terminal_cost_model
         )
+        terminal_DAM.armature = self.armature
+        return crocoddyl.IntegratedActionModelEuler(terminal_DAM, self.DT)
 
     def get_terminal_model_with_constraints(
         self, placement_residual, x_ref: np.ndarray, u_plan: np.ndarray
@@ -247,16 +246,11 @@ class OCPCrocoHPP:
         # Add torque constraint
         # Joints torque limits given by the manufactor
         constraints = self.get_constraints()
-
-        return crocoddyl.IntegratedActionModelEuler(
-            crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self.state,
-                self.actuation,
-                terminal_cost_model,
-                constraints,
-            ),
-            self.DT,
+        terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
+            self.state, self.actuation, terminal_cost_model, constraints
         )
+        terminal_DAM.armature = self.armature
+        return crocoddyl.IntegratedActionModelEuler(terminal_DAM, self.DT)
 
     def _get_collision_constraint(
         self, col_idx: int, safety_margin: float
@@ -353,11 +347,9 @@ class OCPCrocoHPP:
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
         """Update model's cost reference and weight by copying new_model's cost."""
-        model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference = new_model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference.copy()
+        model.differential.costs.costs[cost_name].cost.residual.reference = (
+            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
+        )
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight
