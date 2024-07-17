@@ -5,7 +5,7 @@ from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
 from agimus_controller.utils.build_models import get_robot_model, get_collision_model
-from agimus_controller.utils.utils import get_project_root
+from agimus_controller.utils.path_finder import get_project_root
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
