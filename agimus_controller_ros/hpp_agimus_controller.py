@@ -9,7 +9,8 @@ import example_robot_data
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
 from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
-from agimus_controller.utils.wrapper_panda import PandaWrapper
+from agimus_controller.trajectory_buffer import TrajectoryBuffer
+from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
 from agimus_controller.utils.build_models import get_robot_model, get_collision_model
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.utils.pin_utils import (
@@ -17,6 +18,7 @@ from agimus_controller.utils.pin_utils import (
     get_last_joint,
 )
 from agimus_controller.utils.path_finder import get_project_root
+from agimus_controller_ros.agimus_controller import AgimusControllerNodeParameters
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
@@ -25,7 +27,10 @@ class HppAgimusController:
     def __init__(self) -> None:
         self.dt = 1e-2
         self.q_goal = [-0.8311, 0.6782, 0.3201, -1.1128, 1.2190, 1.9823, 0.7248]
-        self.horizon_size = 100
+        self.params = AgimusControllerNodeParameters()
+        self.traj_buffer = TrajectoryBuffer()
+        self.traj_idx = 0
+        self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
 
         robot = example_robot_data.load("panda")
         project_root_path = get_project_root()
@@ -35,13 +40,14 @@ class HppAgimusController:
         self.rmodel = get_robot_model(robot, urdf_path, srdf_path)
         self.cmodel = get_collision_model(self.rmodel, urdf_path, collision_params_path)
         self.rdata = self.rmodel.createData()
-
-        self.pandawrapper = PandaWrapper(auto_col=True)
         self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
             get_last_joint(self.rmodel)
         )
+        self.nq = self.rmodel.nq
+        self.nv = self.rmodel.nv
+        self.nx = self.nq + self.nv
         self.hpp_interface = HppInterface()
-        self.armature = np.array([0.05] * self.rmodel.nq)
+        self.armature = np.array([0.05] * self.nq)
 
         self.ocp = OCPCrocoHPP(
             self.rmodel, self.cmodel, use_constraints=False, armature=self.armature
@@ -52,14 +58,14 @@ class HppAgimusController:
         self.nb_mpc_iter_to_save = None
         self.mpc_data = {}
 
-        self.rate = rospy.Rate(100, reset=True)
+        self.rate = rospy.Rate(self.params.rate, reset=True)
         self.mutex = Lock()
         self.sensor_msg = Sensor()
         self.control_msg = Control()
         self.ocp_solve_time = Duration()
-        self.x0 = np.zeros(self.rmodel.nq + self.rmodel.nv)
-        self.x_guess = np.zeros(self.rmodel.nq + self.rmodel.nv)
-        self.u_guess = np.zeros(self.rmodel.nv)
+        self.x0 = np.zeros(self.nq + self.nv)
+        self.x_guess = np.zeros(self.nq + self.nv)
+        self.u_guess = np.zeros(self.nv)
         self.state_subscriber = rospy.Subscriber(
             "robot_sensors",
             Sensor,
@@ -72,7 +78,6 @@ class HppAgimusController:
             "ocp_solve_time", Duration, queue_size=1, tcp_nodelay=True
         )
         self.start_time = 0.0
-        self.first_solve = False
         self.first_robot_sensor_msg_received = False
         self.first_pose_ref_msg_received = True
 
@@ -98,31 +103,61 @@ class HppAgimusController:
             self.rate.sleep()
         return wait_for_input
 
-    def plan_and_first_solve(self):
-        sensor_msg = self.get_sensor_msg()
+    def wait_buffer_has_twice_horizon_points(self):
+        while (
+            self.traj_buffer.get_size(self.point_attributes)
+            < 2 * self.params.horizon_size
+        ):
+            self.fill_buffer()
 
-        # Plan
+    def fill_buffer(self):
+        point = self.get_next_trajectory_point()
+        if point is not None:
+            self.traj_buffer.add_trajectory_point(point)
+
+    def get_next_trajectory_point(self):
+        point = TrajectoryPoint(nq=self.nq, nv=self.nv)
+        point.q = self.whole_x_plan[self.traj_idx, : self.nq]
+        point.v = self.whole_x_plan[self.traj_idx, self.nq :]
+        point.a = self.whole_a_plan[self.traj_idx, :]
+        self.traj_idx = min(self.traj_idx + 1, self.whole_x_plan.shape[0] - 1)
+        return point
+
+    def set_plan(self):
+        sensor_msg = self.get_sensor_msg()
         q_init = [*sensor_msg.joint_state.position]
         self.hpp_interface.set_panda_planning(q_init, self.q_goal)
         ps = self.hpp_interface.ps
-        whole_x_plan, whole_a_plan, _ = self.hpp_interface.get_hpp_x_a_planning(
-            self.dt,
-            self.rmodel.nq,
-            ps.client.problem.getPath(ps.numberPaths() - 1),
+        self.whole_x_plan, self.whole_a_plan, _ = (
+            self.hpp_interface.get_hpp_x_a_planning(
+                self.dt,
+                self.nq,
+                ps.client.problem.getPath(ps.numberPaths() - 1),
+            )
         )
 
+    def first_solve(self):
+        sensor_msg = self.get_sensor_msg()
+
+        # retrieve horizon state and acc references
+        horizon_points = self.traj_buffer.get_points(
+            self.params.horizon_size, self.point_attributes
+        )
+        x_plan = np.zeros([self.params.horizon_size, self.nx])
+        a_plan = np.zeros([self.params.horizon_size, self.nv])
+        for idx_point, point in enumerate(horizon_points):
+            x_plan[idx_point, :] = point.get_x_as_q_v()
+            a_plan[idx_point, :] = point.a
+
         # First solve
-        self.mpc = MPC(self.ocp, whole_x_plan, whole_a_plan, self.rmodel, self.cmodel)
-        self.x_plan = self.mpc.whole_x_plan[: self.horizon_size, :]
-        self.a_plan = self.mpc.whole_a_plan[: self.horizon_size, :]
+        self.mpc = MPC(self.ocp, x_plan, a_plan, self.rmodel, self.cmodel)
         x0 = np.concatenate(
             [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
         )
-        self.mpc.mpc_first_step(self.x_plan, self.a_plan, x0, self.horizon_size)
-        self.next_node_idx = self.horizon_size
-        whole_traj_T = whole_x_plan.shape[0]
+        self.mpc.mpc_first_step(x_plan, a_plan, x0, self.params.horizon_size)
+        self.next_node_idx = self.params.horizon_size
         if self.save_predictions_and_refs:
-            self.nb_mpc_iter_to_save = whole_traj_T
+            self.nb_mpc_iter_to_save = self.whole_x_plan.shape[0]
             self.create_mpc_data()
             self.update_predictions_and_refs_arrays()
         self.mpc_iter += 1
@@ -134,9 +169,10 @@ class HppAgimusController:
         x0 = np.concatenate(
             [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
         )
-
-        new_x_ref = self.mpc.whole_x_plan[self.next_node_idx, :]
-        new_a_ref = self.mpc.whole_a_plan[self.next_node_idx, :]
+        self.fill_buffer()
+        point = self.traj_buffer.get_points(1, self.point_attributes)[0]
+        new_x_ref = point.get_x_as_q_v()
+        new_a_ref = point.a
 
         mpc_start_time = time.time()
         placement_ref = get_ee_pose_from_configuration(
@@ -183,18 +219,14 @@ class HppAgimusController:
 
     def create_mpc_data(self):
         self.mpc_data["preds_xs"] = np.zeros(
-            [self.nb_mpc_iter_to_save, self.horizon_size, 2 * self.rmodel.nq]
+            [self.nb_mpc_iter_to_save, self.params.horizon_size, 2 * self.nq]
         )
         self.mpc_data["preds_us"] = np.zeros(
-            [self.nb_mpc_iter_to_save, self.horizon_size - 1, self.rmodel.nq]
+            [self.nb_mpc_iter_to_save, self.params.horizon_size - 1, self.nq]
         )
-        self.mpc_data["state_refs"] = np.zeros(
-            [self.nb_mpc_iter_to_save, 2 * self.rmodel.nq]
-        )
+        self.mpc_data["state_refs"] = np.zeros([self.nb_mpc_iter_to_save, 2 * self.nq])
         self.mpc_data["translation_refs"] = np.zeros([self.nb_mpc_iter_to_save, 3])
-        self.mpc_data["control_refs"] = np.zeros(
-            [self.nb_mpc_iter_to_save, self.rmodel.nq]
-        )
+        self.mpc_data["control_refs"] = np.zeros([self.nb_mpc_iter_to_save, self.nq])
 
     def fill_predictions_and_refs_arrays(self, idx, xs, us, x_ref, p_ref, u_ref):
         self.mpc_data["preds_xs"][idx, :, :] = xs
@@ -205,7 +237,9 @@ class HppAgimusController:
 
     def run(self):
         self.wait_first_sensor_msg()
-        sensor_msg, u, k = self.plan_and_first_solve()
+        self.set_plan()
+        self.wait_buffer_has_twice_horizon_points()
+        sensor_msg, u, k = self.first_solve()
         input("Press enter to continue ...")
         self.send(sensor_msg, u, k)
         self.rate.sleep()
