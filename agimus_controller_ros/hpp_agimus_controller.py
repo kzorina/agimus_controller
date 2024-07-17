@@ -41,6 +41,8 @@ class HppAgimusController:
         self.ocp.set_weights(10**4, 10, 10**-3, 0)
         self.mpc_iter = 0
         self.save_predictions_and_refs = False
+        self.nb_mpc_iter_to_save = None
+        self.mpc_data = {}
 
         self.rate = rospy.Rate(100, reset=True)
         self.mutex = Lock()
@@ -112,7 +114,8 @@ class HppAgimusController:
         self.next_node_idx = self.horizon_size
         whole_traj_T = whole_x_plan.shape[0]
         if self.save_predictions_and_refs:
-            self.create_predictions_and_refs_arrays(whole_traj_T)
+            self.nb_mpc_iter_to_save = whole_traj_T
+            self.create_mpc_data()
             self.update_predictions_and_refs_arrays()
         self.mpc_iter += 1
 
@@ -155,33 +158,37 @@ class HppAgimusController:
         self.control_publisher.publish(self.control_msg)
 
     def update_predictions_and_refs_arrays(self):
-        if self.mpc_iter < self.mpc.whole_x_plan.shape[0]:
+        if self.mpc_iter < self.nb_mpc_iter_to_save:
             xs = self.mpc.ocp.solver.xs
             us = self.mpc.ocp.solver.us
             x_ref, p_ref, u_ref = self.mpc.get_reference()
             self.fill_predictions_and_refs_arrays(
                 self.mpc_iter, xs, us, x_ref, p_ref, u_ref
             )
-        if self.mpc_iter == self.mpc.whole_x_plan.shape[0]:
-            np.save("mpc_xs.npy", self.mpc_xs)
-            np.save("mpc_us.npy", self.mpc_us)
-            np.save("state_refs.npy", self.state_refs)
-            np.save("translation_refs.npy", self.translation_refs)
-            np.save("control_refs.npy", self.control_refs)
+        if self.mpc_iter == self.nb_mpc_iter_to_save:
+            np.save("mpc_data.npy", self.mpc_data)
 
-    def create_predictions_and_refs_arrays(self, whole_traj_T):
-        self.mpc_xs = np.zeros([whole_traj_T, self.horizon_size, 2 * self.rmodel.nq])
-        self.mpc_us = np.zeros([whole_traj_T, self.horizon_size - 1, self.rmodel.nq])
-        self.state_refs = np.zeros([whole_traj_T, 2 * self.rmodel.nq])
-        self.translation_refs = np.zeros([whole_traj_T, 3])
-        self.control_refs = np.zeros([whole_traj_T, self.rmodel.nq])
+    def create_mpc_data(self):
+        self.mpc_data["preds_xs"] = np.zeros(
+            [self.nb_mpc_iter_to_save, self.horizon_size, 2 * self.rmodel.nq]
+        )
+        self.mpc_data["preds_us"] = np.zeros(
+            [self.nb_mpc_iter_to_save, self.horizon_size - 1, self.rmodel.nq]
+        )
+        self.mpc_data["state_refs"] = np.zeros(
+            [self.nb_mpc_iter_to_save, 2 * self.rmodel.nq]
+        )
+        self.mpc_data["translation_refs"] = np.zeros([self.nb_mpc_iter_to_save, 3])
+        self.mpc_data["control_refs"] = np.zeros(
+            [self.nb_mpc_iter_to_save, self.rmodel.nq]
+        )
 
     def fill_predictions_and_refs_arrays(self, idx, xs, us, x_ref, p_ref, u_ref):
-        self.mpc_xs[idx, :, :] = xs
-        self.mpc_us[idx, :, :] = us
-        self.state_refs[idx, :] = x_ref
-        self.translation_refs[idx, :] = p_ref
-        self.control_refs[idx, :] = u_ref
+        self.mpc_data["preds_xs"][idx, :, :] = xs
+        self.mpc_data["preds_us"][idx, :, :] = us
+        self.mpc_data["state_refs"][idx, :] = x_ref
+        self.mpc_data["translation_refs"][idx, :] = p_ref
+        self.mpc_data["control_refs"][idx, :] = u_ref
 
     def run(self):
         self.wait_first_sensor_msg()
