@@ -3,7 +3,6 @@ import rospy
 import numpy as np
 from copy import deepcopy
 import time
-import os
 from threading import Lock
 from std_msgs.msg import Duration, Header
 import example_robot_data
@@ -13,6 +12,7 @@ from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.utils.build_models import get_robot_model, get_collision_model
 from agimus_controller.hpp_interface import HppInterface
+from agimus_controller.utils.path_finder import get_project_root
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
@@ -24,17 +24,18 @@ class HppAgimusController:
         self.horizon_size = 100
 
         robot = example_robot_data.load("panda")
-
-        current_dir_path = os.path.dirname(os.path.abspath(__file__))
-        urdf_path = os.path.join(current_dir_path, "../urdf/robot.urdf")
-        srdf_path = os.path.join(current_dir_path, "../srdf/demo.srdf")
-        yaml_path = os.path.join(current_dir_path, "../config/param.yaml")
+        project_root_path = get_project_root()
+        urdf_path = str(project_root_path / "urdf/robot.urdf")
+        srdf_path = str(project_root_path / "srdf/demo.srdf")
+        collision_params_path = str(project_root_path / "config/param.yaml")
         self.rmodel = get_robot_model(robot, urdf_path, srdf_path)
-        self.cmodel = get_collision_model(self.rmodel, urdf_path, yaml_path)
+        self.cmodel = get_collision_model(self.rmodel, urdf_path, collision_params_path)
+
         self.pandawrapper = PandaWrapper(auto_col=True)
         self.ee_frame_name = self.pandawrapper.get_ee_frame_name()
         self.hpp_interface = HppInterface()
-        self.armature = np.array([0.01] * self.rmodel.nq)
+        self.armature = np.array([0.05] * self.rmodel.nq)
+
         self.ocp = OCPCrocoHPP(
             self.rmodel, self.cmodel, use_constraints=False, armature=self.armature
         )
@@ -118,7 +119,6 @@ class HppAgimusController:
             self.create_mpc_data()
             self.update_predictions_and_refs_arrays()
         self.mpc_iter += 1
-
         _, u, k = self.mpc.get_mpc_output()
         return sensor_msg, u, k
 
