@@ -364,7 +364,7 @@ class OCPCrocoHPP:
         self.update_cost(model, new_model, "velReg", update_weight)
         self.update_cost(model, new_model, "uReg", update_weight)
 
-    def reset_ocp(self, x, x_ref: np.ndarray, u_plan: np.ndarray):
+    def reset_ocp(self, x, x_ref: np.ndarray, u_plan: np.ndarray, placement_ref):
         """Reset ocp problem using next reference in state and control."""
         self.solver.problem.x0 = x
         runningModels = list(self.solver.problem.runningModels)
@@ -373,9 +373,6 @@ class OCPCrocoHPP:
                 runningModels[node_idx], runningModels[node_idx + 1], False
             )
         self.update_model(runningModels[-1], self.solver.problem.terminalModel, False)
-        placement_ref = get_ee_pose_from_configuration(
-            self._rmodel, self._rdata, self._last_joint_frame_id, x_ref[: self.nq]
-        )
         if self.use_constraints:
             terminal_model = self.get_terminal_model_with_constraints(
                 placement_ref, x_ref, u_plan

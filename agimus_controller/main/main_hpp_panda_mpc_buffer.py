@@ -6,6 +6,7 @@ from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
 from agimus_controller.utils.build_models import get_robot_model, get_collision_model
 from agimus_controller.utils.path_finder import get_project_root
+from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
@@ -77,7 +78,13 @@ if __name__ == "__main__":
             point = traj_buffer.get_points(1, point_attributes)[0]
             new_x_ref = point.get_x_as_q_v()
             new_a_ref = point.a
-            x, u = mpc.mpc_step(x, new_x_ref, new_a_ref)
+            placement_ref = get_ee_pose_from_configuration(
+                mpc.ocp._rmodel,
+                mpc.ocp._rdata,
+                mpc.ocp._last_joint_frame_id,
+                new_x_ref[:nq],
+            )
+            x, u = mpc.mpc_step(x, new_x_ref, new_a_ref, placement_ref)
             mpc_xs[idx - 2 * T, :] = x
             mpc_us[idx - 2 * T - 1, :] = u
 

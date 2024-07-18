@@ -12,6 +12,10 @@ from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.utils.build_models import get_robot_model, get_collision_model
 from agimus_controller.hpp_interface import HppInterface
+from agimus_controller.utils.pin_utils import (
+    get_ee_pose_from_configuration,
+    get_last_joint,
+)
 from agimus_controller.utils.path_finder import get_project_root
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
@@ -30,9 +34,12 @@ class HppAgimusController:
         collision_params_path = str(project_root_path / "config/param.yaml")
         self.rmodel = get_robot_model(robot, urdf_path, srdf_path)
         self.cmodel = get_collision_model(self.rmodel, urdf_path, collision_params_path)
+        self.rdata = self.rmodel.createData()
 
         self.pandawrapper = PandaWrapper(auto_col=True)
-        self.ee_frame_name = self.pandawrapper.get_ee_frame_name()
+        self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
+            get_last_joint(self.rmodel)
+        )
         self.hpp_interface = HppInterface()
         self.armature = np.array([0.05] * self.rmodel.nq)
 
@@ -132,7 +139,13 @@ class HppAgimusController:
         new_a_ref = self.mpc.whole_a_plan[self.next_node_idx, :]
 
         mpc_start_time = time.time()
-        self.mpc.mpc_step(x0, new_x_ref, new_a_ref)
+        placement_ref = get_ee_pose_from_configuration(
+            self.rmodel,
+            self.rdata,
+            self.last_joint_frame_id,
+            new_x_ref[: self.rmodel.nq],
+        )
+        self.mpc.mpc_step(x0, new_x_ref, new_a_ref, placement_ref)
         mpc_duration = time.time() - mpc_start_time
         rospy.loginfo_throttle(1, "mpc_duration = %s", str(mpc_duration))
         if self.next_node_idx < self.mpc.whole_x_plan.shape[0] - 1:
