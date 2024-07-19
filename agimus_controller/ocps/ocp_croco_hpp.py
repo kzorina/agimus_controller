@@ -245,8 +245,13 @@ class OCPCrocoHPP:
         u_reg_cost = self.get_control_residual(u_plan)
         vel_cost = self.get_velocity_residual(self._last_joint_name)
         terminal_cost_model.addCost("xReg", x_reg_cost, 0)
-        terminal_cost_model.addCost("velReg", vel_cost, 0)
-        terminal_cost_model.addCost("gripperPose", placement_reg_cost, 0)
+        if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
+            terminal_cost_model.addCost("velReg", vel_cost, self._weight_ee_placement)
+        else:
+            terminal_cost_model.addCost("velReg", vel_cost, 0)
+        terminal_cost_model.addCost(
+            "gripperPose", placement_reg_cost, self._weight_ee_placement
+        )
         terminal_cost_model.addCost("uReg", u_reg_cost, 0)
 
         # Add torque constraint
