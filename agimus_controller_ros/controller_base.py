@@ -37,9 +37,9 @@ class ControllerBase:
 
         robot = example_robot_data.load("panda")
         project_root_path = get_project_root()
-        urdf_path = str(project_root_path / "urdf/robot.urdf")
-        srdf_path = str(project_root_path / "srdf/demo.srdf")
-        collision_params_path = str(project_root_path / "config/param.yaml")
+        urdf_path = str(project_root_path / "urdf" / "robot.urdf")
+        srdf_path = str(project_root_path / "srdf" / "demo.srdf")
+        collision_params_path = str(project_root_path / "config" / "param.yaml")
         self.rmodel = get_robot_model(robot, urdf_path, srdf_path)
         self.cmodel = get_collision_model(self.rmodel, urdf_path, collision_params_path)
         self.rdata = self.rmodel.createData()
