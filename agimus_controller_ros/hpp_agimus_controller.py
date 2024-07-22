@@ -10,8 +10,12 @@ class HppAgimusController(ControllerBase):
         super().__init__()
         self.q_goal = [-0.8311, 0.6782, 0.3201, -1.1128, 1.2190, 1.9823, 0.7248]
         self.hpp_interface = HppInterface()
+        self.plan_is_set = False
 
     def get_next_trajectory_point(self):
+        if not self.plan_is_set:
+            self.set_plan()
+            self.plan_is_set = True
         point = TrajectoryPoint(nq=self.nq, nv=self.nv)
         point.q = self.whole_x_plan[self.traj_idx, : self.nq]
         point.v = self.whole_x_plan[self.traj_idx, self.nq :]
