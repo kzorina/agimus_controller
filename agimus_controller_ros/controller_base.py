@@ -17,9 +17,14 @@ from agimus_controller.utils.pin_utils import (
     get_last_joint,
 )
 from agimus_controller.utils.path_finder import get_project_root
-from agimus_controller_ros.agimus_controller import AgimusControllerNodeParameters
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
+
+
+class AgimusControllerNodeParameters:
+    def __init__(self) -> None:
+        self.rate = rospy.get_param("~rate", 100)
+        self.horizon_size = rospy.get_param("~horizon_size", 100)
 
 
 class ControllerBase:
