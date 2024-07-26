@@ -1,8 +1,17 @@
 import yaml
 import pinocchio as pin
-from hppfcl import Sphere, Box, Cylinder, Capsule
 import numpy as np
-from panda_torque_mpc_pywrap import reduce_capsules_robot
+import os
+import example_robot_data
+import rospy
+import franka_description
+import agimus_demos_description
+
+from hppfcl import Sphere, Box, Cylinder, Capsule
+from hpp.rostools import process_xacro
+from hpp.corbaserver.manipulation import Robot
+from panda_torque_mpc_pywrap.panda_torque_mpc_pywrap import reduce_collision_model
+from agimus_controller.utils.wrapper_panda import PandaWrapper
 
 
 class ObstacleParamsParser:
@@ -110,23 +119,80 @@ class ObstacleParamsParser:
                 f"Object ID not found for collision pair: {object1_id} and {object2_id}"
             )
 
+class RobotModelConstructor:
+    def __init__(self):
+        self.robot
+        self.rmodel
+        self.cmodel
 
-def get_robot_model(robot, urdf_path, srdf_path):
-    locked_joints = [
+    def loadMethod(self, loadFromROS = False):
+        if loadFromROS:
+            print("Load robot from ROS")
+
+            # Getting urdf and srdf content
+            urdfString = rospy.get_param('robot_description')
+            srdfString = rospy.get_param('robot_description_semantic')
+
+            # Writting urdf and srdf content
+            with open("panda.urdf.xacro", "w") as f:
+                f.write(urdfString)
+            with open("panda.srdf", "w") as f:
+                f.write(srdfString)
+
+            urdf_path = os.path.join(os.getcwd()+"/", "panda.urdf.xacro")
+            srdf_path = os.path.join(os.getcwd()+"/", "panda.srdf")
+
+            self.rmodel = self.construct_robot_model(self.robot, process_xacro(urdf_path), srdf_path)
+            self.cmodel = self.construct_collision_model(self.rmodel, process_xacro(urdf_path), yaml_path)
+            self.rmodel, self.cmodel, _ = pandawrapper.create_robot()
+
+            os.remove("panda.urdf.xacro")
+            os.remove("panda.srdf")
+
+        if not loadFromROS:
+            print("Load robot from files")
+            pandawrapper = PandaWrapper(auto_col=True)
+
+            robot_package_path = franka_description.__path__[0]
+            param_package_path = agimus_demos_description.__path__[0]
+
+            robot_dir_path = os.path.join(robot_package_path, "robots/panda/")
+            param_dir_path = os.path.join(param_package_path, "pick_and_place/")
+
+            urdf_path = os.path.join(robot_dir_path, "panda.urdf.xacro")
+            srdf_path = os.path.join(robot_dir_path, "panda.srdf")
+            yaml_path = os.path.join(param_dir_path, "param.yaml")
+
+            self.robot = example_robot_data.load("panda")
+            self.rmodel = self.construct_robot_model(self.robot, process_xacro(urdf_path), srdf_path)
+            self.cmodel = self.construct_collision_model(self.rmodel, process_xacro(urdf_path), yaml_path)
+            self.rmodel, self.cmodel, _ = pandawrapper.create_robot()
+    
+    def construct_robot_model(self, robot, urdf_path, srdf_path):
+        locked_joints = [
         robot.model.getJointId("panda_finger_joint1"),
         robot.model.getJointId("panda_finger_joint2"),
-    ]
+        ]
 
-    model = pin.Model()
-    pin.buildModelFromUrdf(urdf_path, model)
-    pin.loadReferenceConfigurations(model, srdf_path, False)
-    q0 = model.referenceConfigurations["default"]
-    return pin.buildReducedModel(model, locked_joints, q0)
+        model = pin.Model()
+        pin.buildModelFromUrdf(urdf_path, model)
+        pin.loadReferenceConfigurations(model, srdf_path, False)
+        q0 = model.referenceConfigurations["default"]
+        return pin.buildReducedModel(model, locked_joints, q0)
 
+    def construct_collision_model(self, rmodel, urdf_path, yaml_file):
+        collision_model = pin.buildGeomFromUrdf(rmodel, urdf_path, pin.COLLISION)
+        reduce_collision_model = reduce_collision_model()
+        collision_model = reduce_collision_model.reduce_capsules_robot(collision_model)
+        parser = ObstacleParamsParser(yaml_file, collision_model)
+        parser.add_collisions()
+        return parser.collision_model
 
-def get_collision_model(rmodel, urdf_path, yaml_file):
-    collision_model = pin.buildGeomFromUrdf(rmodel, urdf_path, pin.COLLISION)
-    collision_model = reduce_capsules_robot(collision_model)
-    parser = ObstacleParamsParser(yaml_file, collision_model)
-    parser.add_collisions()
-    return parser.collision_model
+    def getRobot(self):
+        return self.robot
+
+    def getRobotModel(self):
+        return self.rmodel
+    
+    def getCollisionModel(self):
+        return self.cmodel
