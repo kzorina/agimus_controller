@@ -11,7 +11,7 @@ from linear_feedback_controller_msgs.msg import Control, Sensor
 from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import PointAttribute
-from agimus_controller.utils.build_models import get_robot_model, get_collision_model
+from agimus_controller.utils.build_models import getRobotModel, getCollisionModel
 from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
     get_last_joint,
@@ -35,13 +35,10 @@ class ControllerBase:
         self.traj_idx = 0
         self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
 
-        robot = example_robot_data.load("panda")
         project_root_path = get_project_root()
-        urdf_path = str(project_root_path / "urdf" / "robot.urdf")
-        srdf_path = str(project_root_path / "srdf" / "demo.srdf")
-        collision_params_path = str(project_root_path / "config" / "param.yaml")
-        self.rmodel = get_robot_model(robot, urdf_path, srdf_path)
-        self.cmodel = get_collision_model(self.rmodel, urdf_path, collision_params_path)
+
+        self.rmodel = getRobotModel()
+        self.cmodel = getCollisionModel()
         self.rdata = self.rmodel.createData()
         self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
             get_last_joint(self.rmodel)
