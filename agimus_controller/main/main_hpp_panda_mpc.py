@@ -4,7 +4,7 @@ import numpy as np
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
-from agimus_controller.utils.build_models import getRobotModel, getCollisionModel
+from agimus_controller.utils.build_models import RobotModelConstructor
 from agimus_controller.utils.path_finder import get_project_root
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
@@ -13,9 +13,12 @@ if __name__ == "__main__":
     pandawrapper = PandaWrapper(auto_col=True)
     project_root_path = get_project_root()
 
-    rmodel = getRobotModel()
-    cmodel = getCollisionModel()
-    rmodel, cmodel, vmodel = pandawrapper.create_robot()
+    robot_constructor = RobotModelConstructor(load_from_ros=False)
+
+    rmodel = robot_constructor.get_robot_reduced_model()
+    cmodel = robot_constructor.get_collision_reduced_model()
+    vmodel = robot_constructor.get_visual_reduced_model()
+
     ee_frame_name = pandawrapper.get_ee_frame_name()
     hpp_interface = HppInterface()
     q_init, q_goal = hpp_interface.get_panda_q_init_q_goal()
