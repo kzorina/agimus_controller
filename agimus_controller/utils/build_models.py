@@ -1,17 +1,13 @@
 import yaml
 import pinocchio as pin
 import numpy as np
-import os
-import example_robot_data
 import rospy
 import franka_description
 import agimus_demos_description
 
+from pathlib import Path
 from hppfcl import Sphere, Box, Cylinder, Capsule
 from hpp.rostools import process_xacro
-from hpp.corbaserver.manipulation import Robot
-from panda_torque_mpc_pywrap.panda_torque_mpc_pywrap import reduce_collision_model
-from agimus_controller.utils.wrapper_panda import PandaWrapper
 
 
 class ObstacleParamsParser:
@@ -120,79 +116,106 @@ class ObstacleParamsParser:
             )
 
 class RobotModelConstructor:
-    def __init__(self):
-        self.robot
-        self.rmodel
-        self.cmodel
+    def __init__(self, load_from_ros = False):
+        self.load_model(load_from_ros)
 
-    def loadMethod(self, loadFromROS = False):
-        if loadFromROS:
+    def load_model(self, load_from_ros):
+
+        yaml_path = str(Path(agimus_demos_description.__path__[0]) / "pick_and_place" / "param.yaml")
+        mesh_dir = str(Path(franka_description.__path__[0]) / "meshes")
+
+        if load_from_ros:
             print("Load robot from ROS")
 
             # Getting urdf and srdf content
-            urdfString = rospy.get_param('robot_description')
-            srdfString = rospy.get_param('robot_description_semantic')
+            urdf_string = rospy.get_param('robot_description')
+            srdf_string = rospy.get_param('robot_description_semantic')
 
-            # Writting urdf and srdf content
-            with open("panda.urdf.xacro", "w") as f:
-                f.write(urdfString)
-            with open("panda.srdf", "w") as f:
-                f.write(srdfString)
-
-            urdf_path = os.path.join(os.getcwd()+"/", "panda.urdf.xacro")
-            srdf_path = os.path.join(os.getcwd()+"/", "panda.srdf")
-
-            self.rmodel = self.construct_robot_model(self.robot, process_xacro(urdf_path), srdf_path)
-            self.cmodel = self.construct_collision_model(self.rmodel, process_xacro(urdf_path), yaml_path)
-            self.rmodel, self.cmodel, _ = pandawrapper.create_robot()
-
-            os.remove("panda.urdf.xacro")
-            os.remove("panda.srdf")
-
-        if not loadFromROS:
+        if not load_from_ros:
             print("Load robot from files")
-            pandawrapper = PandaWrapper(auto_col=True)
 
-            robot_package_path = franka_description.__path__[0]
-            param_package_path = agimus_demos_description.__path__[0]
+            robot_package_path = Path(franka_description.__path__[0])
+            robot_dir_path = robot_package_path / "robots" / "panda"
 
-            robot_dir_path = os.path.join(robot_package_path, "robots/panda/")
-            param_dir_path = os.path.join(param_package_path, "pick_and_place/")
+            urdf_path = str(robot_dir_path / "panda.urdf.xacro")
+            srdf_path = str(robot_dir_path / "panda.srdf")
 
-            urdf_path = os.path.join(robot_dir_path, "panda.urdf.xacro")
-            srdf_path = os.path.join(robot_dir_path, "panda.srdf")
-            yaml_path = os.path.join(param_dir_path, "param.yaml")
+            urdf_string = process_xacro(urdf_path)
+            with open(srdf_path, "r") as f:
+                srdf_string = f.read()
 
-            self.robot = example_robot_data.load("panda")
-            self.rmodel = self.construct_robot_model(self.robot, process_xacro(urdf_path), srdf_path)
-            self.cmodel = self.construct_collision_model(self.rmodel, process_xacro(urdf_path), yaml_path)
-            self.rmodel, self.cmodel, _ = pandawrapper.create_robot()
+        self.construct_robot_model(self.robot, urdf_string, srdf_string, mesh_dir)
+        self.construct_collision_model(self.rmodel, urdf_string, yaml_path)
     
-    def construct_robot_model(self, robot, urdf_path, srdf_path):
+    def construct_robot_model(self, robot, urdf_string, srdf_string, mesh_dir):
+        self._model, self._cmodel, self._vmodel = pin.buildModelFromXML(urdf_string, mesh_dir)
+        
         locked_joints = [
-        robot.model.getJointId("panda_finger_joint1"),
-        robot.model.getJointId("panda_finger_joint2"),
+            robot.model.getJointId("panda_finger_joint1"),
+            robot.model.getJointId("panda_finger_joint2"),
         ]
+        pin.loadReferenceConfigurationsFromXML(self._model, srdf_string, False)
+        geom_models = [self._vmodel, self._cmodel]
+        q0 = self.model.referenceConfigurations["default"]
+        self._rmodel, geometric_models_reduced = pin.buildReducedModel(
+            self._rmodel,
+            list_of_geom_models=geom_models,
+            list_of_joints_to_lock=locked_joints,
+            reference_configuration=q0,
+        )
+        self._crmodel, self._vrmodel = geometric_models_reduced
 
-        model = pin.Model()
-        pin.buildModelFromUrdf(urdf_path, model)
-        pin.loadReferenceConfigurations(model, srdf_path, False)
-        q0 = model.referenceConfigurations["default"]
-        return pin.buildReducedModel(model, locked_joints, q0)
-
-    def construct_collision_model(self, rmodel, urdf_path, yaml_file):
-        collision_model = pin.buildGeomFromUrdf(rmodel, urdf_path, pin.COLLISION)
-        reduce_collision_model = reduce_collision_model()
-        collision_model = reduce_collision_model.reduce_capsules_robot(collision_model)
-        parser = ObstacleParamsParser(yaml_file, collision_model)
+    def construct_collision_model(self, yaml_file):
+        self._crmodel = self.transform_model_into_capsules(self._crmodel)
+        parser = ObstacleParamsParser(yaml_file, self._crmodel)
         parser.add_collisions()
         return parser.collision_model
-
-    def getRobot(self):
-        return self.robot
-
-    def getRobotModel(self):
-        return self.rmodel
     
-    def getCollisionModel(self):
-        return self.cmodel
+    def transform_model_into_capsules(self, model):
+        """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
+        model_copy = model.copy()
+        list_names_capsules = []
+
+        # Going through all the goemetry objects in the collision model
+        for geom_object in model_copy.geometryObjects:
+            if isinstance(geom_object.geometry, Cylinder):
+                # Sometimes for one joint there are two cylinders, which need to be defined by two capsules for the same link.
+                # Hence the name convention here.
+                if (geom_object.name[:-4] + "capsule_0") in list_names_capsules:
+                    name = geom_object.name[:-4] + "capsule_" + "1"
+                else:
+                    name = geom_object.name[:-4] + "capsule_" + "0"
+                list_names_capsules.append(name)
+                placement = geom_object.placement
+                parentJoint = geom_object.parentJoint
+                parentFrame = geom_object.parentFrame
+                geometry = geom_object.geometry
+                geom = pin.GeometryObject(
+                    name,
+                    parentFrame,
+                    parentJoint,
+                    Capsule(geometry.radius, geometry.halfLength),
+                    placement,
+                )
+                RED = np.array([249, 136, 126, 125]) / 255
+                geom.meshColor = RED
+                model_copy.addGeometryObject(geom)
+                model_copy.removeGeometryObject(geom_object.name)
+            elif (
+                isinstance(geom_object.geometry, Sphere)
+                and "link" in geom_object.name
+            ):
+                model_copy.removeGeometryObject(geom_object.name)
+        return model_copy
+    
+    def get_robot_model(self):
+        return self._model
+
+    def get_robot_reduced_model(self):
+        return self._rmodel
+    
+    def get_collision_reduced_model(self):
+        return self._crmodel
+    
+    def get_visual_reduced_model(self):
+        return self._vrmodel
