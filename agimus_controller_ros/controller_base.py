@@ -11,7 +11,7 @@ from linear_feedback_controller_msgs.msg import Control, Sensor
 from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import PointAttribute
-from agimus_controller.utils.build_models import getRobotModel, getCollisionModel
+from agimus_controller.utils.build_models import RobotModelConstructor
 from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
     get_last_joint,
@@ -32,13 +32,13 @@ class ControllerBase:
         self.dt = 1e-2
         self.params = AgimusControllerNodeParameters()
         self.traj_buffer = TrajectoryBuffer()
-        self.traj_idx = 0
         self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
 
-        project_root_path = get_project_root()
+        robot_constructor = RobotModelConstructor(load_from_ros=False)
 
-        self.rmodel = getRobotModel()
-        self.cmodel = getCollisionModel()
+        self.rmodel = robot_constructor.get_robot_reduced_model()
+        self.cmodel = robot_constructor.get_collision_reduced_model()
+
         self.rdata = self.rmodel.createData()
         self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
             get_last_joint(self.rmodel)
@@ -108,6 +108,9 @@ class ControllerBase:
             < 2 * self.params.horizon_size
         ):
             self.fill_buffer()
+
+    def get_next_trajectory_point(self):
+        raise RuntimeError("Not implemented")
 
     def fill_buffer(self):
         point = self.get_next_trajectory_point()
