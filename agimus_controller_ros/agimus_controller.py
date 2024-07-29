@@ -1,5 +1,4 @@
 import rospy
-import numpy as np
 
 from agimus_controller_ros.controller_base import ControllerBase
 from agimus_controller.trajectory_point import TrajectoryPoint
@@ -24,7 +23,7 @@ class AgimusControllerNode(ControllerBase):
         self.point.a = self.trajpoint.a
 
         return self.point
-    
+
     def run(self):
         self.wait_first_sensor_msg()
         self.wait_buffer_has_twice_horizon_points()

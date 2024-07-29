@@ -1,5 +1,4 @@
 import time
-import example_robot_data
 import numpy as np
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC

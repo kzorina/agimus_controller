@@ -5,7 +5,6 @@ from copy import deepcopy
 import time
 from threading import Lock
 from std_msgs.msg import Duration, Header
-import example_robot_data
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
 from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
@@ -16,7 +15,6 @@ from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
     get_last_joint,
 )
-from agimus_controller.utils.path_finder import get_project_root
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 

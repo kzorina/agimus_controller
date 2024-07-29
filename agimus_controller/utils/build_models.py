@@ -115,21 +115,23 @@ class ObstacleParamsParser:
                 f"Object ID not found for collision pair: {object1_id} and {object2_id}"
             )
 
+
 class RobotModelConstructor:
-    def __init__(self, load_from_ros = False):
+    def __init__(self, load_from_ros=False):
         self.load_model(load_from_ros)
 
     def load_model(self, load_from_ros):
-
-        yaml_path = str(Path(agimus_demos_description.__path__[0]) / "pick_and_place" / "param.yaml")
+        yaml_path = str(
+            Path(agimus_demos_description.__path__[0]) / "pick_and_place" / "param.yaml"
+        )
         mesh_dir = str(Path(franka_description.__path__[0]) / "meshes")
 
         if load_from_ros:
             print("Load robot from ROS")
 
             # Getting urdf and srdf content
-            urdf_string = rospy.get_param('robot_description')
-            srdf_string = rospy.get_param('robot_description_semantic')
+            urdf_string = rospy.get_param("robot_description")
+            srdf_string = rospy.get_param("robot_description_semantic")
 
         if not load_from_ros:
             print("Load robot from files")
@@ -146,10 +148,12 @@ class RobotModelConstructor:
 
         self.construct_robot_model(self.robot, urdf_string, srdf_string, mesh_dir)
         self.construct_collision_model(self.rmodel, urdf_string, yaml_path)
-    
+
     def construct_robot_model(self, robot, urdf_string, srdf_string, mesh_dir):
-        self._model, self._cmodel, self._vmodel = pin.buildModelFromXML(urdf_string, mesh_dir)
-        
+        self._model, self._cmodel, self._vmodel = pin.buildModelFromXML(
+            urdf_string, mesh_dir
+        )
+
         locked_joints = [
             robot.model.getJointId("panda_finger_joint1"),
             robot.model.getJointId("panda_finger_joint2"),
@@ -170,7 +174,7 @@ class RobotModelConstructor:
         parser = ObstacleParamsParser(yaml_file, self._crmodel)
         parser.add_collisions()
         return parser.collision_model
-    
+
     def transform_model_into_capsules(self, model):
         """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
         model_copy = model.copy()
@@ -202,20 +206,19 @@ class RobotModelConstructor:
                 model_copy.addGeometryObject(geom)
                 model_copy.removeGeometryObject(geom_object.name)
             elif (
-                isinstance(geom_object.geometry, Sphere)
-                and "link" in geom_object.name
+                isinstance(geom_object.geometry, Sphere) and "link" in geom_object.name
             ):
                 model_copy.removeGeometryObject(geom_object.name)
         return model_copy
-    
+
     def get_robot_model(self):
         return self._model
 
     def get_robot_reduced_model(self):
         return self._rmodel
-    
+
     def get_collision_reduced_model(self):
         return self._crmodel
-    
+
     def get_visual_reduced_model(self):
         return self._vrmodel

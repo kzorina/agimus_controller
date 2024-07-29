@@ -14,7 +14,7 @@ from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
 if __name__ == "__main__":
     pandawrapper = PandaWrapper(auto_col=True)
     project_root_path = get_project_root()
-    
+
     robot_constructor = RobotModelConstructor(load_from_ros=False)
 
     rmodel = robot_constructor.get_robot_reduced_model()
