@@ -4,7 +4,6 @@ from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.plots import MPCPlots
 from agimus_controller.utils.build_models import RobotModelConstructor
-from agimus_controller.utils.path_finder import get_project_root
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
@@ -13,7 +12,6 @@ from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
 
 if __name__ == "__main__":
     pandawrapper = PandaWrapper(auto_col=True)
-    project_root_path = get_project_root()
 
     robot_constructor = RobotModelConstructor(load_from_ros=False)
 
