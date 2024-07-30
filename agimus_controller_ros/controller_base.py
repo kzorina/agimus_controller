@@ -5,18 +5,16 @@ from copy import deepcopy
 import time
 from threading import Lock
 from std_msgs.msg import Duration, Header
-import example_robot_data
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
 from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import PointAttribute
-from agimus_controller.utils.build_models import get_robot_model, get_collision_model
+from agimus_controller.utils.build_models import RobotModelConstructor
 from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
     get_last_joint,
 )
-from agimus_controller.utils.path_finder import get_project_root
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
@@ -32,16 +30,13 @@ class ControllerBase:
         self.dt = 1e-2
         self.params = AgimusControllerNodeParameters()
         self.traj_buffer = TrajectoryBuffer()
-        self.traj_idx = 0
         self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
 
-        robot = example_robot_data.load("panda")
-        project_root_path = get_project_root()
-        urdf_path = str(project_root_path / "urdf" / "robot.urdf")
-        srdf_path = str(project_root_path / "srdf" / "demo.srdf")
-        collision_params_path = str(project_root_path / "config" / "param.yaml")
-        self.rmodel = get_robot_model(robot, urdf_path, srdf_path)
-        self.cmodel = get_collision_model(self.rmodel, urdf_path, collision_params_path)
+        robot_constructor = RobotModelConstructor(load_from_ros=False)
+
+        self.rmodel = robot_constructor.get_robot_reduced_model()
+        self.cmodel = robot_constructor.get_collision_reduced_model()
+
         self.rdata = self.rmodel.createData()
         self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
             get_last_joint(self.rmodel)
@@ -111,6 +106,9 @@ class ControllerBase:
             < 2 * self.params.horizon_size
         ):
             self.fill_buffer()
+
+    def get_next_trajectory_point(self):
+        raise RuntimeError("Not implemented")
 
     def fill_buffer(self):
         point = self.get_next_trajectory_point()
