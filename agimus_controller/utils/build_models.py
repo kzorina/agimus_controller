@@ -144,7 +144,6 @@ class RobotModelConstructor:
             self.set_collision_model(urdf_path, yaml_path)
 
     def set_robot_model(self, robot, urdf_path, srdf_path):
-
         self._model = pin.Model()
         pin.buildModelFromUrdf(urdf_path, self._model)
         pin.loadReferenceConfigurations(self._model, srdf_path, False)

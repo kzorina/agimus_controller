@@ -1,5 +1,3 @@
-import rospy
-
 from agimus_controller_ros.controller_base import ControllerBase
 
 from agimus_controller_ros.hpp_subscriber import HPPSubscriber
