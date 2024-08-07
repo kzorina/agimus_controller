@@ -123,7 +123,7 @@ class RobotModelConstructor:
         self.load_model(load_from_ros)
 
     def load_model(self, load_from_ros):
-        yaml_path = get_project_root() / "config/param.yaml"
+        yaml_path = get_project_root() / "config" / "param.yaml"
         mesh_dir = str(Path(franka_description.__path__[0]) / "meshes")
 
         if load_from_ros:
@@ -140,27 +140,28 @@ class RobotModelConstructor:
             urdf_path = str(get_project_root() / "urdf" / "robot.urdf")
             srdf_path = str(get_project_root() / "srdf" / "demo.srdf")
             robot = example_robot_data.load("panda")
-            self._rmodel = self.get_robot_model(robot, urdf_path, srdf_path)
-            self._crmodel = self.get_collision_model(urdf_path, yaml_path)
+            self.set_robot_model(robot, urdf_path, srdf_path)
+            self.set_collision_model(urdf_path, yaml_path)
 
-    def get_robot_model(self, robot, urdf_path, srdf_path):
+    def set_robot_model(self, robot, urdf_path, srdf_path):
+
+        self._model = pin.Model()
+        pin.buildModelFromUrdf(urdf_path, self._model)
+        pin.loadReferenceConfigurations(self._model, srdf_path, False)
+
+        q0 = self._model.referenceConfigurations["default"]
         locked_joints = [
             robot.model.getJointId("panda_finger_joint1"),
             robot.model.getJointId("panda_finger_joint2"),
         ]
+        self._rmodel = pin.buildReducedModel(self._model, locked_joints, q0)
 
-        model = pin.Model()
-        pin.buildModelFromUrdf(urdf_path, model)
-        pin.loadReferenceConfigurations(model, srdf_path, False)
-        q0 = model.referenceConfigurations["default"]
-        return pin.buildReducedModel(model, locked_joints, q0)
-
-    def get_collision_model(self, urdf_path, yaml_path):
-        collision_model = pin.buildGeomFromUrdf(self._rmodel, urdf_path, pin.COLLISION)
-        collision_model = reduce_capsules_robot(collision_model)
-        parser = ObstacleParamsParser(yaml_path, collision_model)
+    def set_collision_model(self, urdf_path, yaml_path):
+        self._cmodel = pin.buildGeomFromUrdf(self._rmodel, urdf_path, pin.COLLISION)
+        self._crmodel = reduce_capsules_robot(self._cmodel)
+        parser = ObstacleParamsParser(yaml_path, self._crmodel)
         parser.add_collisions()
-        return parser.collision_model
+        self._crmodel = parser.collision_model
 
     def construct_robot_model(self, urdf_string, srdf_string):
         self._model = pin.buildModelFromXML(urdf_string)
@@ -170,13 +171,13 @@ class RobotModelConstructor:
             self._model.getJointId("panda_finger_joint2"),
         ]
         pin.loadReferenceConfigurationsFromXML(self._model, srdf_string, False)
-        geom_model = pin.buildGeomFromUrdfString(
+        self._cmodel = pin.buildGeomFromUrdfString(
             self._model, urdf_string, pin.COLLISION
         )
         q0 = self._model.referenceConfigurations["default"]
         self._rmodel, geometric_models_reduced = pin.buildReducedModel(
             self._model,
-            list_of_geom_models=[geom_model],
+            list_of_geom_models=[self._cmodel],
             list_of_joints_to_lock=locked_joints,
             reference_configuration=q0,
         )
@@ -223,6 +224,9 @@ class RobotModelConstructor:
             ):
                 model_copy.removeGeometryObject(geom_object.name)
         return model_copy
+
+    def get_robot_model(self):
+        return self._model
 
     def get_robot_reduced_model(self):
         return self._rmodel
