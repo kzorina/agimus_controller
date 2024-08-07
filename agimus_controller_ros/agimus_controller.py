@@ -1,7 +1,6 @@
 import rospy
 
 from agimus_controller_ros.controller_base import ControllerBase
-from agimus_controller.trajectory_point import TrajectoryPoint
 
 from agimus_controller_ros.hpp_subscriber import HPPSubscriber
 
@@ -9,20 +8,10 @@ from agimus_controller_ros.hpp_subscriber import HPPSubscriber
 class AgimusControllerNode(ControllerBase):
     def __init__(self) -> None:
         super().__init__()
-
-    def get_next_trajectory_point(self):
         self.hpp_subscriber = HPPSubscriber()
 
-        # Creating buffer
-        self.point = TrajectoryPoint(nq=self.nq, nv=self.nv)
-
-        self.trajpoint = self.hpp_subscriber.get_trajectory_point()
-
-        self.point.q = self.trajpoint.q
-        self.point.v = self.trajpoint.v
-        self.point.a = self.trajpoint.a
-
-        return self.point
+    def get_next_trajectory_point(self):
+        return self.hpp_subscriber.get_trajectory_point()
 
     def run(self):
         self.wait_first_sensor_msg()
