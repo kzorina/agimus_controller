@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="rosbag" type="record" name="rosbag_record_mpc"
+          args="record -o /tmp/rosbag_record_mpc /ctrl_mpc_linearized/ocp_solve_time"
+    />
+   </launch>
