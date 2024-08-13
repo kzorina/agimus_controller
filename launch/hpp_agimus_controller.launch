@@ -1,6 +1,7 @@
 <launch>
 
     <include file="$(find agimus_controller)/launch/hpp_bringup.launch"/>
+    <include file="$(find agimus_controller)/launch/record_rosbag.launch"/>
     <node pkg="agimus_controller" name="hpp_agimus_controller_node" type="hpp_agimus_controller_node" />
 
 </launch>
