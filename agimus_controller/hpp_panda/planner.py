@@ -31,8 +31,9 @@ class Planner:
         self._end_effector_id = self._rmodel.getFrameId("panda2_leftfinger")
 
         self._T = T
+        self._v = None
 
-    def _create_planning_scene(self):
+    def _create_planning_scene(self, use_gepetto_gui):
         obstacle_urdf, urdf_robot_path, srdf_robot_path = self._get_urdf_srdf_paths()
         Robot.urdfFilename = urdf_robot_path
         Robot.srdfFilename = srdf_robot_path
@@ -41,24 +42,25 @@ class Planner:
 
         robot = Robot("panda", rootJointType="anchor")
         self._ps = ProblemSolver(robot)
-        vf = ViewerFactory(self._ps)
+        if use_gepetto_gui:
+            vf = ViewerFactory(self._ps)
 
-        vf.loadObstacleModel(obstacle_urdf, self._scene._name_scene)
+            vf.loadObstacleModel(obstacle_urdf, self._scene._name_scene)
 
-        # obstacles_list = self._scene._obstacles_name
-        for obstacle in self._cmodel.geometryObjects:
-            if "obstacle" in obstacle.name:
-                name = join(self._scene._name_scene, obstacle.name)
-                pose = self._scene.obstacle_pose
-                pos = self._ps.getObstaclePosition(name)
-                pose_obs = pin.SE3ToXYZQUAT(pose)
-                for i, p in enumerate(pos[:3]):
-                    p += pose_obs[i]
-                vf.moveObstacle(name, pos)
-        self._v = vf.createViewer(collisionURDF=True)
+            # obstacles_list = self._scene._obstacles_name
+            for obstacle in self._cmodel.geometryObjects:
+                if "obstacle" in obstacle.name:
+                    name = join(self._scene._name_scene, obstacle.name)
+                    pose = self._scene.obstacle_pose
+                    pos = self._ps.getObstaclePosition(name)
+                    pose_obs = pin.SE3ToXYZQUAT(pose)
+                    for i, p in enumerate(pos[:3]):
+                        p += pose_obs[i]
+                    vf.moveObstacle(name, pos)
+            self._v = vf.createViewer(collisionURDF=True)
 
-    def _setup_planner(self, q_init, q_goal):
-        self._create_planning_scene()
+    def setup_planner(self, q_init, q_goal, use_gepetto_gui):
+        self._create_planning_scene(use_gepetto_gui)
 
         # Joints 8, and 9 are locked
         self._q_init = [*q_init, 0.03969, 0.03969]
@@ -74,14 +76,14 @@ class Planner:
         # )
         q_init_list = self._q_init
         q_goal_list = self._q_goal
-        self._v(q_init_list)
+        if use_gepetto_gui:
+            self._v(q_init_list)
         self._ps.selectPathPlanner("BiRRT*")
         self._ps.setMaxIterPathPlanning(100)
         self._ps.setInitialConfig(q_init_list)
         self._ps.addGoalConfig(q_goal_list)
 
-    def solve_and_optimize(self, q_init, q_goal):
-        self._setup_planner(q_init, q_goal)
+    def solve_and_optimize(self):
         self._ps.setRandomSeed(1)
         self._ps.solve()
         self._ps.getAvailable("pathoptimizer")
