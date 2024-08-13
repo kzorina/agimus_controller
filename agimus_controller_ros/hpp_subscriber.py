@@ -165,20 +165,20 @@ class HPPSubscriber:
         )
 
     def get_trajectory_point(self):
-        while self.min_all_deque() == 0:
-            self.wait_subscribers.sleep()
-            print("min all deque size : ", self.min_all_deque())
+        print("min all deque size : ", self.min_all_deque())
+        if self.min_all_deque() == 0:
+            return None
+        else:
+            q = self.fifo_q.pop_front().data
+            v = self.fifo_v.pop_front().data
+            tp = TrajectoryPoint(time=self.index, nq=len(q), nv=len(v))
+            tp.q[:] = q[:]
+            tp.v[:] = v[:]
+            tp.a[:] = self.fifo_a.pop_front().data[:]
+            # tp.com_pos = self.fifo_com_pose.pop_front().data
+            # tp.com_vel = self.fifo_com_velocity.pop_front().data
+            # tp.op_pos = self.fifo_op_frame_pose.pop_front().data
+            # tp.op_vel = self.fifo_op_frame_velocity.pop_front().data
 
-        q = self.fifo_q.pop_front().data
-        v = self.fifo_v.pop_front().data
-        tp = TrajectoryPoint(time=self.index, nq=len(q), nv=len(v))
-        tp.q[:] = q[:]
-        tp.v[:] = v[:]
-        tp.a[:] = self.fifo_a.pop_front().data[:]
-        # tp.com_pos = self.fifo_com_pose.pop_front().data
-        # tp.com_vel = self.fifo_com_velocity.pop_front().data
-        # tp.op_pos = self.fifo_op_frame_pose.pop_front().data
-        # tp.op_vel = self.fifo_op_frame_velocity.pop_front().data
-
-        self.index += 1
-        return tp
+            self.index += 1
+            return tp

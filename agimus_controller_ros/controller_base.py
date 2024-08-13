@@ -77,6 +77,7 @@ class ControllerBase:
         self.start_time = 0.0
         self.first_robot_sensor_msg_received = False
         self.first_pose_ref_msg_received = True
+        self.last_point = None
 
     def sensor_callback(self, sensor_msg):
         with self.mutex:
@@ -146,7 +147,11 @@ class ControllerBase:
             [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
         )
         self.fill_buffer()
-        point = self.traj_buffer.get_points(1, self.point_attributes)[0]
+        if self.traj_buffer.get_size(self.point_attributes) > 0:
+            point = self.traj_buffer.get_points(1, self.point_attributes)[0]
+            self.last_point = point
+        else:
+            point = self.last_point
         new_x_ref = point.get_x_as_q_v()
         new_a_ref = point.a
 
