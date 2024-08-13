@@ -27,8 +27,10 @@ class HppAgimusController(ControllerBase):
     def set_plan(self):
         sensor_msg = self.get_sensor_msg()
         q_init = [*sensor_msg.joint_state.position]
-        self.hpp_interface.set_panda_planning(q_init, self.q_goal)
-        ps = self.hpp_interface.ps
+        self.hpp_interface.set_panda_planning(
+            q_init, self.q_goal, use_gepetto_gui=False
+        )
+        ps = self.hpp_interface.get_problem_solver()
         self.whole_x_plan, self.whole_a_plan, _ = (
             self.hpp_interface.get_hpp_x_a_planning(
                 self.dt,
