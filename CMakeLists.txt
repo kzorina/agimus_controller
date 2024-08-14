@@ -89,7 +89,6 @@ if(BUILD_ROS_INTERFACE)
     PROGRAMS
     node/agimus_controller_node
     node/hpp_agimus_controller_node
-    node/gepetto_gui
     node/hpp_corbaserver
     DESTINATION
     ${CATKIN_PACKAGE_BIN_DESTINATION})
