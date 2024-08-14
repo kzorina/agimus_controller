@@ -11,7 +11,7 @@ from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
 from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
 
 
-if __name__ == "__main__":
+def main():
     pandawrapper = PandaWrapper(auto_col=True)
 
     robot_constructor = RobotModelConstructor(load_from_ros=False)
@@ -67,7 +67,7 @@ if __name__ == "__main__":
                 for idx_point, point in enumerate(horizon_points):
                     x_plan[idx_point, :] = point.get_x_as_q_v()
                     a_plan[idx_point, :] = point.a
-                next_node_idx = T
+                # next_node_idx = T
                 x, u = mpc.mpc_first_step(x_plan, a_plan, x, T)
                 mpc_xs[idx - 2 * T, :] = x
                 mpc_us[idx - 2 * T - 1, :] = u
@@ -98,3 +98,8 @@ if __name__ == "__main__":
         viewer=viewer,
     )
     mpc_plots.plot_traj()
+    return True
+
+
+if __name__ == "__main__":
+    main()

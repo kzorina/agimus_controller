@@ -10,7 +10,7 @@ from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.agimus_controller.visualization.plots import MPCPlots
 
 
-if __name__ == "__main__":
+def main():
     robot = example_robot_data.load("ur3")
     rmodel = robot.model
     hpp_interface = HppInterface()
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     mpc.simulate_mpc(T=100, save_predictions=False)
     end = time.time()
     u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
-    mpc_plots = MPCPlots(
+    MPCPlots(
         croco_xs=mpc.croco_xs,
         croco_us=mpc.croco_us,
         whole_x_plan=x_plan,
@@ -41,3 +41,8 @@ if __name__ == "__main__":
         viewer=viewer,
     )
     print("mpc duration ", end - start)
+    return True
+
+
+if __name__ == "__main__":
+    main()

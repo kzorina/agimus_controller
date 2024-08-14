@@ -4,7 +4,7 @@ import pybullet
 from mim_robots.pybullet.env import BulletEnvWithGround
 
 from agimus_controller.ocp import OCPPandaReachingColWithMultipleCol
-from agimus_controller.utils.wrapper_panda import PandaRobot
+from agimus_controller.agimus_controller.robot_model.wrapper_panda import PandaRobot
 from agimus_controller.agimus_controller.visualization.scenes import Scene
 from agimus_controller.mpc_arthur import MPC
 
@@ -88,6 +88,7 @@ def main():
     mpc.solve()
     mpc.plot_collision_distances()
     mpc.plot_mpc_results()
+    return True
 
 
 if __name__ == "__main__":

@@ -4,11 +4,11 @@ from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.agimus_controller.visualization.plots import MPCPlots
 from agimus_controller.agimus_controller.robot_model import RobotModelConstructor
-from agimus_controller.utils.wrapper_panda import PandaWrapper
+from agimus_controller.agimus_controller.robot_model.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
 
-if __name__ == "__main__":
+def main():
     pandawrapper = PandaWrapper(auto_col=True)
 
     robot_constructor = RobotModelConstructor(load_from_ros=False)
@@ -33,8 +33,9 @@ if __name__ == "__main__":
     mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
     mpc.simulate_mpc(T=100, save_predictions=False)
     end = time.time()
+    print("Time of solving: ", end - start)
     u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
-    mpc_plots = MPCPlots(
+    MPCPlots(
         croco_xs=mpc.croco_xs,
         croco_us=mpc.croco_us,
         whole_x_plan=x_plan,
@@ -44,3 +45,8 @@ if __name__ == "__main__":
         ee_frame_name=ee_frame_name,
         viewer=viewer,
     )
+    return True
+
+
+if __name__ == "__main__":
+    main()

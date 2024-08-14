@@ -5,12 +5,12 @@ import pinocchio as pin
 from agimus_controller.agimus_controller.visualization.wrapper_meshcat import (
     MeshcatWrapper,
 )
-from agimus_controller.utils.wrapper_panda import PandaWrapper
+from agimus_controller.agimus_controller.robot_model.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp import OCPPandaReachingColWithMultipleCol
 from agimus_controller.agimus_controller.visualization.scenes import Scene
 
 
-def main():
+def main(display: bool):
     ### PARAMETERS
     # Number of nodes of the trajectory
     T = 20
@@ -63,7 +63,7 @@ def main():
 
     print("End of the computation, press enter to display the traj if requested.")
     ### DISPLAYING THE TRAJ
-    while True:
+    while display:
         vis.display(q0)
         input()
         for xs in ddp.xs:
@@ -72,6 +72,8 @@ def main():
         input()
         print("replay")
 
+    return True
+
 
 if __name__ == "__main__":
-    main()
+    main(True)
