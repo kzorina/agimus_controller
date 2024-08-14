@@ -2,10 +2,12 @@ import time
 import numpy as np
 import pinocchio as pin
 
-from agimus_controller.utils.wrapper_meshcat import MeshcatWrapper
+from agimus_controller.agimus_controller.visualization.wrapper_meshcat import (
+    MeshcatWrapper,
+)
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp import OCPPandaReachingColWithMultipleCol
-from agimus_controller.utils.scenes import Scene
+from agimus_controller.agimus_controller.visualization.scenes import Scene
 
 
 def main():

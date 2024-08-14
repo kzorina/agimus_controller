@@ -7,7 +7,7 @@ import numpy as np
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.mpc import MPC
 from agimus_controller.hpp_interface import HppInterface
-from agimus_controller.utils.plots import MPCPlots
+from agimus_controller.agimus_controller.visualization.plots import MPCPlots
 
 
 if __name__ == "__main__":

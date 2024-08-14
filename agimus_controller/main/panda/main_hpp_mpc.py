@@ -2,10 +2,11 @@ import time
 import numpy as np
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
-from agimus_controller.utils.plots import MPCPlots
-from agimus_controller.utils.build_models import RobotModelConstructor
+from agimus_controller.agimus_controller.visualization.plots import MPCPlots
+from agimus_controller.agimus_controller.robot_model import RobotModelConstructor
 from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
+
 
 if __name__ == "__main__":
     pandawrapper = PandaWrapper(auto_col=True)

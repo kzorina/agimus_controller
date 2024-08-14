@@ -2,13 +2,14 @@ import numpy as np
 
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
-from agimus_controller.utils.plots import MPCPlots
-from agimus_controller.utils.build_models import RobotModelConstructor
+from agimus_controller.agimus_controller.visualization.plots import MPCPlots
+from agimus_controller.agimus_controller.robot_model import RobotModelConstructor
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
-from agimus_controller.utils.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
+from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
+
 
 if __name__ == "__main__":
     pandawrapper = PandaWrapper(auto_col=True)
