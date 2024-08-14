@@ -16,7 +16,8 @@ if __name__ == "__main__":
     hpp_interface = HppInterface()
     q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
     hpp_interface.set_ur3_problem_solver(q_init)
-    ps, viewer = hpp_interface.get_problem_solver_and_viewer()
+    ps = hpp_interface.get_problem_solver()
+    viewer = hpp_interface.get_viewer()
     hpp_path = ps.client.basic.problem.getPath(hpp_interface.ps.numberPaths() - 1)
     x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_x_a_planning(1e-2, 6, hpp_path)
     armature = np.zeros(rmodel.nq)

@@ -18,8 +18,9 @@ if __name__ == "__main__":
     ee_frame_name = pandawrapper.get_ee_frame_name()
     hpp_interface = HppInterface()
     q_init, q_goal = hpp_interface.get_panda_q_init_q_goal()
-    hpp_interface.set_panda_planning(q_init, q_goal)
-    ps, viewer = hpp_interface.get_problem_solver_and_viewer()
+    hpp_interface.set_panda_planning(q_init, q_goal, use_gepetto_gui=True)
+    ps = hpp_interface.get_problem_solver()
+    viewer = hpp_interface.get_viewer()
     x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_x_a_planning(
         1e-2, 7, ps.client.problem.getPath(ps.numberPaths() - 1)
     )

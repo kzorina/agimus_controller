@@ -48,6 +48,7 @@ class Ground(object):
 class HppInterface:
     def __init__(self):
         self.trajectory = []
+        self.viewer = None
 
     def set_ur3_problem_solver(self, q_init):
         parser = ArgumentParser()
@@ -246,7 +247,7 @@ class HppInterface:
         self.ps = ps
         self.viewer = vf.createViewer()
 
-    def set_panda_planning(self, q_init, q_goal):
+    def set_panda_planning(self, q_init, q_goal, use_gepetto_gui=False):
         self.q_init = q_init
         self.q_goal = q_goal
 
@@ -261,13 +262,18 @@ class HppInterface:
             self.scene.create_scene_from_urdf(self.rmodel, self.cmodel)
         )
         self.planner = Planner(self.rmodel, self.cmodel, self.scene, self.T)
-        _, _, self.X = self.planner.solve_and_optimize(self.q_init, self.q_goal)
+        self.planner.setup_planner(q_init, q_goal, use_gepetto_gui)
+        _, _, self.X = self.planner.solve_and_optimize()
         self.planner._ps.optimizePath(self.planner._ps.numberPaths() - 1)
         self.ps = self.planner._ps
-        self.viewer = self.planner._v
+        if use_gepetto_gui:
+            self.viewer = self.planner._v
 
-    def get_problem_solver_and_viewer(self):
-        return self.ps, self.viewer
+    def get_problem_solver(self):
+        return self.ps
+
+    def get_viewer(self):
+        return self.viewer
 
     def get_hpp_x_a_planning(self, DT, nq, hpp_path):
         path = hpp_path.pathAtRank(0)
