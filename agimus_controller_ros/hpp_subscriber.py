@@ -158,14 +158,9 @@ class HPPSubscriber:
             self.fifo_q.get_size(),
             self.fifo_v.get_size(),
             self.fifo_a.get_size(),
-            # self.fifo_com_pose.get_size(),
-            # self.fifo_com_velocity.get_size(),
-            # self.fifo_op_frame_pose.get_size(),
-            # self.fifo_op_frame_velocity.get_size()
         )
 
     def get_trajectory_point(self):
-        print("min all deque size : ", self.min_all_deque())
         if self.min_all_deque() == 0:
             return None
         else:
@@ -175,10 +170,6 @@ class HPPSubscriber:
             tp.q[:] = q[:]
             tp.v[:] = v[:]
             tp.a[:] = self.fifo_a.pop_front().data[:]
-            # tp.com_pos = self.fifo_com_pose.pop_front().data
-            # tp.com_vel = self.fifo_com_velocity.pop_front().data
-            # tp.op_pos = self.fifo_op_frame_pose.pop_front().data
-            # tp.op_vel = self.fifo_op_frame_velocity.pop_front().data
 
             self.index += 1
             return tp
