@@ -1,7 +1,7 @@
 <launch>
 
-    <include file="$(find agimus_controller)/launch/hpp_bringup.launch"/>
+    <node pkg="agimus_controller" name="hpp_corbaserver" type="hpp_corbaserver" />
     <include file="$(find agimus_controller)/launch/record_rosbag.launch"/>
-    <node pkg="agimus_controller" name="hpp_agimus_controller_node" type="hpp_agimus_controller_node" />
-
+    <node pkg="agimus_controller" name="hpp_agimus_controller_node" type="hpp_agimus_controller_node" launch-prefix="xterm -e"/>
+    <rosparam command="load" file="$(find agimus_controller)/config/mpc_params.yaml" subst_value="true" />
 </launch>
