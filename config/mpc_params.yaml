@@ -1,6 +1,6 @@
 save_predictions_and_refs: False
 dt: 0.01
-rate: 100 
+rate: 100
 horizon_size: 70
 armature: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
 gripper_weight: 10000

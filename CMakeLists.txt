@@ -86,11 +86,7 @@ if(BUILD_ROS_INTERFACE)
   catkin_package(CATKIN_DEPENDS ${MY_CATKIN_DEPENDENCIES} DEPENDS
                  ${MY_PYTHON_DEPENDENCIES})
   catkin_install_python(
-    PROGRAMS
-    node/agimus_controller_node
-    node/hpp_agimus_controller_node
-    node/hpp_corbaserver
-    DESTINATION
-    ${CATKIN_PACKAGE_BIN_DESTINATION})
+    PROGRAMS node/agimus_controller_node node/hpp_agimus_controller_node
+    node/hpp_corbaserver DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
   install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 endif()
