@@ -18,6 +18,7 @@ get_property(
   TARGET jrl-cmakemodules::jrl-cmakemodules
   PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
 include(${JRL_CMAKE_MODULES}/base.cmake)
+include(${JRL_CMAKE_MODULES}/test.cmake)
 include(${JRL_CMAKE_MODULES}/python.cmake)
 
 # Declare the project from the above variables.

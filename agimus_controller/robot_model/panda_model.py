@@ -23,5 +23,5 @@ class PandaRobotModelParameters(RobotModelParameters):
 
 class PandaRobotModel(RobotModel):
     @classmethod
-    def load_model(cls):
-        return super().load_model(PandaRobotModelParameters())
+    def load_model(cls, env=None):
+        return super().load_model(PandaRobotModelParameters(), env)

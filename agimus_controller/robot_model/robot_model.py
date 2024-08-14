@@ -1,4 +1,3 @@
-import sys
 import pinocchio as pin
 import numpy as np
 from pathlib import Path
@@ -36,13 +35,13 @@ class RobotModel:
         pass
 
     @classmethod
-    def load_model(cls, param=RobotModelParameters, env=Path):
+    def load_model(cls, param: RobotModelParameters, env: Path):
         model = cls()
         model.load_pinocchio_models(param.urdf, param.free_flyer)
         model.load_default_configuration(param.srdf, param.q0_name)
         model.load_reduced_model(param.locked_joint_names)
-        model.load_env_collision_model(env)
-
+        if env is not None:
+            model.load_env_collision_model(env)
         return model
 
     def load_pinocchio_models(self, urdf: str, free_flyer: bool):
@@ -76,7 +75,6 @@ class RobotModel:
 
     def load_reduced_model(self, locked_joint_names):
         locked_joint_ids = [self._model.getJointId(name) for name in locked_joint_names]
-        print("locked_joint_ids =  ", locked_joint_ids, file=sys.stderr)
         self._rmodel, geometric_models_reduced = pin.buildReducedModel(
             self._model,
             list_of_geom_models=[self._cmodel, self._vmodel],
@@ -85,7 +83,7 @@ class RobotModel:
         )
         self._rvmodel, self._rcmodel = geometric_models_reduced
 
-    def load_env_collision_model(self, env):
+    def load_env_collision_model(self, env: Path):
         parser = ObstacleParamsParser(env, self._rcmodel)
         parser.transform_model_into_capsules()
         parser.add_collisions()

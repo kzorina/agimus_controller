@@ -5,6 +5,11 @@ from agimus_controller.robot_model.panda_model import PandaRobotModel
 
 
 class TestBuildModel(unittest.TestCase):
+    def eprint(*args, **kwargs):
+        import sys
+
+        print(*args, file=sys.stderr, **kwargs)
+
     def test_constructor(self):
         robot_model = RobotModel()
 
@@ -30,8 +35,8 @@ class TestBuildModel(unittest.TestCase):
         self.assertEqual(m.nq, m.nv)
         self.assertEqual(m.nq, 7)
         self.assertEqual(m.name, "panda")
-        self.assertEqual(m.existJointName("panda_hand_joint"))
-        self.assertEqual(m.existJointName("panda_camera_joint"))
+        self.assertTrue(m.existFrame("panda_hand_joint"))
+        self.assertTrue(m.existFrame("panda_camera_joint"))
 
 
 if __name__ == "__main__":

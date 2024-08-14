@@ -1,13 +1,14 @@
 import yaml
 import numpy as np
 import pinocchio as pin
+from pathlib import Path
 from panda_torque_mpc_pywrap import reduce_capsules_robot
 from hppfcl import Sphere, Box, Cylinder, Capsule
 
 
 class ObstacleParamsParser:
-    def __init__(self, yaml_file, collision_model):
-        with open(yaml_file, "r") as file:
+    def __init__(self, yaml_file: Path, collision_model: pin.Model):
+        with open(str(yaml_file), "r") as file:
             self.params = yaml.safe_load(file)
         self.collision_model = reduce_capsules_robot(collision_model)
 
