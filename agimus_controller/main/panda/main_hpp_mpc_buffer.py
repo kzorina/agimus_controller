@@ -2,24 +2,26 @@ import numpy as np
 
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
-from agimus_controller.agimus_controller.visualization.plots import MPCPlots
-from agimus_controller.agimus_controller.robot_model import RobotModelConstructor
+from agimus_controller.visualization.plots import MPCPlots
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
-from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
+from agimus_controller.robot_model.panda_model import (
+    PandaRobotModel,
+    PandaRobotModelParameters,
+)
 
 
 def main():
-    pandawrapper = PandaWrapper(auto_col=True)
+    panda_params = PandaRobotModelParameters()
+    panda_params.self_collision = True
+    pandawrapper = PandaRobotModel.load_model(params=panda_params)
 
-    robot_constructor = RobotModelConstructor(load_from_ros=False)
+    rmodel = pandawrapper.get_reduced_robot_model()
+    cmodel = pandawrapper.get_reduced_collision_model()
 
-    rmodel = robot_constructor.get_robot_reduced_model()
-    cmodel = robot_constructor.get_collision_reduced_model()
-
-    ee_frame_name = pandawrapper.get_ee_frame_name()
+    ee_frame_name = panda_params.ee_frame_name
     hpp_interface = HppInterface()
     q_init, q_goal = hpp_interface.get_panda_q_init_q_goal()
     hpp_interface.set_panda_planning(q_init, q_goal, use_gepetto_gui=True)

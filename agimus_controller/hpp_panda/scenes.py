@@ -1,4 +1,4 @@
-from os.path import dirname, join, abspath
+from pathlib import Path
 import numpy as np
 import pinocchio as pin
 
@@ -101,6 +101,7 @@ class Scene:
         self.get_shapes_avoiding_collision()
         for shape in self.shapes_avoiding_collision:
             # Highlight the shapes of the robot that are supposed to avoid collision
+            print("Loading ", shape, "in the scene.")
             self._cmodel.geometryObjects[
                 self._cmodel.getGeometryId(shape)
             ].meshColor = YELLOW_FULL
@@ -125,15 +126,10 @@ class Scene:
         Args:
             urdf_file_name (str): name of the URDF.
         """
-
-        model_dir = dirname(dirname((str(abspath(__file__)))))
-        model_path = join(model_dir, "robot_description")
-        urdf_dir = join(model_path, "urdf")
-        obstacle_dir = join(urdf_dir, "obstacles")
-        self.urdf_model_path = join(obstacle_dir, urdf_filename)
-
+        obstacle_dir = Path(__file__).resolve().parent.parent / "resources"
+        self.urdf_model_path = obstacle_dir / urdf_filename
         model, collision_model, visual_model = pin.buildModelsFromUrdf(
-            self.urdf_model_path
+            str(self.urdf_model_path)
         )
 
         # changing the names of the frames because there is conflict between frames names of both models.
@@ -155,31 +151,31 @@ class Scene:
         """
         if self._name_scene == "box":
             self.shapes_avoiding_collision = [
-                "panda2_link7_capsule_0",
-                "panda2_link7_capsule_1",
-                "panda2_link6_capsule_0",
-                "panda2_link5_capsule_1",
-                "panda2_link5_capsule_0",
-                "panda2_rightfinger_0",
-                "panda2_leftfinger_0",
+                "panda_link7_capsule_0",
+                "panda_link7_capsule_1",
+                "panda_link6_capsule_0",
+                "panda_link5_capsule_1",
+                "panda_link5_capsule_0",
+                "panda_rightfinger_0",
+                "panda_leftfinger_0",
             ]
         elif self._name_scene == "ball":
             self.shapes_avoiding_collision = [
-                "panda2_leftfinger_0",
-                "panda2_rightfinger_0",
-                "panda2_link6_capsule_0",
-                "panda2_link5_capsule_0",
-                "panda2_link5_capsule_1",
+                "panda_leftfinger_0",
+                "panda_rightfinger_0",
+                "panda_link6_capsule_0",
+                "panda_link5_capsule_0",
+                "panda_link5_capsule_1",
             ]
         elif self._name_scene == "wall":
             self.shapes_avoiding_collision = [
-                "panda2_link7_capsule_0",
-                "panda2_link7_capsule_1",
-                "panda2_link6_capsule_0",
-                "panda2_link5_capsule_1",
-                "panda2_link5_capsule_0",
-                "panda2_rightfinger_0",
-                "panda2_leftfinger_0",
+                "panda_link7_capsule_0",
+                "panda_link7_capsule_1",
+                "panda_link6_capsule_0",
+                "panda_link5_capsule_1",
+                "panda_link5_capsule_0",
+                "panda_rightfinger_0",
+                "panda_leftfinger_0",
             ]
         else:
             raise NotImplementedError(

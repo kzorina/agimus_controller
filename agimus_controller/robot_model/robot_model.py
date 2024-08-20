@@ -91,25 +91,32 @@ class RobotModel:
     def _update_collision_model(
         self, env: Path, collision_as_capsule: bool, self_collision: bool, srdf: Path
     ):
+        rcmodel0 = self._rcmodel.copy()
         if collision_as_capsule:
             self._rcmodel = self._collision_parser.transform_model_into_capsules(
                 self._rcmodel
             )
+        rcmodel1 = self._rcmodel.copy()
         if self_collision and srdf.exists():
             self._rcmodel = self._collision_parser.add_self_collision(
                 self._rmodel, self._rcmodel, srdf
             )
+        rcmodel2 = self._rcmodel.copy()
         if env is not None:
             self._rcmodel = self._collision_parser.add_collisions(self._rcmodel, env)
+        rcmodel3 = self._rcmodel.copy()
+        assert rcmodel0 != rcmodel1
+        assert rcmodel1 != rcmodel2
+        assert rcmodel2 != rcmodel3
 
     def get_complete_robot_model(self):
         return self._model.copy()
 
     def get_complete_collision_model(self):
-        return self._rcmodel.copy()
+        return self._cmodel.copy()
 
     def get_complete_visual_model(self):
-        return self._rvmodel.copy()
+        return self._vmodel.copy()
 
     def get_reduced_robot_model(self):
         return self._rmodel.copy()

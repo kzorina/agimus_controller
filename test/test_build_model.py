@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 import pinocchio as pin
+from agimus_controller.utils.iostream import eprint
 from agimus_controller.robot_model.robot_model import RobotModel
 from agimus_controller.robot_model.panda_model import PandaRobotModel
 from agimus_controller.robot_model.panda_model import PandaRobotModelParameters
@@ -8,11 +9,6 @@ from agimus_controller.robot_model.ur5_model import UR5RobotModel
 
 
 class TestBuildModel(unittest.TestCase):
-    def eprint(*args, **kwargs):
-        import sys
-
-        print(*args, file=sys.stderr, **kwargs)
-
     def test_constructor(self):
         robot_model = RobotModel()
 
@@ -27,7 +23,11 @@ class TestBuildModel(unittest.TestCase):
         self.assertEqual(robot_model.get_default_configuration().size, 0)
 
     def test_load_panda_model(self):
-        robot_model = PandaRobotModel.load_model()
+        robot_params = PandaRobotModelParameters()
+        robot_params.self_collision = False
+        robot_params.collision_as_capsule = False
+        robot_model = PandaRobotModel.load_model(params=robot_params)
+
         self.assertNotEqual(robot_model.get_complete_robot_model(), pin.Model())
         self.assertNotEqual(robot_model.get_complete_collision_model(), pin.Model())
         self.assertNotEqual(robot_model.get_complete_visual_model(), pin.Model())
@@ -46,10 +46,12 @@ class TestBuildModel(unittest.TestCase):
     def test_load_panda_self_collision(self):
         robot_params = PandaRobotModelParameters()
         robot_params.self_collision = True
+        robot_params.collision_as_capsule = False
         PandaRobotModel.load_model(params=robot_params)
 
     def test_load_panda_collision_as_capsule(self):
         robot_params = PandaRobotModelParameters()
+        robot_params.self_collision = False
         robot_params.collision_as_capsule = True
         PandaRobotModel.load_model(params=robot_params)
 
@@ -57,7 +59,13 @@ class TestBuildModel(unittest.TestCase):
         robot_params = PandaRobotModelParameters()
         robot_params.collision_as_capsule = True
         robot_params.self_collision = True
-        PandaRobotModel.load_model(params=robot_params)
+        robot_model = PandaRobotModel.load_model(params=robot_params)
+
+        eprint("Robot Model: ")
+        eprint(robot_model.get_reduced_robot_model())
+
+        eprint("Geometry Model")
+        eprint(robot_model.get_reduced_collision_model())
 
     def test_load_panda_collisions(self):
         robot_params = PandaRobotModelParameters()

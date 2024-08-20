@@ -1,15 +1,29 @@
 import unittest
-from agimus_controller.hpp_interface import HppInterface
+from agimus_controller.hpp_interface import HppCorbaServer
+from agimus_controller.hpp_interface import GepettoGuiServer
+# from agimus_controller.hpp_interface import HppInterface
 
 
 class TestMains(unittest.TestCase):
-    def test_spwan_hppcorbaserver(self):
-        obj = HppInterface()
-        self.assertFalse(HppInterface.is_hppcorbaserver_running())
-        obj.start_corbaserver()
-        self.assertTrue(HppInterface.is_hppcorbaserver_running())
-        obj.stop_corbaserver()
-        self.assertFalse(HppInterface.is_hppcorbaserver_running())
+    def test_spawn_hppcorbaserver(self):
+        obj = HppCorbaServer()
+        self.assertTrue(obj.is_running())
+        obj.stop()
+        self.assertFalse(obj.is_running())
+        obj.start()
+        self.assertTrue(obj.is_running())
+        obj.stop()
+        self.assertFalse(obj.is_running())
+
+    def test_spawn_gepetto_gui(self):
+        obj = GepettoGuiServer()
+        self.assertTrue(obj.is_running())
+        obj.stop()
+        self.assertFalse(obj.is_running())
+        obj.start()
+        self.assertTrue(obj.is_running())
+        obj.stop()
+        self.assertFalse(obj.is_running())
 
 
 if __name__ == "__main__":

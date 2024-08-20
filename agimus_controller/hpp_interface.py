@@ -7,7 +7,9 @@
 # Start hppcorbaserver before running this script
 #
 
+import time
 import subprocess
+import psutil
 import datetime as dt
 import numpy as np
 from argparse import ArgumentParser
@@ -27,7 +29,9 @@ from hpp_idl.hpp import Equality, EqualToZero
 from agimus_controller.trajectory_point import TrajectoryPoint
 from agimus_controller.hpp_panda.planner import Planner
 from agimus_controller.hpp_panda.scenes import Scene
-from agimus_controller.hpp_panda.wrapper_panda import PandaWrapper
+from agimus_controller.robot_model.panda_model import (
+    PandaRobotModel,
+)
 
 
 class Sphere(object):
@@ -46,14 +50,56 @@ class Ground(object):
     srdfSuffix = ""
 
 
-class HppInterface:
-    def __init__(self):
-        self.hppcorbaserver = None
-        self.trajectory = []
-        self.viewer = None
+class ProcessHandler(object):
+    def __init__(self, name: str):
+        self.process = None
+        self.name = name
+        self.start()
 
     def __del__(self):
-        self.stop_corbaserver()
+        self.stop()
+
+    def is_running(self):
+        return bool(
+            [
+                p
+                for p in psutil.process_iter()
+                if psutil.Process(p.pid).name() == self.name
+            ]
+        )
+
+    def start(self):
+        if self.process is not None and not self.is_running():
+            return
+        self.process = subprocess.Popen([self.name])
+        time.sleep(0.2)
+
+    def stop(self):
+        if self.process is None:
+            return
+        self.process.terminate()
+        self.process.kill()
+        self.process.wait()
+        self.process = None
+
+
+class GepettoGuiServer(ProcessHandler):
+    def __init__(self):
+        super().__init__("gepetto-gui")
+
+
+class HppCorbaServer(ProcessHandler):
+    def __init__(self):
+        super().__init__("hppcorbaserver")
+
+
+class HppInterface:
+    def __init__(self, with_gepetto_gui=True):
+        self.hppcorbaserver = HppCorbaServer()
+        if with_gepetto_gui:
+            self.gepetto_gui_server = GepettoGuiServer()
+        self.trajectory = []
+        self.viewer = None
 
     def set_ur3_problem_solver(self, q_init):
         parser = ArgumentParser()
@@ -255,11 +301,12 @@ class HppInterface:
     def set_panda_planning(self, q_init, q_goal, use_gepetto_gui=False):
         self.q_init = q_init
         self.q_goal = q_goal
-
         loadServerPlugin("corbaserver", "manipulation-corba.so")
         self.T = 20
-        self.robot_wrapper = PandaWrapper(capsule=True, auto_col=True)
-        self.rmodel, self.cmodel, self.vmodel = self.robot_wrapper()
+        self.robot_wrapper = PandaRobotModel.load_model()
+        self.rmodel = self.robot_wrapper.get_reduced_robot_model()
+        self.cmodel = self.robot_wrapper.get_reduced_collision_model()
+        self.vmodel = self.robot_wrapper.get_reduced_visual_model()
 
         self.name_scene = "wall"
         self.scene = Scene(self.name_scene, self.q_init)
@@ -353,28 +400,3 @@ class HppInterface:
 
         q_goal = [1.9542, -1.1679, -2.0741, -1.8046, 0.0149, 2.1971, 2.0056]
         return q_init, q_goal
-
-    @classmethod
-    def is_hppcorbaserver_running(cls):
-        import psutil
-
-        return bool(
-            [
-                p
-                for p in psutil.process_iter()
-                if psutil.Process(p.pid).name() == "hppcorbaserver"
-            ]
-        )
-
-    def start_corbaserver(self):
-        if self.hppcorbaserver is not None:
-            return
-        self.hppcorbaserver = subprocess.Popen(["hppcorbaserver"])
-
-    def stop_corbaserver(self):
-        if self.hppcorbaserver is None:
-            return
-        self.hppcorbaserver.terminate()
-        self.hppcorbaserver.kill()
-        self.hppcorbaserver.wait()
-        self.hppcorbaserver = None
