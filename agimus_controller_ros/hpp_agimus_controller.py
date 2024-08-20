@@ -33,7 +33,7 @@ class HppAgimusController(ControllerBase):
         ps = self.hpp_interface.get_problem_solver()
         self.whole_x_plan, self.whole_a_plan, _ = (
             self.hpp_interface.get_hpp_x_a_planning(
-                self.dt,
+                self.params.dt,
                 self.nq,
                 ps.client.problem.getPath(ps.numberPaths() - 1),
             )

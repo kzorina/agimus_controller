@@ -23,13 +23,23 @@ from agimus_controller_ros.sim_utils import convert_float_to_ros_duration_msg
 
 class AgimusControllerNodeParameters:
     def __init__(self) -> None:
-        self.rate = rospy.get_param("~rate", 100)
-        self.horizon_size = rospy.get_param("~horizon_size", 100)
+        self.save_predictions_and_refs = rospy.get_param(
+            "save_predictions_and_refs", False
+        )
+        self.dt = rospy.get_param("dt", 0.01)
+        self.rate = rospy.get_param("rate", 100)
+        self.horizon_size = rospy.get_param("horizon_size", 100)
+        self.armature = np.array(
+            rospy.get_param("armature", [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
+        )
+        self.gripper_weight = rospy.get_param("gripper_weight", 10000)
+        self.state_weight = rospy.get_param("state_weight", 10)
+        self.control_weight = rospy.get_param("control_weight", 0.001)
+        self.use_constraints = rospy.get_param("use_constraints", False)
 
 
 class ControllerBase:
     def __init__(self) -> None:
-        self.dt = 1e-2
         self.params = AgimusControllerNodeParameters()
         self.traj_buffer = TrajectoryBuffer()
         self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
@@ -46,13 +56,19 @@ class ControllerBase:
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
-        self.armature = np.array([0.05] * self.nq)
 
         self.ocp = OCPCrocoHPP(
-            self.rmodel, self.cmodel, use_constraints=False, armature=self.armature
+            self.rmodel,
+            self.cmodel,
+            use_constraints=self.params.use_constraints,
+            armature=self.params.armature,
         )
-        self.ocp.set_weights(10**4, 10, 10**-3, 0)
-        self.save_predictions_and_refs = False
+        self.ocp.set_weights(
+            self.params.gripper_weight,
+            self.params.state_weight,
+            self.params.control_weight,
+            0,
+        )
         self.mpc_data = {}
 
         self.rate = rospy.Rate(self.params.rate, reset=True)
@@ -64,9 +80,7 @@ class ControllerBase:
         self.x_guess = np.zeros(self.nq + self.nv)
         self.u_guess = np.zeros(self.nv)
         self.state_subscriber = rospy.Subscriber(
-            "robot_sensors",
-            Sensor,
-            self.sensor_callback,
+            "robot_sensors", Sensor, self.sensor_callback
         )
         self.control_publisher = rospy.Publisher(
             "motion_server_control", Control, queue_size=1, tcp_nodelay=True
@@ -136,7 +150,7 @@ class ControllerBase:
         )
         self.mpc.mpc_first_step(x_plan, a_plan, x0, self.params.horizon_size)
         self.next_node_idx = self.params.horizon_size
-        if self.save_predictions_and_refs:
+        if self.params.save_predictions_and_refs:
             self.create_mpc_data()
         _, u, k = self.mpc.get_mpc_output()
         return sensor_msg, u, k
@@ -167,7 +181,7 @@ class ControllerBase:
         rospy.loginfo_throttle(1, "mpc_duration = %s", str(mpc_duration))
         if self.next_node_idx < self.mpc.whole_x_plan.shape[0] - 1:
             self.next_node_idx += 1
-        if self.save_predictions_and_refs:
+        if self.params.save_predictions_and_refs:
             self.fill_predictions_and_refs_arrays()
         _, u, k = self.mpc.get_mpc_output()
 
@@ -220,7 +234,7 @@ class ControllerBase:
         input("Press enter to continue ...")
         self.send(sensor_msg, u, k)
         self.rate.sleep()
-        if self.save_predictions_and_refs:
+        if self.params.save_predictions_and_refs:
             atexit.register(self.exit_handler)
         while not rospy.is_shutdown():
             start_compute_time = time.time()

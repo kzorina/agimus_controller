@@ -1,6 +1,0 @@
-<launch>
-
-    <node pkg="agimus_controller" name="hpp_corbaserver" type="hpp_corbaserver" />
-    <node pkg="agimus_controller" name="gepetto_gui" type="gepetto_gui" />
-
-</launch>
