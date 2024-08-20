@@ -115,8 +115,11 @@ class ObstacleParamsParser:
         return cmodel
 
     def transform_model_into_capsules(self, model: pin.Model):
+        return reduce_capsules_robot(model)
+
+    def _transform_model_into_capsules(self, model: pin.Model):
         """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
-        model_copy = reduce_capsules_robot(model.copy())
+        model_copy = model.copy()
         list_names_capsules = []
 
         # Going through all the goemetry objects in the collision model
