@@ -1,5 +1,4 @@
 from os.path import dirname, join, abspath
-
 import numpy as np
 import pinocchio as pin
 
@@ -191,12 +190,19 @@ class Scene:
 
 
 if __name__ == "__main__":
-    # from wrapper_meshcat import MeshcatWrapper
-    from wrapper_panda import PandaWrapper
+    from agimus_controller.robot_model.panda_model import (
+        PandaRobotModel,
+        PandaRobotModelParameters,
+    )
 
     # Creating the robot
-    robot_wrapper = PandaWrapper(capsule=True, auto_col=True)
-    rmodel, cmodel, vmodel = robot_wrapper()
+    robot_params = PandaRobotModelParameters()
+    robot_params.self_collision = True
+    robot_params.collision_as_capsule = True
+    robot_wrapper = PandaRobotModel.load_model(params=robot_params)
+    rmodel = robot_wrapper.get_reduced_robot_model()
+    cmodel = robot_wrapper.get_reduced_collision_model()
+    vmodel = robot_wrapper.get_reduced_visual_model()
 
     scene = Scene("ball")
     rmodel, cmodel, target, target2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)

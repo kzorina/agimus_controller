@@ -26,8 +26,6 @@ from os.path import dirname, join, abspath
 
 import numpy as np
 import pinocchio as pin
-import hppfcl
-
 # This class is for unwrapping an URDF and converting it to a model. It is also possible to add objects in the model,
 # such as a ball at a specific position.
 
@@ -126,37 +124,3 @@ class PandaWrapper:
             self._vmodel_reduced,
         )
 
-    def transform_model_into_capsules(self):
-        """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
-        collision_model_reduced_copy = self._cmodel_reduced.copy()
-        list_names_capsules = []
-
-        # Going through all the goemetry objects in the collision model
-        for geom_object in collision_model_reduced_copy.geometryObjects:
-            if isinstance(geom_object.geometry, hppfcl.Cylinder):
-                # Sometimes for one joint there are two cylinders, which need to be defined by two capsules for the same link.
-                # Hence the name convention here.
-                if (geom_object.name[:-4] + "capsule_0") in list_names_capsules:
-                    name = geom_object.name[:-4] + "capsule_" + "1"
-                else:
-                    name = geom_object.name[:-4] + "capsule_" + "0"
-                list_names_capsules.append(name)
-                placement = geom_object.placement
-                parentJoint = geom_object.parentJoint
-                parentFrame = geom_object.parentFrame
-                geometry = geom_object.geometry
-                geom = pin.GeometryObject(
-                    name,
-                    parentFrame,
-                    parentJoint,
-                    hppfcl.Capsule(geometry.radius, geometry.halfLength),
-                    placement,
-                )
-                geom.meshColor = RED
-                self._cmodel_reduced.addGeometryObject(geom)
-                self._cmodel_reduced.removeGeometryObject(geom_object.name)
-            elif (
-                isinstance(geom_object.geometry, hppfcl.Sphere)
-                and "link" in geom_object.name
-            ):
-                self._cmodel_reduced.removeGeometryObject(geom_object.name)

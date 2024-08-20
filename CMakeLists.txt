@@ -40,7 +40,7 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
   set(pkg2 ${PROJECT_NAME}/hpp_panda planner.py scenes.py wrapper_panda.py)
   set(pkg3 ${PROJECT_NAME}/main/panda main_hpp_mpc_buffer.py main_hpp_mpc.py
            main_meshcat_display.py main_mpc.py main_optim_traj.py)
-  set(pkg4 ${PROJECT_NAME}/main/ur3 main_hpp_mpc.py)
+  set(pkg4 ${PROJECT_NAME}/main/ur5 main_hpp_mpc.py)
   set(pkg5 ${PROJECT_NAME}/ocps ocp_croco_hpp.py ocp.py)
   set(pkg6 ${PROJECT_NAME}/robot_model obstacle_params_parser.py panda_model.py
            robot_model.py wrapper_panda.py)

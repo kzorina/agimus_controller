@@ -1,25 +1,22 @@
 #!/usr/bin/env python
-from math import pi
 import time
-import example_robot_data
 import numpy as np
+from agimus_controller.robot_model.ur5_model import UR5RobotModel
 
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.mpc import MPC
 from agimus_controller.hpp_interface import HppInterface
-from agimus_controller.agimus_controller.visualization.plots import MPCPlots
+from agimus_controller.visualization.plots import MPCPlots
 
 
 def main():
-    robot = example_robot_data.load("ur3")
-    rmodel = robot.model
+    robot = UR5RobotModel()
+    rmodel = robot.get_reduced_robot_model()
     hpp_interface = HppInterface()
-    q_init = [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
-    hpp_interface.set_ur3_problem_solver(q_init)
-    ps = hpp_interface.get_problem_solver()
+    hpp_interface.start_corbaserver()
+    hpp_interface.set_ur3_problem_solver(robot.get_default_configuration())
+    x_plan, a_plan, _ = hpp_interface.get_hpp_x_a_planning(1e-2)
     viewer = hpp_interface.get_viewer()
-    hpp_path = ps.client.basic.problem.getPath(hpp_interface.ps.numberPaths() - 1)
-    x_plan, a_plan, whole_traj_T = hpp_interface.get_hpp_x_a_planning(1e-2, 6, hpp_path)
     armature = np.zeros(rmodel.nq)
     ocp = OCPCrocoHPP(
         rmodel=rmodel, cmodel=None, use_constraints=False, armature=armature

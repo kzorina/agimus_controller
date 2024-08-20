@@ -1,11 +1,7 @@
 from os.path import dirname, join, abspath
-
 import numpy as np
-
-
 from hpp.corbaserver import Client, Robot, ProblemSolver
 from hpp.gepetto import ViewerFactory
-
 import pinocchio as pin
 
 from .scenes import Scene

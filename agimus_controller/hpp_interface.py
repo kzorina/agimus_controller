@@ -7,6 +7,7 @@
 # Start hppcorbaserver before running this script
 #
 
+import subprocess
 import datetime as dt
 import numpy as np
 from argparse import ArgumentParser
@@ -47,8 +48,12 @@ class Ground(object):
 
 class HppInterface:
     def __init__(self):
+        self.hppcorbaserver = None
         self.trajectory = []
         self.viewer = None
+
+    def __del__(self):
+        self.stop_corbaserver()
 
     def set_ur3_problem_solver(self, q_init):
         parser = ArgumentParser()
@@ -275,7 +280,9 @@ class HppInterface:
     def get_viewer(self):
         return self.viewer
 
-    def get_hpp_x_a_planning(self, DT, nq, hpp_path):
+    def get_hpp_x_a_planning(self, DT):
+        nq = self.rmodel.nq
+        hpp_path = self.ps.client.basic.problem.getPath(self.ps.numberPaths() - 1)
         path = hpp_path.pathAtRank(0)
         T = int(np.round(path.length() / DT))
         x_plan, a_plan, subpath = self.get_xplan_aplan(T, path, nq)
@@ -346,3 +353,28 @@ class HppInterface:
 
         q_goal = [1.9542, -1.1679, -2.0741, -1.8046, 0.0149, 2.1971, 2.0056]
         return q_init, q_goal
+
+    @classmethod
+    def is_hppcorbaserver_running(cls):
+        import psutil
+
+        return bool(
+            [
+                p
+                for p in psutil.process_iter()
+                if psutil.Process(p.pid).name() == "hppcorbaserver"
+            ]
+        )
+
+    def start_corbaserver(self):
+        if self.hppcorbaserver is not None:
+            return
+        self.hppcorbaserver = subprocess.Popen(["hppcorbaserver"])
+
+    def stop_corbaserver(self):
+        if self.hppcorbaserver is None:
+            return
+        self.hppcorbaserver.terminate()
+        self.hppcorbaserver.kill()
+        self.hppcorbaserver.wait()
+        self.hppcorbaserver = None

@@ -15,6 +15,8 @@ class PandaRobotModelParameters(RobotModelParameters):
         self.model_name = "panda"
         self.q0_name = "default"
         self.free_flyer = False
+        self.collision_as_capsule = False
+        self.self_collision = False
         self.locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
         self.urdf = xacro.process_file(self._xacro_file, mappings={}).toxml()
         self.srdf = self._package_dir / "robots" / "panda" / "panda.srdf"
@@ -23,5 +25,8 @@ class PandaRobotModelParameters(RobotModelParameters):
 
 class PandaRobotModel(RobotModel):
     @classmethod
-    def load_model(cls, env=None):
-        return super().load_model(PandaRobotModelParameters(), env)
+    def load_model(cls, env=None, params=None):
+        if params is not None:
+            return super().load_model(params, env)
+        else:
+            return super().load_model(PandaRobotModelParameters(), env)

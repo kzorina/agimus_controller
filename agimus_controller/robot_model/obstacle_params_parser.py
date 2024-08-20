@@ -7,17 +7,15 @@ from hppfcl import Sphere, Box, Cylinder, Capsule
 
 
 class ObstacleParamsParser:
-    def __init__(self, yaml_file: Path, collision_model: pin.Model):
+    def add_collisions(self, cmodel: pin.Model, yaml_file: Path):
         with open(str(yaml_file), "r") as file:
-            self.params = yaml.safe_load(file)
-        self.collision_model = reduce_capsules_robot(collision_model)
+            params = yaml.safe_load(file)
 
-    def add_collisions(self):
         obs_idx = 1
 
-        while f"obstacle{obs_idx}" in self.params:
+        while f"obstacle{obs_idx}" in params:
             obstacle_name = f"obstacle{obs_idx}"
-            obstacle_config = self.params[obstacle_name]
+            obstacle_config = params[obstacle_name]
 
             type_ = obstacle_config.get("type")
             translation_vect = obstacle_config.get("translation", [])
@@ -78,18 +76,20 @@ class ObstacleParamsParser:
             obstacle_pose = pin.XYZQUATToSE3(np.concatenate([translation, rotation]))
             obstacle_pose.translation = translation
             obstacle = pin.GeometryObject(obstacle_name, 0, 0, geometry, obstacle_pose)
-            self.collision_model.addGeometryObject(obstacle)
+            cmodel.addGeometryObject(obstacle)
             obs_idx += 1
 
-        collision_pairs = self.params.get("collision_pairs", [])
+        collision_pairs = params.get("collision_pairs", [])
         if collision_pairs:
             for pair in collision_pairs:
                 if len(pair) == 2:
                     name_object1, name_object2 = pair
-                    if self.collision_model.existGeometryName(
+                    if cmodel.existGeometryName(
                         name_object1
-                    ) and self.collision_model.existGeometryName(name_object2):
-                        self.add_collision_pair(name_object1, name_object2)
+                    ) and cmodel.existGeometryName(name_object2):
+                        cmodel = self.add_collision_pair(
+                            cmodel, name_object1, name_object2
+                        )
                     else:
                         print(
                             f"Object {name_object1} or {name_object2} does not exist in the collision model."
@@ -99,19 +99,23 @@ class ObstacleParamsParser:
         else:
             print("No collision pairs.")
 
-    def add_collision_pair(self, name_object1, name_object2):
-        object1_id = self.collision_model.getGeometryId(name_object1)
-        object2_id = self.collision_model.getGeometryId(name_object2)
+    def add_collision_pair(
+        self, cmodel: pin.Model, name_object1: str, name_object2: str
+    ):
+        object1_id = cmodel.getGeometryId(name_object1)
+        object2_id = cmodel.getGeometryId(name_object2)
         if object1_id is not None and object2_id is not None:
-            self.collision_model.addCollisionPair(
-                pin.CollisionPair(object1_id, object2_id)
-            )
+            cmodel.addCollisionPair(pin.CollisionPair(object1_id, object2_id))
         else:
             print(
                 f"Object ID not found for collision pair: {object1_id} and {object2_id}"
             )
+        return cmodel
 
-    def transform_model_into_capsules(self, model):
+    def transform_model_into_capsules(self, model: pin.Model):
+        return reduce_capsules_robot(model)
+
+    def _transform_model_into_capsules(self, model: pin.Model):
         """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
         model_copy = model.copy()
         list_names_capsules = []
@@ -146,3 +150,10 @@ class ObstacleParamsParser:
             ):
                 model_copy.removeGeometryObject(geom_object.name)
         return model_copy
+
+    def add_self_collision(
+        self, rmodel: pin.Model, rcmodel: pin.GeometryModel, srdf: Path
+    ):
+        rcmodel.addAllCollisionPairs()
+        pin.removeCollisionPairs(rmodel, rcmodel, str(srdf))
+        return rcmodel
