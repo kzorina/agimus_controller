@@ -7,4 +7,3 @@ gripper_weight: 10000
 state_weight: 10
 control_weight: 0.001
 use_constraints: False
-ros_namespace: '/ctrl_mpc_linearized'

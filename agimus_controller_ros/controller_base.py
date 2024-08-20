@@ -36,7 +36,6 @@ class AgimusControllerNodeParameters:
         self.state_weight = rospy.get_param("state_weight", 10)
         self.control_weight = rospy.get_param("control_weight", 0.001)
         self.use_constraints = rospy.get_param("use_constraints", False)
-        self.ros_namespace = rospy.get_param("ros_namespace", "/ctrl_mpc_linearized")
 
 
 class ControllerBase:
@@ -81,21 +80,13 @@ class ControllerBase:
         self.x_guess = np.zeros(self.nq + self.nv)
         self.u_guess = np.zeros(self.nv)
         self.state_subscriber = rospy.Subscriber(
-            self.params.ros_namespace + "/robot_sensors",
-            Sensor,
-            self.sensor_callback,
+            "robot_sensors", Sensor, self.sensor_callback
         )
         self.control_publisher = rospy.Publisher(
-            self.params.ros_namespace + "/motion_server_control",
-            Control,
-            queue_size=1,
-            tcp_nodelay=True,
+            "motion_server_control", Control, queue_size=1, tcp_nodelay=True
         )
         self.ocp_solve_time_pub = rospy.Publisher(
-            self.params.ros_namespace + "/ocp_solve_time",
-            Duration,
-            queue_size=1,
-            tcp_nodelay=True,
+            "ocp_solve_time", Duration, queue_size=1, tcp_nodelay=True
         )
         self.start_time = 0.0
         self.first_robot_sensor_msg_received = False
