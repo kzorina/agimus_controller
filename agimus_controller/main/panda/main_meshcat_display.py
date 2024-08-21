@@ -1,14 +1,14 @@
-from agimus_controller.agimus_controller.robot_model.wrapper_panda import PandaWrapper
-from agimus_controller.utils.wrapper_meshcat import MeshcatWrapper
+from agimus_controller.robot_model.panda_model import PandaRobotModel
+from agimus_controller.visualization.wrapper_meshcat import MeshcatWrapper
 import pinocchio as pin
 
 
 def main():
     # Creating the robot
-    robot_wrapper = PandaWrapper(capsule=True)
-    rmodel, cmodel, vmodel = robot_wrapper()
-    # rdata = rmodel.createData()
-    # cdata = cmodel.createData()
+    robot_wrapper = PandaRobotModel.load_model()
+    rmodel = robot_wrapper.get_reduced_robot_model()
+    cmodel = robot_wrapper.get_reduced_collision_model()
+    vmodel = robot_wrapper.get_reduced_visual_model()
     # Generating the meshcat visualizer
     MeshcatVis = MeshcatWrapper()
     vis = MeshcatVis.visualize(

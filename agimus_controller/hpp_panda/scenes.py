@@ -76,14 +76,15 @@ class Scene:
             cmodel (pin.Model): collision model of the robot
         """
 
-        model, collision_model, visual_model = self._load_obstacle_urdf(
-            self.urdf_filename
-        )
+        obs_model, obs_cmodel, _ = self._load_obstacle_urdf(self.urdf_filename)
+        print(rmodel)
+        for pair in cmodel.collisionPairs:
+            print(pair)
         self._rmodel, self._cmodel = pin.appendModel(
             rmodel,
-            model,
+            obs_model,
             cmodel,
-            collision_model,
+            obs_cmodel,
             0,
             self.obstacle_pose,
         )
@@ -126,22 +127,25 @@ class Scene:
         Args:
             urdf_file_name (str): name of the URDF.
         """
-        obstacle_dir = Path(__file__).resolve().parent.parent / "resources"
+        obstacle_dir = (
+            Path(__file__).resolve().parent.parent / "resources" / "obstacles"
+        )
         self.urdf_model_path = obstacle_dir / urdf_filename
-        model, collision_model, visual_model = pin.buildModelsFromUrdf(
+        obs_model, obs_cmodel, obs_vmodel = pin.buildModelsFromUrdf(
             str(self.urdf_model_path)
         )
 
         # changing the names of the frames because there is conflict between frames names of both models.
-        for frame in model.frames:
+        print("Frame names of the obstacle:")
+        for frame in obs_model.frames:
             frame.name = frame.name + "_obstacle"
-            print(frame.name)
+            print("\t- ", frame.name)
         self._obstacles_name = []
-        for obstacle in collision_model.geometryObjects:
+        for obstacle in obs_cmodel.geometryObjects:
             self._obstacles_name.append(obstacle.name)
 
         self._obstacles_name.append("support_link_0")
-        return model, collision_model, visual_model
+        return obs_model, obs_cmodel, obs_vmodel
 
     def get_shapes_avoiding_collision(self):
         """Get the list of the shapes avoiding the collisions with the obstacles.
@@ -190,17 +194,21 @@ if __name__ == "__main__":
         PandaRobotModel,
         PandaRobotModelParameters,
     )
+    from agimus_controller.visualization.wrapper_meshcat import MeshcatWrapper
 
     # Creating the robot
     robot_params = PandaRobotModelParameters()
     robot_params.self_collision = True
     robot_params.collision_as_capsule = True
-    robot_wrapper = PandaRobotModel.load_model(params=robot_params)
+    robot_wrapper = PandaRobotModel.load_model(
+        params=robot_params,
+        env=Path(__file__).resolve().parent.parent / "resources" / "panda_env.yaml",
+    )
     rmodel = robot_wrapper.get_reduced_robot_model()
     cmodel = robot_wrapper.get_reduced_collision_model()
     vmodel = robot_wrapper.get_reduced_visual_model()
 
-    scene = Scene("ball")
+    scene = Scene("ball", q_init=robot_wrapper.get_default_configuration())
     rmodel, cmodel, target, target2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
     q = np.array(
         [
@@ -216,14 +224,14 @@ if __name__ == "__main__":
     rdata = rmodel.createData()
     cdata = cmodel.createData()
     # Generating the meshcat visualizer
-    # MeshcatVis = MeshcatWrapper()
-    # vis = MeshcatVis.visualize(
-    #     robot_model=rmodel,
-    #     robot_visual_model=cmodel,
-    #     robot_collision_model=cmodel,
-    #     TARGET=target,
-    # )
-    # vis[0].display(q)
+    MeshcatVis = MeshcatWrapper()
+    vis = MeshcatVis.visualize(
+        robot_model=rmodel,
+        robot_visual_model=cmodel,
+        robot_collision_model=cmodel,
+        TARGET=target,
+    )
+    vis[0].display(q)
 
     pin.computeCollisions(rmodel, rdata, cmodel, cdata, q, False)
     for k in range(len(cmodel.collisionPairs)):

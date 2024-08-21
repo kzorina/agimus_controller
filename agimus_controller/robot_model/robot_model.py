@@ -5,15 +5,13 @@ from agimus_controller.robot_model.obstacle_params_parser import ObstacleParamsP
 
 
 class RobotModelParameters:
-    model_name = ""
-    q0_name = ""
+    q0_name = "default"
     free_flyer = False
     locked_joint_names = []
-    urdf = str()
-    srdf = str()
-    meshes = Path()
-    collision_as_capsule = False
-    self_collision = False
+    urdf = Path()
+    srdf = Path()
+    collision_as_capsule = True
+    self_collision = True
 
 
 class RobotModel:
@@ -34,6 +32,10 @@ class RobotModel:
     _q0 = np.array([])
     """ Obstacle and collision meshes handler. """
     _collision_parser = ObstacleParamsParser()
+    """ Paramters of the model. """
+    _params = RobotModelParameters()
+    """ Path to the collisions environment. """
+    _env = Path()
 
     def __init__(self):
         pass
@@ -41,6 +43,8 @@ class RobotModel:
     @classmethod
     def load_model(cls, param: RobotModelParameters, env: Path):
         model = cls()
+        model._params = param
+        model._env = env
         model._load_pinocchio_models(param.urdf, param.free_flyer)
         model._load_default_configuration(param.srdf, param.q0_name)
         model._load_reduced_model(param.locked_joint_names)
@@ -49,35 +53,28 @@ class RobotModel:
         )
         return model
 
-    def _load_pinocchio_models(self, urdf: str, free_flyer: bool):
-        # Reset models
-        self._model = pin.Model()
-        self._vmodel = pin.Model()
-        self._cmodel = pin.Model()
-        try:
-            is_valid_file = Path(urdf).exists() and Path(urdf).is_file()
-        except OSError:
-            is_valid_file = False
-        except ...:
-            is_valid_file = False
-        if is_valid_file:
-            urdf = str(urdf)
-            pin_build_model = pin.buildModelFromUrdf
-            pin_build_geom = pin.buildGeomFromUrdf
-        else:
-            pin_build_model = pin.buildModelFromXML
-            pin_build_geom = pin.buildGeomFromUrdfString
-
+    def _load_pinocchio_models(self, urdf: Path, free_flyer: bool):
+        verbose = False
+        assert urdf.exists() and urdf.is_file()
         if free_flyer:
-            pin_build_model(urdf, self._model, pin.JointModelFreeFlyer())
+            self._model, self._cmodel, self._vmodel = pin.buildModelsFromUrdf(
+                filename=str(urdf),
+                root_joint=pin.JointModelFreeFlyer(),
+                verbose=verbose,
+            )
         else:
-            pin_build_model(urdf, self._model)
-        self._cmodel = pin_build_geom(self._model, urdf, pin.COLLISION)
-        self._vmodel = pin_build_geom(self._model, urdf, pin.VISUAL)
+            self._model, self._cmodel, self._vmodel = pin.buildModelsFromUrdf(
+                filename=str(urdf), root_joint=None, verbose=verbose
+            )
 
-    def _load_default_configuration(self, srdf_path: Path, q0_name: np.array):
+    def _load_default_configuration(self, srdf_path: Path, q0_name: str):
+        if not srdf_path.is_file():
+            return
         pin.loadReferenceConfigurations(self._model, str(srdf_path), False)
-        self._q0 = self._model.referenceConfigurations[q0_name]
+        if q0_name in self._model.referenceConfigurations:
+            self._q0 = self._model.referenceConfigurations[q0_name]
+        else:
+            self._q0 = pin.neutral(self._model)
 
     def _load_reduced_model(self, locked_joint_names):
         locked_joint_ids = [self._model.getJointId(name) for name in locked_joint_names]
@@ -87,21 +84,21 @@ class RobotModel:
             list_of_joints_to_lock=locked_joint_ids,
             reference_configuration=self._q0,
         )
-        self._rvmodel, self._rcmodel = geometric_models_reduced
+        self._rcmodel, self._rvmodel = geometric_models_reduced
 
     def _update_collision_model(
         self, env: Path, collision_as_capsule: bool, self_collision: bool, srdf: Path
     ):
+        if collision_as_capsule:
+            self._rcmodel = self._collision_parser.transform_model_into_capsules(
+                self._rcmodel
+            )
         if self_collision and srdf.exists():
             self._rcmodel = self._collision_parser.add_self_collision(
                 self._rmodel, self._rcmodel, srdf
             )
         if env is not None:
             self._rcmodel = self._collision_parser.add_collisions(self._rcmodel, env)
-        if collision_as_capsule:
-            self._rcmodel = self._collision_parser.transform_model_into_capsules(
-                self._rcmodel
-            )
 
     def get_complete_robot_model(self):
         return self._model.copy()

@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
 import pinocchio as pin
-from agimus_controller.utils.iostream import eprint
 from agimus_controller.robot_model.robot_model import RobotModel
+from agimus_controller.robot_model.robot_model import RobotModelParameters
 from agimus_controller.robot_model.panda_model import PandaRobotModel
 from agimus_controller.robot_model.panda_model import PandaRobotModelParameters
 from agimus_controller.robot_model.ur5_model import UR5RobotModel
@@ -59,20 +59,15 @@ class TestBuildModel(unittest.TestCase):
         robot_params = PandaRobotModelParameters()
         robot_params.collision_as_capsule = True
         robot_params.self_collision = True
-        robot_model = PandaRobotModel.load_model(params=robot_params)
-
-        eprint("Robot Model: ")
-        eprint(robot_model.get_reduced_robot_model())
-
-        eprint("Geometry Model")
-        eprint(robot_model.get_reduced_collision_model())
+        PandaRobotModel.load_model(params=robot_params)
 
     def test_load_panda_collisions(self):
         robot_params = PandaRobotModelParameters()
-        robot_params.collision_as_capsule = True
-        robot_params.self_collision = True
         env = Path(__file__).resolve().parent / "resources" / "col_env.yaml"
-        PandaRobotModel.load_model(env, params=robot_params)
+        robot_model = PandaRobotModel.load_model(env=env, params=robot_params)
+
+        with open("robot_model.col", "w") as f:
+            f.write(str(robot_model.get_reduced_collision_model()))
 
     def test_load_ur5_model(self):
         robot_model = UR5RobotModel.load_model()
@@ -88,6 +83,39 @@ class TestBuildModel(unittest.TestCase):
         self.assertEqual(m.nq, m.nv)
         self.assertEqual(m.nq, 6)
         self.assertEqual(m.name, "ur5")
+
+    def test_vs_previous_version(self):
+        from build_models import RobotModelConstructor
+        import example_robot_data
+
+        params = RobotModelParameters()
+        params.locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
+        params.urdf = (
+            Path(__file__).resolve().parent / "resources" / "urdf" / "robot.urdf"
+        )
+        params.srdf = (
+            Path(__file__).resolve().parent / "resources" / "urdf" / "demo.srdf"
+        )
+        env = Path(__file__).resolve().parent / "resources" / "param.yaml"
+
+        # model1
+        robot1 = RobotModel.load_model(params, env)
+
+        # model2
+        robot2 = RobotModelConstructor()
+        robot2.set_robot_model(
+            example_robot_data.load("panda"), str(params.urdf), str(params.srdf)
+        )
+        robot2.set_collision_model(str(params.urdf), str(env))
+
+        self.assertEqual(
+            robot1.get_reduced_robot_model(),
+            robot2.get_robot_reduced_model(),
+        )
+        self.assertEqual(
+            str(robot1.get_reduced_collision_model()),
+            str(robot2.get_collision_reduced_model()),
+        )
 
 
 if __name__ == "__main__":

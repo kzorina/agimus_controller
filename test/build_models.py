@@ -1,22 +1,28 @@
 import yaml
-import numpy as np
 import pinocchio as pin
-from pathlib import Path
+import numpy as np
+import rospy
+import example_robot_data
 from panda_torque_mpc_pywrap import reduce_capsules_robot
+
+
+from pathlib import Path
 from hppfcl import Sphere, Box, Cylinder, Capsule
+# from agimus_controller.utils.path_finder import get_project_root
 
 
 class ObstacleParamsParser:
-    def add_collisions(self, cmodel: pin.Model, yaml_file: Path):
-        with open(str(yaml_file), "r") as file:
-            params = yaml.safe_load(file)
+    def __init__(self, yaml_file, collision_model):
+        with open(yaml_file, "r") as file:
+            self.params = yaml.safe_load(file)
+        self.collision_model = collision_model
 
-        for key in params:
-            if key == "collision_pairs":
-                continue
+    def add_collisions(self):
+        obs_idx = 1
 
-            obstacle_name = key
-            obstacle_config = params[obstacle_name]
+        while f"obstacle{obs_idx}" in self.params:
+            obstacle_name = f"obstacle{obs_idx}"
+            obstacle_config = self.params[obstacle_name]
 
             type_ = obstacle_config.get("type")
             translation_vect = obstacle_config.get("translation", [])
@@ -77,19 +83,18 @@ class ObstacleParamsParser:
             obstacle_pose = pin.XYZQUATToSE3(np.concatenate([translation, rotation]))
             obstacle_pose.translation = translation
             obstacle = pin.GeometryObject(obstacle_name, 0, 0, geometry, obstacle_pose)
-            cmodel.addGeometryObject(obstacle)
+            self.collision_model.addGeometryObject(obstacle)
+            obs_idx += 1
 
-        collision_pairs = params.get("collision_pairs", [])
+        collision_pairs = self.params.get("collision_pairs", [])
         if collision_pairs:
             for pair in collision_pairs:
                 if len(pair) == 2:
                     name_object1, name_object2 = pair
-                    if cmodel.existGeometryName(
+                    if self.collision_model.existGeometryName(
                         name_object1
-                    ) and cmodel.existGeometryName(name_object2):
-                        cmodel = self.add_collision_pair(
-                            cmodel, name_object1, name_object2
-                        )
+                    ) and self.collision_model.existGeometryName(name_object2):
+                        self.add_collision_pair(name_object1, name_object2)
                     else:
                         print(
                             f"Object {name_object1} or {name_object2} does not exist in the collision model."
@@ -99,25 +104,92 @@ class ObstacleParamsParser:
         else:
             print("No collision pairs.")
 
-        return cmodel
-
-    def add_collision_pair(
-        self, cmodel: pin.Model, name_object1: str, name_object2: str
-    ):
-        object1_id = cmodel.getGeometryId(name_object1)
-        object2_id = cmodel.getGeometryId(name_object2)
+    def add_collision_pair(self, name_object1, name_object2):
+        object1_id = self.collision_model.getGeometryId(name_object1)
+        object2_id = self.collision_model.getGeometryId(name_object2)
         if object1_id is not None and object2_id is not None:
-            cmodel.addCollisionPair(pin.CollisionPair(object1_id, object2_id))
+            self.collision_model.addCollisionPair(
+                pin.CollisionPair(object1_id, object2_id)
+            )
         else:
             print(
                 f"Object ID not found for collision pair: {object1_id} and {object2_id}"
             )
-        return cmodel
 
-    def transform_model_into_capsules(self, model: pin.GeometryModel):
-        return reduce_capsules_robot(model)
 
-    def _transform_model_into_capsules(self, model: pin.Model):
+class RobotModelConstructor:
+    def __init__(self, load_from_ros=False):
+        # self.load_model(load_from_ros)
+        pass
+
+    def load_model(self, load_from_ros):
+        # yaml_path = get_project_root() / "config" / "param.yaml"
+        yaml_path = Path()
+        # mesh_dir = str(Path(franka_description.__path__[0]) / "meshes")
+
+        if load_from_ros:
+            print("Load robot from ROS")
+
+            # Getting urdf and srdf content
+            urdf_string = rospy.get_param("robot_description")
+            # srdf_string = rospy.get_param("robot_description_semantic")
+            # self.construct_robot_model(urdf_string, srdf_string, mesh_dir)
+            self.construct_collision_model(self.rmodel, urdf_string, yaml_path)
+        else:
+            print("Load robot from files")
+
+            urdf_path = str(Path("urdf") / "robot.urdf")
+            srdf_path = str(Path("srdf") / "demo.srdf")
+            robot = example_robot_data.load("panda")
+            self.set_robot_model(robot, urdf_path, srdf_path)
+            self.set_collision_model(urdf_path, yaml_path)
+
+    def set_robot_model(self, robot, urdf_path, srdf_path):
+        self._model = pin.Model()
+        pin.buildModelFromUrdf(urdf_path, self._model)
+        pin.loadReferenceConfigurations(self._model, srdf_path, False)
+
+        q0 = self._model.referenceConfigurations["default"]
+        locked_joints = [
+            robot.model.getJointId("panda_finger_joint1"),
+            robot.model.getJointId("panda_finger_joint2"),
+        ]
+        self._rmodel = pin.buildReducedModel(self._model, locked_joints, q0)
+
+    def set_collision_model(self, urdf_path, yaml_path):
+        self._cmodel = pin.buildGeomFromUrdf(self._rmodel, urdf_path, pin.COLLISION)
+        self._crmodel = reduce_capsules_robot(self._cmodel)
+        parser = ObstacleParamsParser(yaml_path, self._crmodel)
+        parser.add_collisions()
+        self._crmodel = parser.collision_model
+
+    def construct_robot_model(self, urdf_string, srdf_string):
+        self._model = pin.buildModelFromXML(urdf_string)
+
+        locked_joints = [
+            self._model.getJointId("panda_finger_joint1"),
+            self._model.getJointId("panda_finger_joint2"),
+        ]
+        pin.loadReferenceConfigurationsFromXML(self._model, srdf_string, False)
+        self._cmodel = pin.buildGeomFromUrdfString(
+            self._model, urdf_string, pin.COLLISION
+        )
+        q0 = self._model.referenceConfigurations["default"]
+        self._rmodel, geometric_models_reduced = pin.buildReducedModel(
+            self._model,
+            list_of_geom_models=[self._cmodel],
+            list_of_joints_to_lock=locked_joints,
+            reference_configuration=q0,
+        )
+        self._crmodel, self._vrmodel = geometric_models_reduced
+
+    def construct_collision_model(self, yaml_file):
+        self._crmodel = self.transform_model_into_capsules(self._crmodel)
+        parser = ObstacleParamsParser(yaml_file, self._crmodel)
+        parser.add_collisions()
+        return parser.collision_model
+
+    def transform_model_into_capsules(self, model):
         """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
         model_copy = model.copy()
         list_names_capsules = []
@@ -153,9 +225,14 @@ class ObstacleParamsParser:
                 model_copy.removeGeometryObject(geom_object.name)
         return model_copy
 
-    def add_self_collision(
-        self, rmodel: pin.Model, rcmodel: pin.GeometryModel, srdf: Path
-    ):
-        rcmodel.addAllCollisionPairs()
-        pin.removeCollisionPairs(rmodel, rcmodel, str(srdf))
-        return rcmodel
+    def get_robot_model(self):
+        return self._model
+
+    def get_robot_reduced_model(self):
+        return self._rmodel
+
+    def get_collision_reduced_model(self):
+        return self._crmodel
+
+    def get_visual_reduced_model(self):
+        return self._vrmodel

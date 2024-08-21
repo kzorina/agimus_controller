@@ -7,9 +7,6 @@
 # Start hppcorbaserver before running this script
 #
 
-import time
-import subprocess
-import psutil
 import datetime as dt
 import numpy as np
 from argparse import ArgumentParser
@@ -29,6 +26,7 @@ from hpp_idl.hpp import Equality, EqualToZero
 from agimus_controller.trajectory_point import TrajectoryPoint
 from agimus_controller.hpp_panda.planner import Planner
 from agimus_controller.hpp_panda.scenes import Scene
+from agimus_controller.utils.process_handler import ProcessHandler
 from agimus_controller.robot_model.panda_model import (
     PandaRobotModel,
 )
@@ -48,39 +46,6 @@ class Ground(object):
     urdfName = "construction_set/ground"
     urdfSuffix = ""
     srdfSuffix = ""
-
-
-class ProcessHandler(object):
-    def __init__(self, name: str):
-        self.process = None
-        self.name = name
-        self.start()
-
-    def __del__(self):
-        self.stop()
-
-    def is_running(self):
-        return bool(
-            [
-                p
-                for p in psutil.process_iter()
-                if psutil.Process(p.pid).name() == self.name
-            ]
-        )
-
-    def start(self):
-        if self.process is not None and not self.is_running():
-            return
-        self.process = subprocess.Popen([self.name])
-        time.sleep(0.2)
-
-    def stop(self):
-        if self.process is None:
-            return
-        self.process.terminate()
-        self.process.kill()
-        self.process.wait()
-        self.process = None
 
 
 class GepettoGuiServer(ProcessHandler):
