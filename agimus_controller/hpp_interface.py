@@ -7,6 +7,7 @@
 # Start hppcorbaserver before running this script
 #
 
+from pathlib import Path
 import datetime as dt
 import numpy as np
 from argparse import ArgumentParser
@@ -24,11 +25,11 @@ from hpp.gepetto.manipulation import ViewerFactory
 from hpp.corbaserver import loadServerPlugin
 from hpp_idl.hpp import Equality, EqualToZero
 from agimus_controller.trajectory_point import TrajectoryPoint
-from agimus_controller.hpp_panda.planner import Planner
+from agimus_controller.hpp_panda.planner import Planner as PandaPlanner
 from agimus_controller.hpp_panda.scenes import Scene
-from agimus_controller.utils.process_handler import ProcessHandler
 from agimus_controller.robot_model.panda_model import (
     PandaRobotModel,
+    PandaRobotModelParameters,
 )
 
 
@@ -48,21 +49,8 @@ class Ground(object):
     srdfSuffix = ""
 
 
-class GepettoGuiServer(ProcessHandler):
-    def __init__(self):
-        super().__init__("gepetto-gui")
-
-
-class HppCorbaServer(ProcessHandler):
-    def __init__(self):
-        super().__init__("hppcorbaserver")
-
-
 class HppInterface:
-    def __init__(self, with_gepetto_gui=True):
-        self.hppcorbaserver = HppCorbaServer()
-        if with_gepetto_gui:
-            self.gepetto_gui_server = GepettoGuiServer()
+    def __init__(self):
         self.trajectory = []
         self.viewer = None
 
@@ -268,17 +256,22 @@ class HppInterface:
         self.q_goal = q_goal
         loadServerPlugin("corbaserver", "manipulation-corba.so")
         self.T = 20
-        self.robot_wrapper = PandaRobotModel.load_model()
+        panda_params = PandaRobotModelParameters()
+        panda_params.collision_as_capsule = True
+        panda_params.self_collision = True
+        self.robot_wrapper = PandaRobotModel.load_model(
+            params=panda_params,
+            env=Path(__file__).resolve().parent / "resources" / "panda_env.yaml",
+        )
         self.rmodel = self.robot_wrapper.get_reduced_robot_model()
         self.cmodel = self.robot_wrapper.get_reduced_collision_model()
         self.vmodel = self.robot_wrapper.get_reduced_visual_model()
 
-        self.name_scene = "wall"
-        self.scene = Scene(self.name_scene, self.q_init)
+        self.scene = Scene("wall", self.q_init)
         self.rmodel, self.cmodel, self.target, self.target2, _ = (
             self.scene.create_scene_from_urdf(self.rmodel, self.cmodel)
         )
-        self.planner = Planner(self.rmodel, self.cmodel, self.scene, self.T)
+        self.planner = PandaPlanner(self.robot_wrapper, self.scene, self.T)
         self.planner.setup_planner(q_init, q_goal, use_gepetto_gui)
         _, _, self.X = self.planner.solve_and_optimize()
         self.planner._ps.optimizePath(self.planner._ps.numberPaths() - 1)

@@ -1,6 +1,7 @@
 import time
 import subprocess
 import psutil
+import os
 
 
 class ProcessHandler(object):
@@ -24,7 +25,7 @@ class ProcessHandler(object):
     def start(self):
         if self.process is not None and not self.is_running():
             return
-        self.process = subprocess.Popen([self.name])
+        self.process = subprocess.Popen([self.name], env=os.environ)
         time.sleep(0.2)
 
     def stop(self):
@@ -34,3 +35,18 @@ class ProcessHandler(object):
         self.process.kill()
         self.process.wait()
         self.process = None
+
+
+class GepettoGuiServer(ProcessHandler):
+    def __init__(self):
+        super().__init__("gepetto-gui")
+
+
+class HppCorbaServer(ProcessHandler):
+    def __init__(self):
+        super().__init__("hppcorbaserver")
+
+
+class RosCore(ProcessHandler):
+    def __init__(self):
+        super().__init__("roscore")

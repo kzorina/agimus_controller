@@ -73,6 +73,9 @@ class MeshcatWrapper:
         robot_model=None,
         robot_collision_model=None,
         robot_visual_model=None,
+        robot_data=None,
+        robot_collision_data=None,
+        robot_visual_data=None,
     ):
         """Returns the visualiser, displaying the robot and the target if they are in input.
 
@@ -97,7 +100,14 @@ class MeshcatWrapper:
 
         Viewer = pin.visualize.MeshcatVisualizer
 
-        self.viewer_pin = Viewer(self._rmodel, self._cmodel, self._vmodel)
+        self.viewer_pin = Viewer(
+            self._rmodel,
+            collision_model=self._cmodel,
+            visual_model=self._vmodel,
+            data=robot_data,
+            collision_data=robot_collision_data,
+            visual_data=robot_visual_data,
+        )
         self.viewer_pin.initViewer(
             viewer=meshcat.Visualizer(zmq_url="tcp://127.0.0.1:6000")
         )

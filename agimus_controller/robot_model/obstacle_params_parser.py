@@ -2,7 +2,6 @@ import yaml
 import numpy as np
 import pinocchio as pin
 from pathlib import Path
-from panda_torque_mpc_pywrap import reduce_capsules_robot
 from hppfcl import Sphere, Box, Cylinder, Capsule
 
 
@@ -115,47 +114,72 @@ class ObstacleParamsParser:
         return cmodel
 
     def transform_model_into_capsules(self, model: pin.GeometryModel):
-        return reduce_capsules_robot(model)
-
-    def _transform_model_into_capsules(self, model: pin.Model):
         """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
         model_copy = model.copy()
-        list_names_capsules = []
 
         # Going through all the goemetry objects in the collision model
-        for geom_object in model_copy.geometryObjects:
-            if isinstance(geom_object.geometry, Cylinder):
-                # Sometimes for one joint there are two cylinders, which need to be defined by two capsules for the same link.
-                # Hence the name convention here.
-                if (geom_object.name[:-4] + "capsule_0") in list_names_capsules:
-                    name = geom_object.name[:-4] + "capsule_" + "1"
-                else:
-                    name = geom_object.name[:-4] + "capsule_" + "0"
-                list_names_capsules.append(name)
-                placement = geom_object.placement
-                parentJoint = geom_object.parentJoint
-                parentFrame = geom_object.parentFrame
-                geometry = geom_object.geometry
-                geom = pin.GeometryObject(
-                    name,
-                    parentFrame,
-                    parentJoint,
-                    Capsule(geometry.radius, geometry.halfLength),
-                    placement,
-                )
-                RED = np.array([249, 136, 126, 125]) / 255
-                geom.meshColor = RED
-                model_copy.addGeometryObject(geom)
-                model_copy.removeGeometryObject(geom_object.name)
-            elif (
-                isinstance(geom_object.geometry, Sphere) and "link" in geom_object.name
-            ):
-                model_copy.removeGeometryObject(geom_object.name)
+        cylinders_name = [
+            obj.name
+            for obj in model_copy.geometryObjects
+            if isinstance(obj.geometry, Cylinder)
+        ]
+        for cylinder_name in cylinders_name:
+            basename = cylinder_name.rsplit("_", 1)[0]
+            col_index = int(cylinder_name.rsplit("_", 1)[1])
+            sphere1_name = basename + "_" + str(col_index + 1)
+            sphere2_name = basename + "_" + str(col_index + 2)
+            if not model_copy.existGeometryName(
+                sphere1_name
+            ) or not model_copy.existGeometryName(sphere2_name):
+                continue
+
+            # Sometimes for one joint there are two cylinders, which need to be defined by two capsules for the same link.
+            # Hence the name convention here.
+            capsules_already_existing = [
+                obj.name
+                for obj in model_copy.geometryObjects
+                if (basename in obj.name and "capsule" in obj.name)
+            ]
+            capsule_name = basename + "_capsule_" + str(len(capsules_already_existing))
+            geom_object = model_copy.geometryObjects[
+                model_copy.getGeometryId(cylinder_name)
+            ]
+            placement = geom_object.placement
+            parentJoint = geom_object.parentJoint
+            parentFrame = geom_object.parentFrame
+            geometry = geom_object.geometry
+            geom = pin.GeometryObject(
+                capsule_name,
+                parentFrame,
+                parentJoint,
+                Capsule(geometry.radius, geometry.halfLength),
+                placement,
+            )
+            RED = np.array([249, 136, 126, 125]) / 255
+            geom.meshColor = RED
+            model_copy.removeGeometryObject(cylinder_name)
+            model_copy.removeGeometryObject(sphere1_name)
+            model_copy.removeGeometryObject(sphere2_name)
+            model_copy.addGeometryObject(geom)
+
+        # Purge all non capsule and non sphere geometry
+        none_convex_object_names = [
+            obj.name
+            for obj in model_copy.geometryObjects
+            if not (
+                isinstance(obj.geometry, Capsule) or isinstance(obj.geometry, Sphere)
+            )
+        ]
+        for none_convex_object_name in none_convex_object_names:
+            model_copy.removeGeometryObject(none_convex_object_name)
+
+        # Return the copy of the model.
         return model_copy
 
     def add_self_collision(
-        self, rmodel: pin.Model, rcmodel: pin.GeometryModel, srdf: Path
+        self, rmodel: pin.Model, rcmodel: pin.GeometryModel, srdf=Path()
     ):
         rcmodel.addAllCollisionPairs()
-        pin.removeCollisionPairs(rmodel, rcmodel, str(srdf))
+        if srdf.is_file():
+            pin.removeCollisionPairs(rmodel, rcmodel, str(srdf))
         return rcmodel

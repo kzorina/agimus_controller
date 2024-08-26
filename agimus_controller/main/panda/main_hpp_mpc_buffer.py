@@ -11,10 +11,27 @@ from agimus_controller.robot_model.panda_model import (
     PandaRobotModel,
     PandaRobotModelParameters,
 )
+from agimus_controller.utils.process_handler import (
+    HppCorbaServer,
+    GepettoGuiServer,
+    RosCore,
+)
 
 
-def main():
+class Servers(object):
+    def spawn_servers(self, with_gepetto_gui):
+        self.hppcorbaserver = HppCorbaServer()
+        if with_gepetto_gui:
+            self.gepetto_gui_server = GepettoGuiServer()
+        self.roscore = RosCore()
+
+
+def main(with_gepetto_gui=False):
+    # servers = Servers()
+    # servers.spawn_servers()
+
     panda_params = PandaRobotModelParameters()
+    panda_params.collision_as_capsule = True
     panda_params.self_collision = True
     pandawrapper = PandaRobotModel.load_model(params=panda_params)
 
@@ -104,4 +121,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(with_gepetto_gui=True)

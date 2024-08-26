@@ -41,7 +41,6 @@
 
   <!-- Visualization dependencies -->
   <exec_depend>meshcat</exec_depend>
-  <exec_depend>pybullet</exec_depend>
 
   <!-- Tests -->
   <build_depend>rostest</build_depend>

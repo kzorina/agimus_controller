@@ -1,16 +1,14 @@
-from os.path import dirname, join, abspath
+from os.path import join
 import numpy as np
 from hpp.corbaserver import Client, Robot, ProblemSolver
 from hpp.gepetto import ViewerFactory
 import pinocchio as pin
-
+from ..robot_model.robot_model import RobotModel
 from .scenes import Scene
 
 
 class Planner:
-    def __init__(
-        self, rmodel: pin.Model, cmodel: pin.GeometryModel, scene: Scene, T: int
-    ) -> None:
+    def __init__(self, robot_model: RobotModel, scene: Scene, T: int) -> None:
         """Instatiate a motion planning class taking the pinocchio model and the geometry model.
 
         Args:
@@ -19,20 +17,28 @@ class Planner:
             scene (Scene): scene describing the environement.
             T (int): number of nodes describing the trajectory.
         """
-        # Models of the robot
-        self._rmodel = rmodel
-        self._cmodel = cmodel
-
+        # Copy args.
+        self._robot_model = robot_model
         self._scene = scene
-        self._end_effector_id = self._rmodel.getFrameId("panda2_leftfinger")
-
         self._T = T
+
+        # Models of the robot.
+        self._robot_model_params = self._robot_model.get_model_parameters()
+        self._rmodel = self._robot_model.get_reduced_robot_model()
+        self._cmodel = self._robot_model.get_reduced_collision_model()
+        self._end_effector_id = self._rmodel.getFrameId(
+            self._robot_model_params.ee_frame_name
+        )
+
+        # Visualizer
         self._v = None
 
     def _create_planning_scene(self, use_gepetto_gui):
-        obstacle_urdf, urdf_robot_path, srdf_robot_path = self._get_urdf_srdf_paths()
-        Robot.urdfFilename = urdf_robot_path
-        Robot.srdfFilename = srdf_robot_path
+        Robot.urdfFilename = str(self._robot_model_params.urdf)
+        Robot.srdfFilename = str(self._robot_model_params.srdf)
+
+        print(self._robot_model_params.urdf)
+        print(self._robot_model_params.srdf)
 
         Client().problem.resetProblem()
 
@@ -40,19 +46,16 @@ class Planner:
         self._ps = ProblemSolver(robot)
         if use_gepetto_gui:
             vf = ViewerFactory(self._ps)
-
-            vf.loadObstacleModel(obstacle_urdf, self._scene._name_scene)
-
-            # obstacles_list = self._scene._obstacles_name
+            vf.loadObstacleModel(
+                str(self._scene.urdf_model_path), self._scene._name_scene
+            )
             for obstacle in self._cmodel.geometryObjects:
                 if "obstacle" in obstacle.name:
                     name = join(self._scene._name_scene, obstacle.name)
-                    pose = self._scene.obstacle_pose
-                    pos = self._ps.getObstaclePosition(name)
-                    pose_obs = pin.SE3ToXYZQUAT(pose)
-                    for i, p in enumerate(pos[:3]):
-                        p += pose_obs[i]
-                    vf.moveObstacle(name, pos)
+                    scene_obs_pose = self._scene.obstacle_pose
+                    hpp_obs_pos = self._ps.getObstaclePosition(name)
+                    hpp_obs_pos[:3] += scene_obs_pose.translation[:3]
+                    vf.moveObstacle(name, hpp_obs_pos)
             self._v = vf.createViewer(collisionURDF=True)
 
     def setup_planner(self, q_init, q_goal, use_gepetto_gui):
@@ -61,15 +64,6 @@ class Planner:
         # Joints 8, and 9 are locked
         self._q_init = [*q_init, 0.03969, 0.03969]
         self._q_goal = [*q_goal, 0.03969, 0.03969]
-
-        # rdata = self._rmodel.createData()
-        # cdata = self._cmodel.createData()
-        # col = pin.computeCollisions(
-        #     self._rmodel, rdata, self._cmodel, cdata, self._q_init, True
-        # )
-        # col1 = pin.computeCollisions(
-        #     self._rmodel, rdata, self._cmodel, cdata, self._q_goal, True
-        # )
         q_init_list = self._q_init
         q_goal_list = self._q_goal
         if use_gepetto_gui:
@@ -185,20 +179,3 @@ class Planner:
             q = pin.integrate(self._rmodel, q, dq)
 
         raise RuntimeError("Inverse kinematics did not converge")
-
-    def _get_urdf_srdf_paths(self):
-        """Return the URDF path of the obstacle and the robot and the SRDF path from the robot.
-
-        Returns:
-            tuple: tuple of strings.
-        """
-        pinocchio_model_dir = dirname(dirname((str(abspath(__file__)))))
-        model_path = join(pinocchio_model_dir, "robot_description")
-        self._mesh_dir = join(model_path, "meshes")
-        urdf_filename = "franka2.urdf"
-        srdf_filename = "demo.srdf"
-        urdf_robot_path = join(join(model_path, "urdf"), urdf_filename)
-        srdf_robot_path = join(join(model_path, "srdf"), srdf_filename)
-
-        obstacle_urdf = self._scene.urdf_model_path
-        return obstacle_urdf, urdf_robot_path, srdf_robot_path

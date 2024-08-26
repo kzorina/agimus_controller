@@ -1,3 +1,4 @@
+from copy import deepcopy
 import pinocchio as pin
 import numpy as np
 from pathlib import Path
@@ -10,8 +11,8 @@ class RobotModelParameters:
     locked_joint_names = []
     urdf = Path()
     srdf = Path()
-    collision_as_capsule = True
-    self_collision = True
+    collision_as_capsule = False
+    self_collision = False
 
 
 class RobotModel:
@@ -47,7 +48,7 @@ class RobotModel:
         model._env = env
         model._load_pinocchio_models(param.urdf, param.free_flyer)
         model._load_default_configuration(param.srdf, param.q0_name)
-        model._load_reduced_model(param.locked_joint_names)
+        model._load_reduced_model(param.locked_joint_names, param.q0_name)
         model._update_collision_model(
             env, param.collision_as_capsule, param.self_collision, param.srdf
         )
@@ -76,7 +77,7 @@ class RobotModel:
         else:
             self._q0 = pin.neutral(self._model)
 
-    def _load_reduced_model(self, locked_joint_names):
+    def _load_reduced_model(self, locked_joint_names, q0_name):
         locked_joint_ids = [self._model.getJointId(name) for name in locked_joint_names]
         self._rmodel, geometric_models_reduced = pin.buildReducedModel(
             self._model,
@@ -85,6 +86,7 @@ class RobotModel:
             reference_configuration=self._q0,
         )
         self._rcmodel, self._rvmodel = geometric_models_reduced
+        self._q0 = self._rmodel.referenceConfigurations[q0_name]
 
     def _update_collision_model(
         self, env: Path, collision_as_capsule: bool, self_collision: bool, srdf: Path
@@ -120,3 +122,6 @@ class RobotModel:
 
     def get_default_configuration(self):
         return self._q0.copy()
+
+    def get_model_parameters(self):
+        return deepcopy(self._params)

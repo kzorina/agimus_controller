@@ -16,7 +16,7 @@ class Scene:
         """Create the scene that encapsulates the obstacles.
 
         Args:
-            name_scene (str): Name of the scene, amond "box", "ball" and "wall".
+            name_scene (str): Name of the scene, among "box", "ball" and "wall".
             obstacle_pose (pin.SE3, optional): Pose of the obstacles. The default one is adapted for each scene. Defaults to None.
 
         Raises:
@@ -29,36 +29,36 @@ class Scene:
         if self._name_scene == "box":
             self.urdf_filename = "box.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85 - 0.38])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85 - 0.38])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0, 0.15, 0.75])
+                self.obstacle_pose.translation = np.array([0, 0.15, 0.75 - 0.38])
         elif self._name_scene == "ball":
             self.urdf_filename = "ball.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0.475, -0.1655, 1.6476])
+                pin.utils.rotate("x", np.pi), np.array([0.475, -0.1655, 1.6476 - 0.38])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 1.5])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 1.5 - 0.38])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0.25, -0.4, 1.5])
+                self.obstacle_pose.translation = np.array([0.25, -0.4, 1.5 - 0.38])
         elif self._name_scene == "wall":
             self.urdf_filename = "wall.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85 - 0.38])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85 - 0.38])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0, -0.1, 1.0])
+                self.obstacle_pose.translation = np.array([0, -0.2, 1.0])
         else:
             raise NotImplementedError(
                 f"The input {self._name_scene} is not implemented."
@@ -69,7 +69,7 @@ class Scene:
         rmodel: pin.Model,
         cmodel: pin.Model,
     ):
-        """Create a scene amond the one described in the constructor of the class.
+        """Create a scene among the one described in the constructor of the class.
 
         Args:
             rmodel (pin.Model): robot model
@@ -77,9 +77,6 @@ class Scene:
         """
 
         obs_model, obs_cmodel, _ = self._load_obstacle_urdf(self.urdf_filename)
-        print(rmodel)
-        for pair in cmodel.collisionPairs:
-            print(pair)
         self._rmodel, self._cmodel = pin.appendModel(
             rmodel,
             obs_model,
@@ -102,7 +99,6 @@ class Scene:
         self.get_shapes_avoiding_collision()
         for shape in self.shapes_avoiding_collision:
             # Highlight the shapes of the robot that are supposed to avoid collision
-            print("Loading ", shape, "in the scene.")
             self._cmodel.geometryObjects[
                 self._cmodel.getGeometryId(shape)
             ].meshColor = YELLOW_FULL
@@ -155,11 +151,11 @@ class Scene:
         """
         if self._name_scene == "box":
             self.shapes_avoiding_collision = [
-                "panda_link7_capsule_0",
-                "panda_link7_capsule_1",
-                "panda_link6_capsule_0",
-                "panda_link5_capsule_1",
-                "panda_link5_capsule_0",
+                "panda_link7_sc_capsule_0",
+                "panda_link7_sc_capsule_1",
+                "panda_link6_sc_capsule_0",
+                "panda_link5_sc_capsule_1",
+                "panda_link5_sc_capsule_0",
                 "panda_rightfinger_0",
                 "panda_leftfinger_0",
             ]
@@ -167,17 +163,17 @@ class Scene:
             self.shapes_avoiding_collision = [
                 "panda_leftfinger_0",
                 "panda_rightfinger_0",
-                "panda_link6_capsule_0",
-                "panda_link5_capsule_0",
-                "panda_link5_capsule_1",
+                "panda_link6_sc_capsule_0",
+                "panda_link5_sc_capsule_0",
+                "panda_link5_sc_capsule_1",
             ]
         elif self._name_scene == "wall":
             self.shapes_avoiding_collision = [
-                "panda_link7_capsule_0",
-                "panda_link7_capsule_1",
-                "panda_link6_capsule_0",
-                "panda_link5_capsule_1",
-                "panda_link5_capsule_0",
+                "panda_link7_sc_capsule_0",
+                "panda_link7_sc_capsule_1",
+                "panda_link6_sc_capsule_0",
+                "panda_link5_sc_capsule_1",
+                "panda_link5_sc_capsule_0",
                 "panda_rightfinger_0",
                 "panda_leftfinger_0",
             ]
@@ -198,7 +194,7 @@ if __name__ == "__main__":
 
     # Creating the robot
     robot_params = PandaRobotModelParameters()
-    robot_params.self_collision = True
+    robot_params.self_collision = False
     robot_params.collision_as_capsule = True
     robot_wrapper = PandaRobotModel.load_model(
         params=robot_params,
@@ -208,7 +204,7 @@ if __name__ == "__main__":
     cmodel = robot_wrapper.get_reduced_collision_model()
     vmodel = robot_wrapper.get_reduced_visual_model()
 
-    scene = Scene("ball", q_init=robot_wrapper.get_default_configuration())
+    scene = Scene("wall", q_init=robot_wrapper.get_default_configuration())
     rmodel, cmodel, target, target2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
     q = np.array(
         [
@@ -221,14 +217,17 @@ if __name__ == "__main__":
             -2.04166928,
         ]
     )
+    q = robot_wrapper.get_default_configuration()
     rdata = rmodel.createData()
     cdata = cmodel.createData()
     # Generating the meshcat visualizer
     MeshcatVis = MeshcatWrapper()
     vis = MeshcatVis.visualize(
         robot_model=rmodel,
-        robot_visual_model=cmodel,
+        robot_visual_model=vmodel,
         robot_collision_model=cmodel,
+        robot_data=rdata,
+        robot_collision_data=cdata,
         TARGET=target,
     )
     vis[0].display(q)

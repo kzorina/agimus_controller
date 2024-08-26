@@ -37,15 +37,16 @@ add_project_dependency(mim_solvers 0.0.4 REQUIRED PKG_CONFIG_REQUIRES
 if(NOT INSTALL_ROS_INTERFACE_ONLY)
   set(pkg1 ${PROJECT_NAME} hpp_interface.py mpc_search.py mpc.py
            trajectory_buffer.py trajectory_point.py)
-  set(pkg2 ${PROJECT_NAME}/hpp_panda planner.py scenes.py wrapper_panda.py)
+  set(pkg2 ${PROJECT_NAME}/hpp_panda planner.py scenes.py)
   set(pkg3 ${PROJECT_NAME}/main/panda main_hpp_mpc_buffer.py main_hpp_mpc.py
            main_meshcat_display.py main_mpc.py main_optim_traj.py)
   set(pkg4 ${PROJECT_NAME}/main/ur5 main_hpp_mpc.py)
   set(pkg5 ${PROJECT_NAME}/ocps ocp_croco_hpp.py ocp.py)
   set(pkg6 ${PROJECT_NAME}/robot_model obstacle_params_parser.py panda_model.py
-           robot_model.py wrapper_panda.py)
-  set(pkg7 ${PROJECT_NAME}/utils ocp_analyzer.py pin_utils.py)
-  set(pkg8 ${PROJECT_NAME}/visualization plots.py scenes.py wrapper_meshcat.py)
+           robot_model.py ur5_model.py)
+  set(pkg7 ${PROJECT_NAME}/utils iostream.py ocp_analyzer.py pin_utils.py
+           process_handler.py)
+  set(pkg8 ${PROJECT_NAME}/visualization plots.py wrapper_meshcat.py)
   set(packages
       pkg1
       pkg2
