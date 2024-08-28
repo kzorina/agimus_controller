@@ -58,7 +58,7 @@ class Scene:
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0, -0.2, 1.0])
+                self.obstacle_pose.translation = np.array([0.6, 0, 1.0])
         else:
             raise NotImplementedError(
                 f"The input {self._name_scene} is not implemented."
@@ -149,7 +149,7 @@ class Scene:
         Returns:
             list: list of the shapes avoiding the collisions with the obstacles.
         """
-        if self._name_scene == "box":
+        if self._name_scene == "box" or "wall":
             self.shapes_avoiding_collision = [
                 "panda_link7_sc_capsule_0",
                 "panda_link7_sc_capsule_1",
@@ -166,16 +166,6 @@ class Scene:
                 "panda_link6_sc_capsule_0",
                 "panda_link5_sc_capsule_0",
                 "panda_link5_sc_capsule_1",
-            ]
-        elif self._name_scene == "wall":
-            self.shapes_avoiding_collision = [
-                "panda_link7_sc_capsule_0",
-                "panda_link7_sc_capsule_1",
-                "panda_link6_sc_capsule_0",
-                "panda_link5_sc_capsule_1",
-                "panda_link5_sc_capsule_0",
-                "panda_rightfinger_0",
-                "panda_leftfinger_0",
             ]
         else:
             raise NotImplementedError(

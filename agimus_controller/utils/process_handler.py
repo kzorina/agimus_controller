@@ -23,7 +23,7 @@ class ProcessHandler(object):
         )
 
     def start(self):
-        if self.process is not None and not self.is_running():
+        if self.process is not None and self.is_running():
             return
         self.process = subprocess.Popen([self.name], env=os.environ)
         time.sleep(0.2)
@@ -31,15 +31,32 @@ class ProcessHandler(object):
     def stop(self):
         if self.process is None:
             return
-        self.process.terminate()
-        self.process.kill()
-        self.process.wait()
+        trials = 0
+        while self.is_running() and trials < 5:
+            self.process.terminate()
+            self.process.wait()
+            trials += 1
+        if trials >= 5:
+            trials = 0
+            while self.is_running() and trials < 5:
+                self.process.kill()
+                self.process.wait()
+                trials += 1
+            if trials >= 5:
+                raise RuntimeError("Tried 5 times to shutdown the process...")
         self.process = None
 
 
 class GepettoGuiServer(ProcessHandler):
     def __init__(self):
         super().__init__("gepetto-gui")
+
+    def stop(self):
+        if self.process is None:
+            return
+        self.process.kill()
+        self.process.wait()
+        self.process = None
 
 
 class HppCorbaServer(ProcessHandler):
@@ -50,3 +67,8 @@ class HppCorbaServer(ProcessHandler):
 class RosCore(ProcessHandler):
     def __init__(self):
         super().__init__("roscore")
+
+
+class MeshcatServer(ProcessHandler):
+    def __init__(self):
+        super().__init__(name="meshcat-server")

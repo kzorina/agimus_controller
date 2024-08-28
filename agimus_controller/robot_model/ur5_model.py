@@ -32,10 +32,5 @@ class UR5RobotModel(RobotModel):
     def load_model(cls, env=None):
         params = UR5RobotModelParameters()
         obj = super().load_model(params, env)
-        obj._q0 = np.array(
-            [pi / 6, -pi / 2, pi / 2, 0, 0, 0, -0.2, 0, 0.02, 0, 0, 0, 1]
-        )
-        # obj._update_collision_model(
-        #     env, params.collision_as_capsule, params.self_collision, params.srdf
-        # )
+        obj._q0 = np.array([pi / 6, -pi / 2, pi / 2, -0.2, 0.02, 1])
         return obj

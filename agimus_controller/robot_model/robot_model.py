@@ -6,7 +6,7 @@ from agimus_controller.robot_model.obstacle_params_parser import ObstacleParamsP
 
 
 class RobotModelParameters:
-    q0_name = "default"
+    q0_name = str()
     free_flyer = False
     locked_joint_names = []
     urdf = Path()
@@ -72,7 +72,7 @@ class RobotModel:
         if not srdf_path.is_file():
             return
         pin.loadReferenceConfigurations(self._model, str(srdf_path), False)
-        if q0_name in self._model.referenceConfigurations:
+        if q0_name and q0_name in self._model.referenceConfigurations:
             self._q0 = self._model.referenceConfigurations[q0_name]
         else:
             self._q0 = pin.neutral(self._model)
@@ -86,7 +86,11 @@ class RobotModel:
             reference_configuration=self._q0,
         )
         self._rcmodel, self._rvmodel = geometric_models_reduced
-        self._q0 = self._rmodel.referenceConfigurations[q0_name]
+
+        if q0_name and q0_name in self._rmodel.referenceConfigurations:
+            self._q0 = self._rmodel.referenceConfigurations[q0_name]
+        else:
+            self._q0 = pin.neutral(self._rmodel)
 
     def _update_collision_model(
         self, env: Path, collision_as_capsule: bool, self_collision: bool, srdf: Path

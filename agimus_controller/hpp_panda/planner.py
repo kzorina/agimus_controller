@@ -44,18 +44,24 @@ class Planner:
 
         robot = Robot("panda", rootJointType="anchor")
         self._ps = ProblemSolver(robot)
+        self._ps.loadObstacleFromUrdf(
+            str(self._scene.urdf_model_path), self._scene._name_scene + "/"
+        )
         if use_gepetto_gui:
             vf = ViewerFactory(self._ps)
             vf.loadObstacleModel(
-                str(self._scene.urdf_model_path), self._scene._name_scene
+                str(self._scene.urdf_model_path), self._scene._name_scene, guiOnly=True
             )
-            for obstacle in self._cmodel.geometryObjects:
-                if "obstacle" in obstacle.name:
-                    name = join(self._scene._name_scene, obstacle.name)
-                    scene_obs_pose = self._scene.obstacle_pose
-                    hpp_obs_pos = self._ps.getObstaclePosition(name)
-                    hpp_obs_pos[:3] += scene_obs_pose.translation[:3]
-                    vf.moveObstacle(name, hpp_obs_pos)
+        for obstacle in self._cmodel.geometryObjects:
+            if "obstacle" in obstacle.name:
+                name = join(self._scene._name_scene, obstacle.name)
+                scene_obs_pose = self._scene.obstacle_pose
+                hpp_obs_pos = self._ps.getObstaclePosition(name)
+                hpp_obs_pos[:3] += scene_obs_pose.translation[:3]
+                self._ps.moveObstacle(name, hpp_obs_pos)
+                if use_gepetto_gui:
+                    vf.moveObstacle(name, hpp_obs_pos, guiOnly=True)
+        if use_gepetto_gui:
             self._v = vf.createViewer(collisionURDF=True)
 
     def setup_planner(self, q_init, q_goal, use_gepetto_gui):

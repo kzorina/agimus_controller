@@ -18,6 +18,7 @@ class PandaRobotModelParameters(RobotModelParameters):
         self.urdf = Path(self._temp_dir.name) / "panda.urdf"
         self.srdf = self._package_dir / "robots" / "panda" / "panda.srdf"
         self.ee_frame_name = "panda_leftfinger"
+        self.q0_name = "default"
 
         # Parse the xacro file and dump it in a temporary folder.
         self._urdf_string = xacro.process_file(

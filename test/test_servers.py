@@ -1,11 +1,9 @@
 import unittest
-from agimus_controller.hpp_interface import HppCorbaServer
-from agimus_controller.hpp_interface import GepettoGuiServer
-# from agimus_controller.hpp_interface import HppInterface
+from agimus_controller.main.servers import HppCorbaServer, RosCore, Servers
 
 
 class TestMains(unittest.TestCase):
-    def test_spawn_hppcorbaserver(self):
+    def test_hppcorbaserver(self):
         obj = HppCorbaServer()
         self.assertTrue(obj.is_running())
         obj.stop()
@@ -15,8 +13,19 @@ class TestMains(unittest.TestCase):
         obj.stop()
         self.assertFalse(obj.is_running())
 
-    def test_spawn_gepetto_gui(self):
-        obj = GepettoGuiServer()
+    def test_roscore(self):
+        obj = RosCore()
+        self.assertTrue(obj.is_running())
+        obj.stop()
+        self.assertFalse(obj.is_running())
+        obj.start()
+        self.assertTrue(obj.is_running())
+        obj.stop()
+        self.assertFalse(obj.is_running())
+
+    def test_servers(self):
+        obj = Servers()
+        obj.spawn_servers(use_gui=False)
         self.assertTrue(obj.is_running())
         obj.stop()
         self.assertFalse(obj.is_running())

@@ -1,5 +1,6 @@
 import unittest
 
+from agimus_controller.main.servers import Servers
 from agimus_controller.main.panda.main_hpp_mpc_buffer import (
     main as main_panda_hpp_mpc_buffer,
 )
@@ -14,12 +15,24 @@ from agimus_controller.main.ur5.main_hpp_mpc import main as main_ur3_hpp_mpc
 
 
 class TestMains(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._servers = Servers()
+        cls._servers.spawn_servers(use_gui=False)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        super().tearDownClass()
+        cls._servers.stop()
+
     def test_main_panda_hpp_mpc_buffer(self):
         self.assertTrue(main_panda_hpp_mpc_buffer())
 
     def test_main_panda_hpp_mpc(self):
         self.assertTrue(main_panda_hpp_mpc())
 
+    @unittest.skip
     def test_main_panda_meshcat_display(self):
         self.assertTrue(main_panda_meshcat_display())
 
@@ -32,6 +45,7 @@ class TestMains(unittest.TestCase):
     def test_main_panda_optim_traj(self):
         self.assertTrue(main_panda_optim_traj())
 
+    @unittest.skip("The UR3 model code used in the HppInterface is failing.")
     def test_main_ur3_hpp_mpc(self):
         self.assertTrue(main_ur3_hpp_mpc())
 

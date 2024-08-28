@@ -263,13 +263,15 @@ class HppInterface:
             params=panda_params,
             env=Path(__file__).resolve().parent / "resources" / "panda_env.yaml",
         )
-        self.rmodel = self.robot_wrapper.get_reduced_robot_model()
-        self.cmodel = self.robot_wrapper.get_reduced_collision_model()
-        self.vmodel = self.robot_wrapper.get_reduced_visual_model()
-
         self.scene = Scene("wall", self.q_init)
-        self.rmodel, self.cmodel, self.target, self.target2, _ = (
-            self.scene.create_scene_from_urdf(self.rmodel, self.cmodel)
+        (
+            self.robot_wrapper._rmodel,
+            self.robot_wrapper._rcmodel,
+            self.target,
+            self.target2,
+            _,
+        ) = self.scene.create_scene_from_urdf(
+            self.robot_wrapper._rmodel, self.robot_wrapper._rcmodel
         )
         self.planner = PandaPlanner(self.robot_wrapper, self.scene, self.T)
         self.planner.setup_planner(q_init, q_goal, use_gepetto_gui)
@@ -286,8 +288,8 @@ class HppInterface:
         return self.viewer
 
     def get_hpp_x_a_planning(self, DT):
-        nq = self.rmodel.nq
-        hpp_path = self.ps.client.basic.problem.getPath(self.ps.numberPaths() - 1)
+        nq = self.robot_wrapper._rmodel.nq
+        hpp_path = self.ps.client.problem.getPath(self.ps.numberPaths() - 1)
         path = hpp_path.pathAtRank(0)
         T = int(np.round(path.length() / DT))
         x_plan, a_plan, subpath = self.get_xplan_aplan(T, path, nq)

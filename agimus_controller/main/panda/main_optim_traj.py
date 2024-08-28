@@ -1,16 +1,18 @@
 import time
 import numpy as np
 import pinocchio as pin
+from pathlib import Path
 
-from agimus_controller.visualization.wrapper_meshcat import (
-    MeshcatWrapper,
+from agimus_controller.visualization.wrapper_meshcat import MeshcatWrapper
+from agimus_controller.robot_model.panda_model import (
+    PandaRobotModel,
+    PandaRobotModelParameters,
 )
-from agimus_controller.robot_model.wrapper_panda import PandaWrapper
 from agimus_controller.ocps.ocp import OCPPandaReachingColWithMultipleCol
-from agimus_controller.visualization.scenes import Scene
+from agimus_controller.hpp_panda.scenes import Scene
 
 
-def main(display: bool):
+def main(display=False):
     ### PARAMETERS
     # Number of nodes of the trajectory
     T = 20
@@ -18,17 +20,21 @@ def main(display: bool):
     dt = 0.01
 
     # Creating the robot
-    robot_wrapper = PandaWrapper(auto_col=True, capsule=True)
-    rmodel, cmodel, vmodel = robot_wrapper()
+    panda_params = PandaRobotModelParameters()
+    panda_params.collision_as_capsule = True
+    panda_params.self_collision = True
+    env = Path(__file__).resolve().parent.parent.parent / "resources" / "panda_env.yaml"
+    pandawrapper = PandaRobotModel.load_model(params=panda_params, env=env)
+    rmodel = pandawrapper.get_reduced_robot_model()
+    cmodel = pandawrapper.get_reduced_collision_model()
+    vmodel = pandawrapper.get_reduced_visual_model()
 
     # Creating the scene
-    scene = Scene("wall")
-    rmodel1, cmodel1, TARGET1, TARGET2, q0 = scene.create_scene_from_urdf(
-        rmodel, cmodel
-    )
+    scene = Scene(name_scene="wall", q_init=pandawrapper.get_default_configuration())
+    rmodel1, cmodel1, _, TARGET2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
     # Generating the meshcat visualizer
     MeshcatVis = MeshcatWrapper()
-    vis, meshcatVis = MeshcatVis.visualize(
+    vis, _ = MeshcatVis.visualize(
         TARGET2,
         robot_model=rmodel1,
         robot_collision_model=cmodel1,

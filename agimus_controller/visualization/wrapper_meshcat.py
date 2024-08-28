@@ -4,7 +4,6 @@ import pinocchio as pin
 
 import meshcat
 import meshcat.geometry as g
-from agimus_controller.utils.process_handler import ProcessHandler
 
 
 RED = np.array([249, 136, 126, 125]) / 255
@@ -47,11 +46,6 @@ def get_transform(T_: hppfcl.Transform3f):
     return T
 
 
-class MeshcatServer(ProcessHandler):
-    def __init__(self):
-        super().__init__("meshcat-server")
-
-
 class MeshcatWrapper:
     """Wrapper displaying a robot and a target in a meshcat server."""
 
@@ -65,7 +59,6 @@ class MeshcatWrapper:
 
         self._grid = grid
         self._axes = axes
-        self.meshcat_server = MeshcatServer()
 
     def visualize(
         self,
@@ -98,9 +91,7 @@ class MeshcatWrapper:
         self._cmodel = robot_collision_model
         self._vmodel = robot_visual_model
 
-        Viewer = pin.visualize.MeshcatVisualizer
-
-        self.viewer_pin = Viewer(
+        self.viewer_pin = pin.visualize.MeshcatVisualizer(
             self._rmodel,
             collision_model=self._cmodel,
             visual_model=self._vmodel,
@@ -111,7 +102,6 @@ class MeshcatWrapper:
         self.viewer_pin.initViewer(
             viewer=meshcat.Visualizer(zmq_url="tcp://127.0.0.1:6000")
         )
-
         self.viewer_pin.loadViewerModel()
         self.viewer_pin.displayCollisions(True)
 
