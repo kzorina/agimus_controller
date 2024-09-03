@@ -1,0 +1,24 @@
+- git:
+    local-name: agimus_demos_description
+    uri: https://github.com/agimus-project/agimus_demos_description.git
+    version: main
+- git:
+    local-name: franka_description
+    uri: https://github.com/agimus-project/franka_description.git
+    version: topic/mnaveau/fix-model
+- git:
+    local-name: linear-feedback-controller-msgs
+    uri: https://github.com/loco-3d/linear-feedback-controller-msgs
+    version: main
+- git:
+    local-name: jrl-cmakemodules
+    uri: https://github.com/jrl-umi3218/jrl-cmakemodules.git
+    version: master
+- git:
+    local-name: crocoddyl
+    uri: https://github.com/loco-3d/crocoddyl.git
+    version: master
+- git:
+    local-name: example-robot-data
+    uri: https://github.com/Gepetto/example-robot-data.git
+    version: v4.0.9

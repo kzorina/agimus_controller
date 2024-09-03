@@ -58,7 +58,7 @@ class APP(object):
         mpc_xs[0, :] = x
         first_step_done = False
         for idx in range(1, whole_traj_T + 2 * T):
-            traj_idx = min(idx, whole_x_plan.shape[0] - 1)
+            traj_idx = min(idx, whole_traj_T - 1)
             point = TrajectoryPoint(nq=nq, nv=nv)
             point.q = whole_x_plan[traj_idx, :nq]
             point.v = whole_x_plan[traj_idx, nq:]

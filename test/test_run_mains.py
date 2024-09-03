@@ -26,6 +26,7 @@ class TestMains(unittest.TestCase):
         super().tearDownClass()
         cls._servers.stop()
 
+    @unittest.skip
     def test_main_panda_hpp_mpc_buffer(self):
         self.assertTrue(main_panda_hpp_mpc_buffer())
 

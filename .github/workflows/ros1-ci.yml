@@ -1,0 +1,146 @@
+name: ROS
+
+# This determines when this workflow is run
+on:
+  push:
+    paths-ignore:
+      - 'doc/**'
+      - '.gitlab-ci.yml'
+      - '.gitignore'
+      - '.pre-commit-config.yaml'
+      - '*.md'
+      - 'LICENSE'
+      - 'pyproject.toml'
+      - 'package.xml'
+      - 'dependencies.rosintall'
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+      - '.gitlab-ci.yml'
+      - '.gitignore'
+      - '.pre-commit-config.yaml'
+      - '*.md'
+      - 'LICENSE'
+      - 'pyproject.toml'
+      - 'package.xml'
+      - 'dependencies.rosintall'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # CI:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       env:
+  #         - {name: "(noetic, Release)", ROS_DISTRO: noetic}
+  #         # - {name: "(noetic, clang, multi-threading, Release)", ROS_DISTRO: noetic, ADDITIONAL_DEBS: "clang libomp-dev", CC: clang, CXX: clang++, CMAKE_ARGS: "-DBUILD_WITH_MULTITHREADS=ON -DBUILD_WITH_NTHREADS=2"}
+  #   name: ${{ matrix.env.name }}
+  #   env:
+  #     CCACHE_DIR: /github/home/.ccache             # Enable ccache
+  #     UPSTREAM_WORKSPACE: .github/workflows/dependencies.rosinstall  # to build example-robot-data from source as it's not released via the ROS buildfarm
+  #     CTEST_OUTPUT_ON_FAILURE: 1
+  #     # The following is a work-around for ROS tooling in conjunction with jrl-cmakemodules:
+  #     #  - catkin_make_isolated has issues with Industrial-CI right now
+  #     #  - colcon cannot find example-robot-data's python bindings due to ROS1 workspace integration hooks
+  #     #  - catkin_tools correctly finds example-robot-data in the upstream_ws, but does not execute the 'run_tests' target
+  #     #    as catkin-tools performs tests as '--catkin-make-args' instead of '--make-args' as colcon and catkin_make_isolated
+  #     # The work-around is thus to use catkin_tools for building and sourcing, and to manually specify execution of the test
+  #     # target after completion of the regular test target. The output of this step does affect the output of the CI process.
+  #     # Note, this does not affect projects that do not have pure CMake projects in their upstream_ws.
+  #     BUILDER: catkin_tools
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: true
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     # This step will fetch/store the directory used by ccache before/after the ci run
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: ${{ env.CCACHE_DIR }}
+  #         key: ccache-${{ matrix.env.ROS_DISTRO }}-${{ matrix.env.ROS_REPO }}-${{ github.sha }}
+  #         restore-keys: ccache-${{ matrix.env.ROS_DISTRO }}-${{ matrix.env.ROS_REPO }}-
+  #     # Run industrial_ci
+  #     - uses: 'ros-industrial/industrial_ci@master'
+  #       env: ${{ matrix.env }}
+
+  test_on_noetic_devel:
+    runs-on: [ubuntu-20.04]
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - {name: "(noetic, Release)", ROS_DISTRO: noetic}
+    env:
+      CCACHE_DIR: /github/home/.ccache             # Enable ccache
+      CTEST_OUTPUT_ON_FAILURE: 1
+      MAKEFLAGS: -j4
+    steps:
+      - name: Setup ccache
+        run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+          sudo apt-get -qq install -y --no-upgrade --no-install-recommends ccache | grep -E 'Setting up'
+          sudo rm -fr ${{ env.CCACHE_DIR }}
+          sudo mkdir -p ${{ env.CCACHE_DIR }}
+          sudo chmod -R 777 ${{ env.CCACHE_DIR }}
+
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      # This step will fetch/store the directory used by ccache before/after the ci run
+      - name: CCACHE github cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ matrix.env.ROS_DISTRO }}-${{ matrix.env.ROS_REPO }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.env.ROS_DISTRO }}-${{ matrix.env.ROS_REPO }}-
+
+      - name: Display cache before build
+        run: |
+          rm -fr
+          sudo apt install tree
+          tree ${{ env.CCACHE_DIR }}
+
+      - name: /opt github cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/ros
+          key: opt-${{ matrix.env.ROS_DISTRO }}-${{ matrix.env.ROS_REPO }}-${{ github.sha }}
+          restore-keys: opt-${{ matrix.env.ROS_DISTRO }}-${{ matrix.env.ROS_REPO }}-
+
+      - name: Pip install dependencies.
+        run: |
+          pwd
+          ls -al
+          # sudo pip install -r ./requirements.txt
+          cp ./.github/workflows/dependencies.repos /tmp/deps.repos
+
+      - uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: noetic
+
+      - uses: ros-tooling/action-ros-ci@v0.3
+        id: action_ros_ci_step
+        with:
+          package-name: ${{ github.event.repository.name }}
+          target-ros1-distro: noetic
+          vcs-repo-file-url: /tmp/deps.repos
+          extra-cmake-args: -DCMAKE_BUILD_TYPE=Debug -DPYTHON_SITELIB=lib/python3/dist-packages -DPYTHON_EXECUTABLE=/usr/bin/python3 -DBUILD_EXAMPLES=OFF -DBUILD_WITH_IPOPT=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          no-symlink-install: true
+          colcon-defaults: |
+            {
+              "build": {
+                "executor": [
+                    "sequential"
+                ]
+              }
+            }
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: colcon-logs
+          path: ${{ steps.action_ros_ci_step.outputs.ros-workspace-directory-name }}/log
+        if: always() # upload the logs even when the build fails
