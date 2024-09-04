@@ -129,3 +129,7 @@ class RobotModel:
 
     def get_model_parameters(self):
         return deepcopy(self._params)
+
+    def print_model(self):
+        print("full model =\n", self._model)
+        print("reduced model =\n", self._rmodel)

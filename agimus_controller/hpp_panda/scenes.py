@@ -29,32 +29,32 @@ class Scene:
         if self._name_scene == "box":
             self.urdf_filename = "box.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85 - 0.38])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.47])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85 - 0.38])
+                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.47])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0, 0.15, 0.75 - 0.38])
+                self.obstacle_pose.translation = np.array([0, 0.15, 0.37])
         elif self._name_scene == "ball":
             self.urdf_filename = "ball.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0.475, -0.1655, 1.6476 - 0.38])
+                pin.utils.rotate("x", np.pi), np.array([0.475, -0.1655, 1.27])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 1.5 - 0.38])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 1.12])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0.25, -0.4, 1.5 - 0.38])
+                self.obstacle_pose.translation = np.array([0.25, -0.4, 1.12])
         elif self._name_scene == "wall":
             self.urdf_filename = "wall.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85 - 0.38])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.47])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85 - 0.38])
+                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.47])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()

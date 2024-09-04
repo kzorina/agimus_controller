@@ -4,7 +4,7 @@ import pinocchio as pin
 from agimus_controller.robot_model.robot_model import RobotModel
 from agimus_controller.robot_model.panda_model import PandaRobotModel
 from agimus_controller.robot_model.panda_model import PandaRobotModelParameters
-from agimus_controller.robot_model.ur5_model import UR5RobotModel
+from agimus_controller.robot_model.ur3_model import UR3RobotModel
 
 
 class TestBuildModel(unittest.TestCase):
@@ -70,24 +70,14 @@ class TestBuildModel(unittest.TestCase):
         robot_params.collision_as_capsule = True
         robot_params.self_collision = True
         PandaRobotModel.load_model(params=robot_params)
-        # robot_model = PandaRobotModel.load_model(params=robot_params)
-
-        # print("Collision pairs")
-        # cmodel = robot_model.get_reduced_collision_model()
-        # for col in cmodel.collisionPairs:
-        #     first = cmodel.geometryObjects[col.first].name  # .rsplit("_", 1)[0]
-        #     second = cmodel.geometryObjects[col.second].name  # .rsplit("_", 1)[0]
-        #     print(
-        #         f'<disable_collisions link1="{first}" link2="{second}" reason="camera support link ignored" />'
-        #     )
 
     def test_load_panda_collisions(self):
         robot_params = PandaRobotModelParameters()
         env = Path(__file__).resolve().parent / "resources" / "col_env.yaml"
         PandaRobotModel.load_model(env=env, params=robot_params)
 
-    def test_load_ur5_model(self):
-        robot_model = UR5RobotModel.load_model()
+    def test_load_ur3_model(self):
+        robot_model = UR3RobotModel.load_model()
         self.assertNotEqual(robot_model.get_complete_robot_model(), pin.Model())
         self.assertNotEqual(robot_model.get_complete_collision_model(), pin.Model())
         self.assertNotEqual(robot_model.get_complete_visual_model(), pin.Model())
@@ -99,7 +89,7 @@ class TestBuildModel(unittest.TestCase):
         m = robot_model.get_reduced_robot_model()
         self.assertEqual(m.nq, m.nv)
         self.assertEqual(m.nq, 6)
-        self.assertEqual(m.name, "ur5")
+        self.assertEqual(m.name, "ur3")
         self.assertEqual(robot_model.get_default_configuration().size, m.nq)
 
 

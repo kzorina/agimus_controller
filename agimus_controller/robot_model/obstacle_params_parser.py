@@ -7,6 +7,8 @@ from hppfcl import Sphere, Box, Cylinder, Capsule
 
 class ObstacleParamsParser:
     def add_collisions(self, cmodel: pin.Model, yaml_file: Path):
+        new_cmodel = cmodel.copy()
+
         with open(str(yaml_file), "r") as file:
             params = yaml.safe_load(file)
 
@@ -17,14 +19,14 @@ class ObstacleParamsParser:
             obstacle_name = key
             obstacle_config = params[obstacle_name]
 
-            type_ = obstacle_config.get("type")
+            obstacle_type = obstacle_config.get("type")
             translation_vect = obstacle_config.get("translation", [])
 
             if not translation_vect:
                 print(
                     f"No obstacle translation declared for the obstacle named: {obstacle_name}"
                 )
-                return
+                return cmodel.copy()
 
             translation = np.array(translation_vect).reshape(3)
 
@@ -33,19 +35,19 @@ class ObstacleParamsParser:
                 print(
                     f"No obstacle rotation declared for the obstacle named: {obstacle_name}"
                 )
-                return
+                return cmodel.copy()
 
             rotation = np.array(rotation_vect).reshape(4)
 
             geometry = None
-            if type_ == "sphere":
+            if obstacle_type == "sphere":
                 radius = obstacle_config.get("radius")
                 if radius:
                     geometry = Sphere(radius)
                 else:
                     print("No dimension or wrong dimensions in the obstacle config.")
-                    return
-            elif type_ == "box":
+                    return cmodel.copy()
+            elif obstacle_type == "box":
                 x = obstacle_config.get("x")
                 y = obstacle_config.get("y")
                 z = obstacle_config.get("z")
@@ -53,41 +55,41 @@ class ObstacleParamsParser:
                     geometry = Box(x, y, z)
                 else:
                     print("No dimension or wrong dimensions in the obstacle config.")
-                    return
-            elif type_ == "cylinder":
+                    return cmodel.copy()
+            elif obstacle_type == "cylinder":
                 radius = obstacle_config.get("radius")
                 half_length = obstacle_config.get("halfLength")
                 if radius and half_length:
                     geometry = Cylinder(radius, half_length)
                 else:
                     print("No dimension or wrong dimensions in the obstacle config.")
-                    return
-            elif type_ == "capsule":
+                    return cmodel.copy()
+            elif obstacle_type == "capsule":
                 radius = obstacle_config.get("radius")
                 half_length = obstacle_config.get("halfLength")
                 if radius and half_length:
                     geometry = Capsule(radius, half_length)
                 else:
                     print("No dimension or wrong dimensions in the obstacle config.")
-                    return
+                    return cmodel.copy()
             else:
                 print("No type or wrong type in the obstacle config.")
-                return
+                return cmodel.copy()
             obstacle_pose = pin.XYZQUATToSE3(np.concatenate([translation, rotation]))
             obstacle_pose.translation = translation
             obstacle = pin.GeometryObject(obstacle_name, 0, 0, geometry, obstacle_pose)
-            cmodel.addGeometryObject(obstacle)
+            new_cmodel.addGeometryObject(obstacle)
 
         collision_pairs = params.get("collision_pairs", [])
         if collision_pairs:
             for pair in collision_pairs:
                 if len(pair) == 2:
                     name_object1, name_object2 = pair
-                    if cmodel.existGeometryName(
+                    if new_cmodel.existGeometryName(
                         name_object1
-                    ) and cmodel.existGeometryName(name_object2):
-                        cmodel = self.add_collision_pair(
-                            cmodel, name_object1, name_object2
+                    ) and new_cmodel.existGeometryName(name_object2):
+                        new_cmodel = self.add_collision_pair(
+                            new_cmodel, name_object1, name_object2
                         )
                     else:
                         print(
@@ -98,7 +100,7 @@ class ObstacleParamsParser:
         else:
             print("No collision pairs.")
 
-        return cmodel
+        return new_cmodel
 
     def add_collision_pair(
         self, cmodel: pin.Model, name_object1: str, name_object2: str

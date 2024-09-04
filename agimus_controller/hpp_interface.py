@@ -31,6 +31,7 @@ from agimus_controller.robot_model.panda_model import (
     PandaRobotModel,
     PandaRobotModelParameters,
 )
+from agimus_controller.robot_model.ur3_model import UR3RobotModel
 
 
 class Sphere(object):
@@ -54,11 +55,13 @@ class HppInterface:
         self.trajectory = []
         self.viewer = None
 
-    def set_ur3_problem_solver(self, q_init):
+    def set_ur3_problem_solver(self, ur3_robot: UR3RobotModel):
         parser = ArgumentParser()
         parser.add_argument("-N", default=20, type=int)
         args = parser.parse_args()
+        self.robot_wrapper = ur3_robot
         loadServerPlugin("corbaserver", "manipulation-corba.so")
+
         Client().problem.resetProblem()
         Robot.urdfFilename = (
             "package://example-robot-data/robots/ur_description/urdf/ur3_gripper.urdf"
@@ -80,8 +83,7 @@ class HppInterface:
         robot.setJointBounds("ur3/elbow_joint", [-2.6, 2.6])
         vf.loadEnvironmentModel(Ground, "ground")
         objects = list()
-        p = ps.client.basic.problem.getProblem()
-        r = p.robot()
+        r = ps.client.basic.problem.getProblem().robot()
         for i in range(nSphere):
             vf.loadObjectModel(Sphere, "sphere{0}".format(i))
             robot.setJointBounds(
@@ -212,7 +214,7 @@ class HppInterface:
         ps.selectPathProjector("Progressive", 0.01)
 
         cg.initialize()
-
+        q_init = self.robot_wrapper.get_default_full_configuration().tolist()
         ps.setInitialConfig(q_init)
         ps.addGoalConfig(q_goal)
         ps.setMaxIterPathPlanning(5000)
@@ -249,6 +251,7 @@ class HppInterface:
                 print(f"Average time per success: {totalTime.total_seconds()/success}")
                 print(f"Average number nodes per success: {totalNumberNodes/success}")
         self.ps = ps
+        self.problem = ps.client.basic.problem
         self.viewer = vf.createViewer()
 
     def set_panda_planning(self, q_init, q_goal, use_gepetto_gui=False):
@@ -280,6 +283,7 @@ class HppInterface:
         self.ps = self.planner._ps
         if use_gepetto_gui:
             self.viewer = self.planner._v
+        self.problem = self.ps.client.problem
 
     def get_problem_solver(self):
         return self.ps
@@ -289,7 +293,7 @@ class HppInterface:
 
     def get_hpp_x_a_planning(self, DT):
         nq = self.robot_wrapper._rmodel.nq
-        hpp_path = self.ps.client.problem.getPath(self.ps.numberPaths() - 1)
+        hpp_path = self.problem.getPath(self.ps.numberPaths() - 1)
         path = hpp_path.pathAtRank(0)
         T = int(np.round(path.length() / DT))
         x_plan, a_plan, subpath = self.get_xplan_aplan(T, path, nq)

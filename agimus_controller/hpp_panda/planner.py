@@ -37,9 +37,6 @@ class Planner:
         Robot.urdfFilename = str(self._robot_model_params.urdf)
         Robot.srdfFilename = str(self._robot_model_params.srdf)
 
-        print(self._robot_model_params.urdf)
-        print(self._robot_model_params.srdf)
-
         Client().problem.resetProblem()
 
         robot = Robot("panda", rootJointType="anchor")
