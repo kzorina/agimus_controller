@@ -118,7 +118,7 @@ class ObstacleParamsParser:
 
 
 class RobotModelConstructor:
-    def __init__(self, load_from_ros: bool=False) -> None:
+    def __init__(self, load_from_ros: bool = False) -> None:
         # self.load_model(load_from_ros)
         pass
 
