@@ -43,7 +43,7 @@ class ObstacleParamsParser:
                 if radius:
                     geometry = Sphere(radius)
                 else:
-                    print("No dimension or wrong dimensions in the obstacle config.")
+                    print(f"No dimension or wrong dimensions in the config for the obstacle named: {obstacle_name}"
                     return cmodel.copy()
             elif obstacle_type == "box":
                 x = obstacle_config.get("x")
