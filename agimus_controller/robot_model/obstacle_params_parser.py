@@ -12,11 +12,9 @@ class ObstacleParamsParser:
         with open(str(yaml_file), "r") as file:
             params = yaml.safe_load(file)
 
-        for key in params:
-            if key == "collision_pairs":
+        for obstacle_name in params:
+            if obstacle_name == "collision_pairs":
                 continue
-
-            obstacle_name = key
             obstacle_config = params[obstacle_name]
 
             obstacle_type = obstacle_config.get("type")
