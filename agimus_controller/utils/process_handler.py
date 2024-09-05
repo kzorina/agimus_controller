@@ -11,6 +11,7 @@ class ProcessHandler(object):
         self.start()
 
     def __del__(self) -> None:
+        print("Killing the ", self.name, " process.")
         self.stop()
 
     def is_running(self) -> bool:

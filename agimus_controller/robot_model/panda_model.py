@@ -1,3 +1,4 @@
+from typing import Union
 from tempfile import TemporaryDirectory
 from pathlib import Path
 import rospkg

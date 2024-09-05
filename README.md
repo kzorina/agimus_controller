@@ -31,6 +31,11 @@ then you can you choose one of the mains :
     - panda script with buffer management :
     `python3 -m agimus_controller.main.main_hpp_panda_mpc -N=1`
 
+
+### Using ROS
+
+If build with ROS one can run nodes that are tracking a planned trajectory from HPP:
+
 For one to simply run the node individually.
 
 ```bash

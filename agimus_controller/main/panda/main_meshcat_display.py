@@ -21,8 +21,14 @@ class APP(object):
             robot_visual_model=self.vmodel,
             robot_collision_model=self.cmodel,
         )
-        self.vis[0].display(pin.randomConfiguration(self.rmodel))
+        self.display_random_configuration()
         return True
+
+    def display_random_configuration(self):
+        self.vis[0].display(pin.randomConfiguration(self.rmodel))
+
+    def display_configuration(self, q):
+        self.vis[0].display(q)
 
 
 def main():

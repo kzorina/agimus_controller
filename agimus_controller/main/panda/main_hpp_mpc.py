@@ -63,4 +63,4 @@ def main():
 
 if __name__ == "__main__":
     app = APP()
-    app.main(use_gui=False, spawn_servers=True)
+    app.main(use_gui=True, spawn_servers=True)

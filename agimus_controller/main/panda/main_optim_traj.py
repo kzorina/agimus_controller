@@ -10,76 +10,91 @@ from agimus_controller.robot_model.panda_model import (
 )
 from agimus_controller.ocps.ocp import OCPPandaReachingColWithMultipleCol
 from agimus_controller.hpp_panda.scenes import Scene
+from agimus_controller.utils.process_handler import MeshcatServer
 
 
-def main(display=False):
-    ### PARAMETERS
-    # Number of nodes of the trajectory
-    T = 20
-    # Time step between each node
-    dt = 0.01
+class APP(object):
+    def main(self, use_gui=False, spawn_servers=False):
+        if spawn_servers:
+            self.meshcat_server = MeshcatServer()
 
-    # Creating the robot
-    panda_params = PandaRobotModelParameters()
-    panda_params.collision_as_capsule = True
-    panda_params.self_collision = True
-    env = Path(__file__).resolve().parent.parent.parent / "resources" / "panda_env.yaml"
-    pandawrapper = PandaRobotModel.load_model(params=panda_params, env=env)
-    rmodel = pandawrapper.get_reduced_robot_model()
-    cmodel = pandawrapper.get_reduced_collision_model()
-    vmodel = pandawrapper.get_reduced_visual_model()
+        ### PARAMETERS
+        # Number of nodes of the trajectory
+        T = 20
+        # Time step between each node
+        dt = 0.01
 
-    # Creating the scene
-    scene = Scene(name_scene="wall", q_init=pandawrapper.get_default_configuration())
-    rmodel1, cmodel1, _, TARGET2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
-    # Generating the meshcat visualizer
-    MeshcatVis = MeshcatWrapper()
-    vis, _ = MeshcatVis.visualize(
-        TARGET2,
-        robot_model=rmodel1,
-        robot_collision_model=cmodel1,
-        robot_visual_model=vmodel,
-    )
+        # Creating the robot
+        panda_params = PandaRobotModelParameters()
+        panda_params.collision_as_capsule = True
+        panda_params.self_collision = True
+        env = (
+            Path(__file__).resolve().parent.parent.parent
+            / "resources"
+            / "panda_env.yaml"
+        )
+        pandawrapper = PandaRobotModel.load_model(params=panda_params, env=env)
+        rmodel = pandawrapper.get_reduced_robot_model()
+        cmodel = pandawrapper.get_reduced_collision_model()
+        vmodel = pandawrapper.get_reduced_visual_model()
 
-    ### INITIAL X0
-    x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
+        # Creating the scene
+        scene = Scene(
+            name_scene="wall", q_init=pandawrapper.get_default_configuration()
+        )
+        rmodel1, cmodel1, _, TARGET2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
+        # Generating the meshcat visualizer
+        MeshcatVis = MeshcatWrapper()
+        vis, _ = MeshcatVis.visualize(
+            TARGET2,
+            robot_model=rmodel1,
+            robot_collision_model=cmodel1,
+            robot_visual_model=vmodel,
+        )
 
-    ### CREATING THE PROBLEM WITHOUT WARM START
-    problem = OCPPandaReachingColWithMultipleCol(
-        rmodel1,
-        cmodel1,
-        TARGET2,
-        T,
-        dt,
-        x0,
-        WEIGHT_GRIPPER_POSE=100,
-        WEIGHT_xREG=1e-2,
-        WEIGHT_uREG=1e-4,
-        SAFETY_THRESHOLD=2.5e-3,
-        callbacks=True,
-    )
+        ### INITIAL X0
+        x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
 
-    ddp = problem()
+        ### CREATING THE PROBLEM WITHOUT WARM START
+        problem = OCPPandaReachingColWithMultipleCol(
+            rmodel1,
+            cmodel1,
+            TARGET2,
+            T,
+            dt,
+            x0,
+            WEIGHT_GRIPPER_POSE=100,
+            WEIGHT_xREG=1e-2,
+            WEIGHT_uREG=1e-4,
+            SAFETY_THRESHOLD=2.5e-3,
+            callbacks=True,
+        )
 
-    XS_init = [x0] * (T + 1)
-    # US_init = [np.zeros(rmodel.nv)] * T
-    US_init = ddp.problem.quasiStatic(XS_init[:-1])
-    # Solving the problem
-    ddp.solve(XS_init, US_init)
+        ddp = problem()
 
-    print("End of the computation, press enter to display the traj if requested.")
-    ### DISPLAYING THE TRAJ
-    while display:
-        vis.display(q0)
-        input()
-        for xs in ddp.xs:
-            vis.display(np.array(xs[:7].tolist()))
-            time.sleep(1e-1)
-        input()
-        print("replay")
+        XS_init = [x0] * (T + 1)
+        # US_init = [np.zeros(rmodel.nv)] * T
+        US_init = ddp.problem.quasiStatic(XS_init[:-1])
+        # Solving the problem
+        ddp.solve(XS_init, US_init)
 
-    return True
+        print("End of the computation, press enter to display the traj if requested.")
+        ### DISPLAYING THE TRAJ
+        while use_gui:
+            vis.display(q0)
+            input()
+            for xs in ddp.xs:
+                vis.display(np.array(xs[:7].tolist()))
+                time.sleep(1e-1)
+            input()
+            print("replay")
+        return True
+
+
+def main():
+    return APP().main(use_gui=False, spawn_servers=False)
 
 
 if __name__ == "__main__":
-    main(True)
+    app = APP()
+    app.main(use_gui=True, spawn_servers=True)
