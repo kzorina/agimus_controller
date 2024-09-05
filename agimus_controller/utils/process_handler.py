@@ -32,19 +32,9 @@ class ProcessHandler(object):
     def stop(self) -> None:
         if self.process is None:
             return
-        trials = 0
-        while self.is_running() and trials < 5:
-            self.process.terminate()
-            self.process.wait()
-            trials += 1
-        if trials >= 5:
-            trials = 0
-            while self.is_running() and trials < 5:
-                self.process.kill()
-                self.process.wait()
-                trials += 1
-            if trials >= 5:
-                raise RuntimeError("Tried 5 times to shutdown the process...")
+        self.process.terminate()
+        self.process.kill()
+        self.process.wait()
         self.process = None
 
 
