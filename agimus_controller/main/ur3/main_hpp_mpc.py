@@ -48,9 +48,9 @@ class APP(object):
 
 
 def main():
-    return APP().main(use_gui=False, spawn_servers=False)
+    return APP().main(use_gui=False, spawn_servers=True)
 
 
 if __name__ == "__main__":
     app = APP()
-    app.main(use_gui=True, spawn_servers=False)
+    app.main(use_gui=True, spawn_servers=True)
