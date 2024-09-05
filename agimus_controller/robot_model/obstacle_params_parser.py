@@ -52,7 +52,7 @@ class ObstacleParamsParser:
                 if x and y and z:
                     geometry = Box(x, y, z)
                 else:
-                    print("No dimension or wrong dimensions in the obstacle config.")
+                    print(f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}")
                     return cmodel.copy()
             elif obstacle_type == "cylinder":
                 radius = obstacle_config.get("radius")
