@@ -33,14 +33,14 @@ class APP(object):
             / "resources"
             / "panda_env.yaml"
         )
-        pandawrapper = PandaRobotModel.load_model(params=panda_params, env=env)
-        rmodel = pandawrapper.get_reduced_robot_model()
-        cmodel = pandawrapper.get_reduced_collision_model()
-        vmodel = pandawrapper.get_reduced_visual_model()
+        panda_wrapper = PandaRobotModel.load_model(params=panda_params, env=env)
+        rmodel = panda_wrapper.get_reduced_robot_model()
+        cmodel = panda_wrapper.get_reduced_collision_model()
+        vmodel = panda_wrapper.get_reduced_visual_model()
 
         # Creating the scene
         scene = Scene(
-            name_scene="wall", q_init=pandawrapper.get_default_configuration()
+            name_scene="wall", q_init=panda_wrapper.get_default_configuration()
         )
         rmodel1, cmodel1, _, TARGET2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
         # Generating the meshcat visualizer

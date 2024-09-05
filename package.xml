@@ -33,12 +33,12 @@
   <exec_depend>example-robot-data</exec_depend> <!-- install manually. -->
 
   <!-- MiM dependencies. -->
-  <exec_depend>mim_solvers</exec_depend>
-  <exec_depend>mim_robots</exec_depend>
+  <exec_depend>mim_solvers</exec_depend> <!-- install manually. -->
+  <exec_depend>mim_robots</exec_depend> <!-- install manually. -->
 
   <!-- HPP dependencies. -->
-  <exec_depend>hpp-corbaserver</exec_depend>
-  <exec_depend>hpp-manipulation-corba</exec_depend>
+  <exec_depend>hpp-corbaserver</exec_depend> <!-- install manually. -->
+  <exec_depend>hpp-manipulation-corba</exec_depend> <!-- install manually. -->
 
   <!-- Tests -->
   <build_depend>rostest</build_depend>

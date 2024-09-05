@@ -10,10 +10,10 @@ class APP(object):
         self.meshcat_server.start()
 
         # Creating the robot
-        self.robot_wrapper = PandaRobotModel.load_model()
-        self.rmodel = self.robot_wrapper.get_reduced_robot_model()
-        self.cmodel = self.robot_wrapper.get_reduced_collision_model()
-        self.vmodel = self.robot_wrapper.get_reduced_visual_model()
+        self.panda_wrapper = PandaRobotModel.load_model()
+        self.rmodel = self.panda_wrapper.get_reduced_robot_model()
+        self.cmodel = self.panda_wrapper.get_reduced_collision_model()
+        self.vmodel = self.panda_wrapper.get_reduced_visual_model()
         # Generating the meshcat visualizer
         self.MeshcatVis = MeshcatWrapper()
         self.vis = self.MeshcatVis.visualize(

@@ -16,10 +16,10 @@ class APP(object):
             self.servers = Servers()
             self.servers.spawn_servers(use_gui)
 
-        robot = UR3RobotModel.load_model()
-        rmodel = robot.get_reduced_robot_model()
+        panda_wrapper = UR3RobotModel.load_model()
+        rmodel = panda_wrapper.get_reduced_robot_model()
         hpp_interface = HppInterface()
-        hpp_interface.set_ur3_problem_solver(robot)
+        hpp_interface.set_ur3_problem_solver(panda_wrapper)
         x_plan, a_plan, _ = hpp_interface.get_hpp_x_a_planning(1e-2)
         viewer = hpp_interface.get_viewer()
         armature = np.zeros(rmodel.nq)
