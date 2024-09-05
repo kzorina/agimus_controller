@@ -42,7 +42,7 @@ class RobotModel:
         pass
 
     @classmethod
-    def load_model(cls, param: RobotModelParameters, env: Path):
+    def load_model(cls, param: RobotModelParameters, env: Path) -> RobotModel:
         model = cls()
         model._params = param
         model._env = env
@@ -54,7 +54,7 @@ class RobotModel:
         )
         return model
 
-    def _load_pinocchio_models(self, urdf: Path, free_flyer: bool):
+    def _load_pinocchio_models(self, urdf: Path, free_flyer: bool) -> None:
         verbose = False
         assert urdf.exists() and urdf.is_file()
         if free_flyer:
@@ -68,7 +68,7 @@ class RobotModel:
                 filename=str(urdf), root_joint=None, verbose=verbose
             )
 
-    def _load_default_configuration(self, srdf_path: Path, q0_name: str):
+    def _load_default_configuration(self, srdf_path: Path, q0_name: str) -> None:
         if not srdf_path.is_file():
             return
         pin.loadReferenceConfigurations(self._model, str(srdf_path), False)
@@ -77,7 +77,7 @@ class RobotModel:
         else:
             self._q0 = pin.neutral(self._model)
 
-    def _load_reduced_model(self, locked_joint_names, q0_name):
+    def _load_reduced_model(self, locked_joint_names, q0_name) -> None:
         locked_joint_ids = [self._model.getJointId(name) for name in locked_joint_names]
         self._rmodel, geometric_models_reduced = pin.buildReducedModel(
             self._model,
@@ -93,8 +93,8 @@ class RobotModel:
             self._q0 = pin.neutral(self._rmodel)
 
     def _update_collision_model(
-        self, env: Path, collision_as_capsule: bool, self_collision: bool, srdf: Path
-    ):
+        self, env: Union[Path, None], collision_as_capsule: bool, self_collision: bool, srdf: Path
+    ) -> None:
         if collision_as_capsule:
             self._rcmodel = self._collision_parser.transform_model_into_capsules(
                 self._rcmodel
@@ -106,28 +106,28 @@ class RobotModel:
         if env is not None:
             self._rcmodel = self._collision_parser.add_collisions(self._rcmodel, env)
 
-    def get_complete_robot_model(self):
+    def get_complete_robot_model(self) -> pin.Model:
         return self._model.copy()
 
-    def get_complete_collision_model(self):
+    def get_complete_collision_model(self) -> pin.GeometryModel:
         return self._cmodel.copy()
 
-    def get_complete_visual_model(self):
+    def get_complete_visual_model(self) -> pin.GeometryModel:
         return self._vmodel.copy()
 
-    def get_reduced_robot_model(self):
+    def get_reduced_robot_model(self) -> pin.Model:
         return self._rmodel.copy()
 
-    def get_reduced_collision_model(self):
+    def get_reduced_collision_model(self) -> pin.GeometryModel:
         return self._rcmodel.copy()
 
-    def get_reduced_visual_model(self):
+    def get_reduced_visual_model(self) -> pin.GeometryModel:
         return self._rvmodel.copy()
 
-    def get_default_configuration(self):
+    def get_default_configuration(self) -> np.array:
         return self._q0.copy()
 
-    def get_model_parameters(self):
+    def get_model_parameters(self) -> RobotModelParameters:
         return deepcopy(self._params)
 
     def print_model(self):

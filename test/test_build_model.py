@@ -28,11 +28,11 @@ class TestBuildModel(unittest.TestCase):
         robot_model = PandaRobotModel.load_model(params=robot_params)
 
         self.assertNotEqual(robot_model.get_complete_robot_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_complete_collision_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_complete_visual_model(), pin.Model())
+        self.assertNotEqual(robot_model.get_complete_collision_model(), pin.GeometryModel())
+        self.assertNotEqual(robot_model.get_complete_visual_model(), pin.GeometryModel())
         self.assertNotEqual(robot_model.get_reduced_robot_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_reduced_collision_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_reduced_visual_model(), pin.Model())
+        self.assertNotEqual(robot_model.get_reduced_collision_model(), pin.GeometryModel())
+        self.assertNotEqual(robot_model.get_reduced_visual_model(), pin.GeometryModel())
         self.assertNotEqual(robot_model.get_default_configuration().size, 0)
 
         m = robot_model.get_reduced_robot_model()
@@ -79,11 +79,11 @@ class TestBuildModel(unittest.TestCase):
     def test_load_ur3_model(self):
         robot_model = UR3RobotModel.load_model()
         self.assertNotEqual(robot_model.get_complete_robot_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_complete_collision_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_complete_visual_model(), pin.Model())
+        self.assertNotEqual(robot_model.get_complete_collision_model(), pin.GeometryModel())
+        self.assertNotEqual(robot_model.get_complete_visual_model(), pin.GeometryModel())
         self.assertNotEqual(robot_model.get_reduced_robot_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_reduced_collision_model(), pin.Model())
-        self.assertNotEqual(robot_model.get_reduced_visual_model(), pin.Model())
+        self.assertNotEqual(robot_model.get_reduced_collision_model(), pin.GeometryModel())
+        self.assertNotEqual(robot_model.get_reduced_visual_model(), pin.GeometryModel())
         self.assertNotEqual(robot_model.get_default_configuration().size, 0)
 
         m = robot_model.get_reduced_robot_model()

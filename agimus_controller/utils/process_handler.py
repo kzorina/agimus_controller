@@ -5,15 +5,15 @@ import os
 
 
 class ProcessHandler(object):
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.process = None
         self.name = name
         self.start()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.stop()
 
-    def is_running(self):
+    def is_running(self) -> bool:
         return bool(
             [
                 p
@@ -22,13 +22,13 @@ class ProcessHandler(object):
             ]
         )
 
-    def start(self):
+    def start(self) -> None:
         if self.process is not None and self.is_running():
             return
         self.process = subprocess.Popen([self.name], env=os.environ)
         time.sleep(0.2)
 
-    def stop(self):
+    def stop(self) -> None:
         if self.process is None:
             return
         trials = 0
@@ -48,10 +48,10 @@ class ProcessHandler(object):
 
 
 class GepettoGuiServer(ProcessHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("gepetto-gui")
 
-    def stop(self):
+    def stop(self) -> None:
         if self.process is None:
             return
         self.process.kill()
@@ -60,15 +60,15 @@ class GepettoGuiServer(ProcessHandler):
 
 
 class HppCorbaServer(ProcessHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("hppcorbaserver")
 
 
 class RosCore(ProcessHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("roscore")
 
 
 class MeshcatServer(ProcessHandler):
-    def __init__(self):
-        super().__init__(name="meshcat-server")
+    def __init__(self) -> None:
+        super().__init__("meshcat-server")

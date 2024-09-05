@@ -33,7 +33,7 @@ class PandaRobotModelParameters(RobotModelParameters):
 
 class PandaRobotModel(RobotModel):
     @classmethod
-    def load_model(cls, env=None, params=None):
+    def load_model(cls, env: Union[Path, None] = None, params: Union[RobotModelParameters, None] = None) -> RobotModel:
         if params is not None:
             return super().load_model(params, env)
         else:
