@@ -24,7 +24,7 @@ class ObstacleParamsParser:
 
             if not translation_vect:
                 print(
-                    f"No obstacle translation declared for the obstacle named: {obstacle_name}"
+                    f"No obstacle translation declared for the obstacle named: {obstacle_name}."
                 )
                 return cmodel.copy()
 
@@ -33,7 +33,7 @@ class ObstacleParamsParser:
             rotation_vect = obstacle_config.get("rotation", [])
             if not rotation_vect:
                 print(
-                    f"No obstacle rotation declared for the obstacle named: {obstacle_name}"
+                    f"No obstacle rotation declared for the obstacle named: {obstacle_name}."
                 )
                 return cmodel.copy()
 
@@ -46,7 +46,7 @@ class ObstacleParamsParser:
                     geometry = Sphere(radius)
                 else:
                     print(
-                        f"No dimension or wrong dimensions in the config for the obstacle named: {obstacle_name}"
+                        f"No dimension or wrong dimensions in the config for the obstacle named: {obstacle_name}."
                     )
                     return cmodel.copy()
             elif obstacle_type == "box":
@@ -57,7 +57,7 @@ class ObstacleParamsParser:
                     geometry = Box(x, y, z)
                 else:
                     print(
-                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}"
+                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}."
                     )
                     return cmodel.copy()
             elif obstacle_type == "cylinder":
@@ -67,7 +67,7 @@ class ObstacleParamsParser:
                     geometry = Cylinder(radius, half_length)
                 else:
                     print(
-                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}"
+                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}."
                     )
                     return cmodel.copy()
             elif obstacle_type == "capsule":
@@ -77,12 +77,12 @@ class ObstacleParamsParser:
                     geometry = Capsule(radius, half_length)
                 else:
                     print(
-                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}"
+                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}."
                     )
                     return cmodel.copy()
             else:
                 print(
-                    f"No type or wrong type in the config for the obstacle named: {obstacle_name}"
+                    f"No type or wrong type in the config for the obstacle named: {obstacle_name}."
                 )
                 return cmodel.copy()
             obstacle_pose = pin.XYZQUATToSE3(np.concatenate([translation, rotation]))
@@ -106,7 +106,7 @@ class ObstacleParamsParser:
                             f"Object {name_object1} or {name_object2} does not exist in the collision model."
                         )
                 else:
-                    print(f"Invalid collision pair: {pair}")
+                    print(f"Invalid collision pair: {pair}.")
         else:
             print("No collision pairs defined.")
 
@@ -123,7 +123,7 @@ class ObstacleParamsParser:
             cmodel.addCollisionPair(pin.CollisionPair(object1_id, object2_id))
         else:
             print(
-                f"Object ID not found for collision pair: {object1_id} and {object2_id}"
+                f"Object ID not found for collision pair: {object1_id} and {object2_id}."
             )
         return cmodel
 
