@@ -1,3 +1,5 @@
+from typing import Union, Self
+from dataclasses import dataclass
 from copy import deepcopy
 import pinocchio as pin
 import numpy as np
@@ -5,6 +7,7 @@ from pathlib import Path
 from agimus_controller.robot_model.obstacle_params_parser import ObstacleParamsParser
 
 
+@dataclass
 class RobotModelParameters:
     q0_name = str()
     free_flyer = False
@@ -38,11 +41,8 @@ class RobotModel:
     """ Path to the collisions environment. """
     _env = Path()
 
-    def __init__(self):
-        pass
-
     @classmethod
-    def load_model(cls, param: RobotModelParameters, env: Path) -> RobotModel:
+    def load_model(cls, param: RobotModelParameters, env: Union[Path, None]) -> Self:
         model = cls()
         model._params = param
         model._env = env

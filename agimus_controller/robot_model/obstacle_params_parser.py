@@ -6,7 +6,9 @@ from hppfcl import Sphere, Box, Cylinder, Capsule
 
 
 class ObstacleParamsParser:
-    def add_collisions(self, cmodel: pin.GeometryModel, yaml_file: Path) -> pin.GeometryModel:
+    def add_collisions(
+        self, cmodel: pin.GeometryModel, yaml_file: Path
+    ) -> pin.GeometryModel:
         new_cmodel = cmodel.copy()
 
         with open(str(yaml_file), "r") as file:
@@ -43,7 +45,9 @@ class ObstacleParamsParser:
                 if radius:
                     geometry = Sphere(radius)
                 else:
-                    print(f"No dimension or wrong dimensions in the config for the obstacle named: {obstacle_name}"
+                    print(
+                        f"No dimension or wrong dimensions in the config for the obstacle named: {obstacle_name}"
+                    )
                     return cmodel.copy()
             elif obstacle_type == "box":
                 x = obstacle_config.get("x")
@@ -52,7 +56,9 @@ class ObstacleParamsParser:
                 if x and y and z:
                     geometry = Box(x, y, z)
                 else:
-                    print(f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}")
+                    print(
+                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}"
+                    )
                     return cmodel.copy()
             elif obstacle_type == "cylinder":
                 radius = obstacle_config.get("radius")
@@ -60,7 +66,9 @@ class ObstacleParamsParser:
                 if radius and half_length:
                     geometry = Cylinder(radius, half_length)
                 else:
-                    print(f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}")
+                    print(
+                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}"
+                    )
                     return cmodel.copy()
             elif obstacle_type == "capsule":
                 radius = obstacle_config.get("radius")
@@ -68,10 +76,14 @@ class ObstacleParamsParser:
                 if radius and half_length:
                     geometry = Capsule(radius, half_length)
                 else:
-                    print(f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}")
+                    print(
+                        f"No dimension or wrong dimensions in the  config for the obstacle named: {obstacle_name}"
+                    )
                     return cmodel.copy()
             else:
-                print(f"No type or wrong type in the config for the obstacle named: {obstacle_name}")``
+                print(
+                    f"No type or wrong type in the config for the obstacle named: {obstacle_name}"
+                )
                 return cmodel.copy()
             obstacle_pose = pin.XYZQUATToSE3(np.concatenate([translation, rotation]))
             obstacle_pose.translation = translation
@@ -103,9 +115,11 @@ class ObstacleParamsParser:
     def add_collision_pair(
         self, cmodel: pin.GeometryModel, name_object1: str, name_object2: str
     ) -> pin.GeometryModel:
-        object1_id = cmodel.getGeometryId(name_object1)
-        object2_id = cmodel.getGeometryId(name_object2)
-        if object1_id is not None and object2_id is not None:
+        if cmodel.existGeometryName(name_object1) and cmodel.existGeometryName(
+            name_object2
+        ):
+            object1_id = cmodel.getGeometryId(name_object1)
+            object2_id = cmodel.getGeometryId(name_object2)
             cmodel.addCollisionPair(pin.CollisionPair(object1_id, object2_id))
         else:
             print(
@@ -113,7 +127,9 @@ class ObstacleParamsParser:
             )
         return cmodel
 
-    def transform_model_into_capsules(self, model: pin.GeometryModel) -> pin.GeometryModel:
+    def transform_model_into_capsules(
+        self, model: pin.GeometryModel
+    ) -> pin.GeometryModel:
         """Modifying the collision model to transform the spheres/cylinders into capsules which makes it easier to have a fully constrained robot."""
         model_copy = model.copy()
 

@@ -8,7 +8,6 @@ from panda_torque_mpc_pywrap import reduce_capsules_robot
 
 from pathlib import Path
 from hppfcl import Sphere, Box, Cylinder, Capsule
-# from agimus_controller.utils.path_finder import get_project_root
 
 
 class ObstacleParamsParser:
@@ -119,25 +118,16 @@ class ObstacleParamsParser:
 
 class RobotModelConstructor:
     def __init__(self, load_from_ros: bool = False) -> None:
-        # self.load_model(load_from_ros)
         pass
 
     def load_model(self, load_from_ros):
-        # yaml_path = get_project_root() / "config" / "param.yaml"
         yaml_path = Path()
-        # mesh_dir = str(Path(franka_description.__path__[0]) / "meshes")
-
         if load_from_ros:
             print("Load robot from ROS")
-
-            # Getting urdf and srdf content
             urdf_string = rospy.get_param("robot_description")
-            # srdf_string = rospy.get_param("robot_description_semantic")
-            # self.construct_robot_model(urdf_string, srdf_string, mesh_dir)
             self.construct_collision_model(self.rmodel, urdf_string, yaml_path)
         else:
             print("Load robot from files")
-
             urdf_path = str(Path("urdf") / "robot.urdf")
             srdf_path = str(Path("srdf") / "demo.srdf")
             robot = example_robot_data.load("panda")
@@ -194,11 +184,8 @@ class RobotModelConstructor:
         model_copy = model.copy()
         list_names_capsules = []
 
-        # Going through all the goemetry objects in the collision model
         for geom_object in model_copy.geometryObjects:
             if isinstance(geom_object.geometry, Cylinder):
-                # Sometimes for one joint there are two cylinders, which need to be defined by two capsules for the same link.
-                # Hence the name convention here.
                 if (geom_object.name[:-4] + "capsule_0") in list_names_capsules:
                     name = geom_object.name[:-4] + "capsule_" + "1"
                 else:
