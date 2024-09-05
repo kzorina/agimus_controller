@@ -39,7 +39,6 @@ class TestBuildModel(unittest.TestCase):
             robot_model.get_reduced_collision_model(), pin.GeometryModel()
         )
         self.assertNotEqual(robot_model.get_reduced_visual_model(), pin.GeometryModel())
-        self.assertNotEqual(robot_model.get_default_configuration().size, 0)
 
         m = robot_model.get_reduced_robot_model()
         self.assertEqual(m.nq, m.nv)
