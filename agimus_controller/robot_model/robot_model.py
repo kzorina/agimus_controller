@@ -93,7 +93,11 @@ class RobotModel:
             self._q0 = pin.neutral(self._rmodel)
 
     def _update_collision_model(
-        self, env: Union[Path, None], collision_as_capsule: bool, self_collision: bool, srdf: Path
+        self,
+        env: Union[Path, None],
+        collision_as_capsule: bool,
+        self_collision: bool,
+        srdf: Path,
     ) -> None:
         if collision_as_capsule:
             self._rcmodel = self._collision_parser.transform_model_into_capsules(
