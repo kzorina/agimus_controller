@@ -280,7 +280,9 @@ def get_last_joint(rmodel) -> Tuple[str, int, int]:
         )
     else:
         raise AttributeError(
-            "No known last joint name was found. Check the robot model."
+            "No known last joint name was found. Check the robot model. {}".format(
+                str(rmodel)
+            )
         )
     last_joint_id = rmodel.getJointId(last_joint_name)
     last_joint_frame_id = rmodel.getFrameId(last_joint_name)

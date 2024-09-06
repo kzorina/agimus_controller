@@ -18,6 +18,7 @@ get_property(
   TARGET jrl-cmakemodules::jrl-cmakemodules
   PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
 include(${JRL_CMAKE_MODULES}/base.cmake)
+include(${JRL_CMAKE_MODULES}/test.cmake)
 include(${JRL_CMAKE_MODULES}/python.cmake)
 
 # Declare the project from the above variables.
@@ -28,43 +29,39 @@ add_project_dependency(pinocchio 2.6.21 REQUIRED PKG_CONFIG_REQUIRES
                        "pinocchio >= 2.6.21")
 add_project_dependency(crocoddyl 2.0.2 REQUIRED PKG_CONFIG_REQUIRES
                        "crocoddyl >= 2.0.2")
-add_project_dependency(example-robot-data 4.1.0 REQUIRED PKG_CONFIG_REQUIRES
-                       "example-robot-data >= 4.1.0")
+add_project_dependency(example-robot-data 4.0.9 REQUIRED PKG_CONFIG_REQUIRES
+                       "example-robot-data >= 4.0.9")
 add_project_dependency(mim_solvers 0.0.4 REQUIRED PKG_CONFIG_REQUIRES
                        "mim_solvers >= 0.0.4")
 
 if(NOT INSTALL_ROS_INTERFACE_ONLY)
-  # Install the python package.
-  set(project_python_source_files hpp_interface.py mpc_search.py mpc.py
-                                  trajectory_point.py)
-  foreach(file ${project_python_source_files})
-    python_install_on_site(${PROJECT_NAME} ${file})
-  endforeach()
+  set(pkg1 ${PROJECT_NAME} hpp_interface.py mpc_search.py mpc.py
+           trajectory_buffer.py trajectory_point.py)
+  set(pkg2 ${PROJECT_NAME}/hpp_panda planner.py scenes.py)
+  set(pkg3 ${PROJECT_NAME}/main/panda main_hpp_mpc_buffer.py main_hpp_mpc.py
+           main_meshcat_display.py main_optim_traj.py main_scenes.py)
+  set(pkg4 ${PROJECT_NAME}/main/ur3 main_hpp_mpc.py)
+  set(pkg5 ${PROJECT_NAME}/ocps ocp_croco_hpp.py ocp.py)
+  set(pkg6 ${PROJECT_NAME}/robot_model obstacle_params_parser.py panda_model.py
+           robot_model.py ur3_model.py)
+  set(pkg7 ${PROJECT_NAME}/utils iostream.py ocp_analyzer.py pin_utils.py
+           process_handler.py)
+  set(pkg8 ${PROJECT_NAME}/visualization plots.py wrapper_meshcat.py)
+  set(packages
+      pkg1
+      pkg2
+      pkg3
+      pkg4
+      pkg5
+      pkg6
+      pkg7
+      pkg8)
 
-  # Install the panda planning files.
-  set(project_python_hpp_panda_files planner.py scenes.py wrapper_panda.py)
-  foreach(file ${project_python_hpp_panda_files})
-    python_install_on_site(${PROJECT_NAME}/hpp_panda ${file})
-  endforeach()
-
-  # Install the main files.
-  set(project_python_main_files main_hpp_mpc.py main_hpp_panda_mpc.py
-                                main_mpc.py main_optim_traj.py)
-  foreach(file ${project_python_main_files})
-    python_install_on_site(${PROJECT_NAME}/main ${file})
-  endforeach()
-
-  # Install the ocp files.
-  set(project_python_ocp_files ocp_croco_hpp.py ocp.py)
-  foreach(file ${project_python_ocp_files})
-    python_install_on_site(${PROJECT_NAME}/ocps ${file})
-  endforeach()
-
-  # Install the utils files.
-  set(project_python_utils_files pin_utils.py plots.py ros_np_multiarray.py
-                                 scenes.py wrapper_meshcat.py wrapper_panda.py)
-  foreach(file ${project_python_utils_files})
-    python_install_on_site(${PROJECT_NAME}/utils ${file})
+  foreach(package ${packages})
+    list(POP_FRONT ${package} package_name)
+    foreach(python_file ${${package}})
+      python_install_on_site(${package_name} ${python_file})
+    endforeach()
   endforeach()
 
   install(FILES package.xml DESTINATION share/${PROJECT_NAME})
@@ -87,6 +84,8 @@ if(BUILD_ROS_INTERFACE)
                  ${MY_PYTHON_DEPENDENCIES})
   catkin_install_python(
     PROGRAMS node/agimus_controller_node node/hpp_agimus_controller_node
-    node/hpp_corbaserver DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+  install(PROGRAMS node/hpp_corbaserver
+          DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}/node)
   install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 endif()

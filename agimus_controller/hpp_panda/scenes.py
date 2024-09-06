@@ -1,5 +1,4 @@
-from os.path import dirname, join, abspath
-
+from pathlib import Path
 import numpy as np
 import pinocchio as pin
 
@@ -17,7 +16,7 @@ class Scene:
         """Create the scene that encapsulates the obstacles.
 
         Args:
-            name_scene (str): Name of the scene, amond "box", "ball" and "wall".
+            name_scene (str): Name of the scene, among "box", "ball" and "wall".
             obstacle_pose (pin.SE3, optional): Pose of the obstacles. The default one is adapted for each scene. Defaults to None.
 
         Raises:
@@ -30,36 +29,36 @@ class Scene:
         if self._name_scene == "box":
             self.urdf_filename = "box.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.47])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.47])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0, 0.15, 0.75])
+                self.obstacle_pose.translation = np.array([0, 0.15, 0.37])
         elif self._name_scene == "ball":
             self.urdf_filename = "ball.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0.475, -0.1655, 1.6476])
+                pin.utils.rotate("x", np.pi), np.array([0.475, -0.1655, 1.27])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 1.5])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 1.12])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0.25, -0.4, 1.5])
+                self.obstacle_pose.translation = np.array([0.25, -0.4, 1.12])
         elif self._name_scene == "wall":
             self.urdf_filename = "wall.urdf"
             self._TARGET_POSE1 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, -0.4, 0.47])
             )
             self._TARGET_POSE2 = pin.SE3(
-                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.85])
+                pin.utils.rotate("x", np.pi), np.array([0, 0.15, 0.47])
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0, -0.1, 1.0])
+                self.obstacle_pose.translation = np.array([0.6, 0, 1.0])
         else:
             raise NotImplementedError(
                 f"The input {self._name_scene} is not implemented."
@@ -70,21 +69,19 @@ class Scene:
         rmodel: pin.Model,
         cmodel: pin.Model,
     ):
-        """Create a scene amond the one described in the constructor of the class.
+        """Create a scene among the one described in the constructor of the class.
 
         Args:
             rmodel (pin.Model): robot model
             cmodel (pin.Model): collision model of the robot
         """
 
-        model, collision_model, visual_model = self._load_obstacle_urdf(
-            self.urdf_filename
-        )
+        obs_model, obs_cmodel, _ = self._load_obstacle_urdf(self.urdf_filename)
         self._rmodel, self._cmodel = pin.appendModel(
             rmodel,
-            model,
+            obs_model,
             cmodel,
-            collision_model,
+            obs_cmodel,
             0,
             self.obstacle_pose,
         )
@@ -126,27 +123,25 @@ class Scene:
         Args:
             urdf_file_name (str): name of the URDF.
         """
-
-        model_dir = dirname(dirname((str(abspath(__file__)))))
-        model_path = join(model_dir, "robot_description")
-        urdf_dir = join(model_path, "urdf")
-        obstacle_dir = join(urdf_dir, "obstacles")
-        self.urdf_model_path = join(obstacle_dir, urdf_filename)
-
-        model, collision_model, visual_model = pin.buildModelsFromUrdf(
-            self.urdf_model_path
+        obstacle_dir = (
+            Path(__file__).resolve().parent.parent / "resources" / "obstacles"
+        )
+        self.urdf_model_path = obstacle_dir / urdf_filename
+        obs_model, obs_cmodel, obs_vmodel = pin.buildModelsFromUrdf(
+            str(self.urdf_model_path)
         )
 
         # changing the names of the frames because there is conflict between frames names of both models.
-        for frame in model.frames:
+        print("Frame names of the obstacle:")
+        for frame in obs_model.frames:
             frame.name = frame.name + "_obstacle"
-            print(frame.name)
+            print("\t- ", frame.name)
         self._obstacles_name = []
-        for obstacle in collision_model.geometryObjects:
+        for obstacle in obs_cmodel.geometryObjects:
             self._obstacles_name.append(obstacle.name)
 
         self._obstacles_name.append("support_link_0")
-        return model, collision_model, visual_model
+        return obs_model, obs_cmodel, obs_vmodel
 
     def get_shapes_avoiding_collision(self):
         """Get the list of the shapes avoiding the collisions with the obstacles.
@@ -154,33 +149,23 @@ class Scene:
         Returns:
             list: list of the shapes avoiding the collisions with the obstacles.
         """
-        if self._name_scene == "box":
+        if self._name_scene == "box" or "wall":
             self.shapes_avoiding_collision = [
-                "panda2_link7_capsule_0",
-                "panda2_link7_capsule_1",
-                "panda2_link6_capsule_0",
-                "panda2_link5_capsule_1",
-                "panda2_link5_capsule_0",
-                "panda2_rightfinger_0",
-                "panda2_leftfinger_0",
+                "panda_link7_sc_capsule_0",
+                "panda_link7_sc_capsule_1",
+                "panda_link6_sc_capsule_0",
+                "panda_link5_sc_capsule_1",
+                "panda_link5_sc_capsule_0",
+                "panda_rightfinger_0",
+                "panda_leftfinger_0",
             ]
         elif self._name_scene == "ball":
             self.shapes_avoiding_collision = [
-                "panda2_leftfinger_0",
-                "panda2_rightfinger_0",
-                "panda2_link6_capsule_0",
-                "panda2_link5_capsule_0",
-                "panda2_link5_capsule_1",
-            ]
-        elif self._name_scene == "wall":
-            self.shapes_avoiding_collision = [
-                "panda2_link7_capsule_0",
-                "panda2_link7_capsule_1",
-                "panda2_link6_capsule_0",
-                "panda2_link5_capsule_1",
-                "panda2_link5_capsule_0",
-                "panda2_rightfinger_0",
-                "panda2_leftfinger_0",
+                "panda_leftfinger_0",
+                "panda_rightfinger_0",
+                "panda_link6_sc_capsule_0",
+                "panda_link5_sc_capsule_0",
+                "panda_link5_sc_capsule_1",
             ]
         else:
             raise NotImplementedError(
@@ -188,50 +173,3 @@ class Scene:
             )
 
         return self.shapes_avoiding_collision
-
-
-if __name__ == "__main__":
-    # from wrapper_meshcat import MeshcatWrapper
-    from wrapper_panda import PandaWrapper
-
-    # Creating the robot
-    robot_wrapper = PandaWrapper(capsule=True, auto_col=True)
-    rmodel, cmodel, vmodel = robot_wrapper()
-
-    scene = Scene("ball")
-    rmodel, cmodel, target, target2, q0 = scene.create_scene_from_urdf(rmodel, cmodel)
-    q = np.array(
-        [
-            1.06747267,
-            1.44892299,
-            -0.10145964,
-            -2.42389347,
-            2.60903241,
-            3.45138352,
-            -2.04166928,
-        ]
-    )
-    rdata = rmodel.createData()
-    cdata = cmodel.createData()
-    # Generating the meshcat visualizer
-    # MeshcatVis = MeshcatWrapper()
-    # vis = MeshcatVis.visualize(
-    #     robot_model=rmodel,
-    #     robot_visual_model=cmodel,
-    #     robot_collision_model=cmodel,
-    #     TARGET=target,
-    # )
-    # vis[0].display(q)
-
-    pin.computeCollisions(rmodel, rdata, cmodel, cdata, q, False)
-    for k in range(len(cmodel.collisionPairs)):
-        cr = cdata.collisionResults[k]
-        cp = cmodel.collisionPairs[k]
-        print(
-            "collision pair:",
-            cmodel.geometryObjects[cp.first].name,
-            ",",
-            cmodel.geometryObjects[cp.second].name,
-            "- collision:",
-            "Yes" if cr.isCollision() else "No",
-        )

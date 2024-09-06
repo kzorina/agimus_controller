@@ -19,29 +19,26 @@
   <exec_depend condition="$ROS_VERSION == 2">ament_cmake</exec_depend>
 
   <!-- ROS dependencies. -->
-  <depend>linear_feedback_controller_msgs</depend>
+  <depend>linear_feedback_controller_msgs</depend> <!-- install manually. -->
   <depend>rospy</depend>
+  <depend>xacro</depend>
 
   <!-- Python dpendencies. -->
-  <exec_depend>python-matplotlib</exec_depend>
-  <exec_depend>python-numpy</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
 
   <!-- LAAS dependencies. -->
   <exec_depend>pinocchio</exec_depend>
-  <exec_depend>croccodyl</exec_depend>
-  <exec_depend>example-robot-data</exec_depend>
+  <exec_depend>crocoddyl</exec_depend> <!-- install manually. -->
+  <exec_depend>example-robot-data</exec_depend> <!-- install manually. -->
 
   <!-- MiM dependencies. -->
-  <exec_depend>mim_solvers</exec_depend>
-  <exec_depend>mim_robots</exec_depend>
+  <exec_depend>mim_solvers</exec_depend> <!-- install manually. -->
+  <exec_depend>mim_robots</exec_depend> <!-- install manually. -->
 
   <!-- HPP dependencies. -->
-  <exec_depend>hpp-corbaserver</exec_depend>
-  <exec_depend>hpp-manipulation-corba</exec_depend>
-
-  <!-- Visualization dependencies -->
-  <exec_depend>meshcat</exec_depend>
-  <exec_depend>pybullet</exec_depend>
+  <exec_depend>hpp-corbaserver</exec_depend> <!-- install manually. -->
+  <exec_depend>hpp-manipulation-corba</exec_depend> <!-- install manually. -->
 
   <!-- Tests -->
   <build_depend>rostest</build_depend>

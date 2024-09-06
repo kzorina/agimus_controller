@@ -76,7 +76,7 @@ class OCPPandaReachingColWithMultipleCol:
         self._cdata = cmodel.createData()
 
         # Frames
-        self._endeff_frame = self._rmodel.getFrameId("panda2_leftfinger")
+        self._endeff_frame = self._rmodel.getFrameId("panda_leftfinger")
 
         # Making sure that the frame exists
         assert self._endeff_frame <= len(self._rmodel.frames)

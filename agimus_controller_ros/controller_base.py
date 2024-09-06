@@ -8,10 +8,13 @@ from std_msgs.msg import Duration, Header
 from linear_feedback_controller_msgs.msg import Control, Sensor
 import atexit
 
-from agimus_controller.utils.ros_np_multiarray import to_multiarray_f64
+from agimus_controller_ros.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import PointAttribute
-from agimus_controller.utils.build_models import RobotModelConstructor
+from agimus_controller.robot_model.panda_model import (
+    PandaRobotModel,
+    PandaRobotModelParameters,
+)
 from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
     get_last_joint,
@@ -44,10 +47,13 @@ class ControllerBase:
         self.traj_buffer = TrajectoryBuffer()
         self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
 
-        robot_constructor = RobotModelConstructor(load_from_ros=False)
+        robot_params = PandaRobotModelParameters()
+        robot_params.collision_as_capsule = True
+        robot_params.self_collision = True
+        robot_constructor = PandaRobotModel.load_model()
 
-        self.rmodel = robot_constructor.get_robot_reduced_model()
-        self.cmodel = robot_constructor.get_collision_reduced_model()
+        self.rmodel = robot_constructor.get_reduced_robot_model()
+        self.cmodel = robot_constructor.get_reduced_collision_model()
 
         self.rdata = self.rmodel.createData()
         self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
