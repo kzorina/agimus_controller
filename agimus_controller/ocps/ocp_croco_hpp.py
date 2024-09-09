@@ -37,11 +37,8 @@ class OCPCrocoHPP:
         # Data of the model
         self._rdata = self._rmodel.createData()
 
-        # Obtaining the last joint name and joint id
-        self._last_joint_name, self._last_joint_id, self._last_joint_frame_id = (
-            get_last_joint(self._rmodel)
-        )
-
+        # Obtaining the gripper frame id
+        self._effector_frame_id = self._rmodel.getFrameId("panda_hand_tcp")
         # Weights of the different costs
         self._weight_x_reg = 1e-1
         self._weight_u_reg = 1e-4
@@ -142,7 +139,7 @@ class OCPCrocoHPP:
         placement_ref = get_ee_pose_from_configuration(
             self._rmodel,
             self._rdata,
-            self._last_joint_frame_id,
+            self._effector_frame_id,
             self.x_plan[-1, : self.nq],
         )
         self.set_running_models()
@@ -157,9 +154,9 @@ class OCPCrocoHPP:
             x_ref = self.x_plan[idx, :]
             x_reg_cost = self.get_state_residual(x_ref)
             u_reg_cost = self.get_control_residual(self.u_plan[idx, :])
-            vel_reg_cost = self.get_velocity_residual(self._last_joint_name)
+            vel_reg_cost = self.get_velocity_residual()
             placement_ref = get_ee_pose_from_configuration(
-                self._rmodel, self._rdata, self._last_joint_frame_id, x_ref[: self.nq]
+                self._rmodel, self._rdata, self._effector_frame_id, x_ref[: self.nq]
             )
             placement_reg_cost = self.get_placement_residual(placement_ref)
             running_cost_model.addCost("xReg", x_reg_cost, self._weight_x_reg)
@@ -219,7 +216,7 @@ class OCPCrocoHPP:
         terminal_cost_model.addCost(
             "gripperPose", placement_reg_cost, self._weight_ee_placement
         )
-        vel_cost = self.get_velocity_residual(self._last_joint_name)
+        vel_cost = self.get_velocity_residual()
         if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
             terminal_cost_model.addCost("velReg", vel_cost, self._weight_ee_placement)
         else:
@@ -243,7 +240,7 @@ class OCPCrocoHPP:
         placement_reg_cost = self.get_placement_residual(placement_ref)
         x_reg_cost = self.get_state_residual(x_ref)
         u_reg_cost = self.get_control_residual(u_plan)
-        vel_cost = self.get_velocity_residual(self._last_joint_name)
+        vel_cost = self.get_velocity_residual()
         terminal_cost_model.addCost("xReg", x_reg_cost, 0)
         if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
             terminal_cost_model.addCost("velReg", vel_cost, self._weight_ee_placement)
@@ -293,18 +290,18 @@ class OCPCrocoHPP:
         return crocoddyl.CostModelResidual(
             self.state,
             crocoddyl.ResidualModelFramePlacement(
-                self.state, self._last_joint_frame_id, placement_ref
+                self.state, self._effector_frame_id, placement_ref
             ),
         )
 
-    def get_velocity_residual(self, joint_name):
+    def get_velocity_residual(self):
         """Return velocity residual of desired joint."""
         vref = pin.Motion.Zero()
         return crocoddyl.CostModelResidual(
             self.state,
             crocoddyl.ResidualModelFrameVelocity(
                 self.state,
-                self._rmodel.getFrameId(joint_name),
+                self._effector_frame_id,
                 vref,
                 pin.WORLD,
             ),
@@ -341,11 +338,11 @@ class OCPCrocoHPP:
         """Return translation residual to the last position of the sub path."""
         q_final = self.x_plan[-1, : self.nq]
         target = get_ee_pose_from_configuration(
-            self._rmodel, self._rdata, self._last_joint_frame_id, q_final
+            self._rmodel, self._rdata, self._effector_frame_id, q_final
         )
         return crocoddyl.ResidualModelFrameTranslation(
             self.state,
-            self._last_joint_id,
+            self._effector_frame_id,
             target.translation,
         )
 
@@ -355,11 +352,9 @@ class OCPCrocoHPP:
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
         """Update model's cost reference and weight by copying new_model's cost."""
-        model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference = new_model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference.copy()
+        model.differential.costs.costs[cost_name].cost.residual.reference = (
+            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
+        )
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight

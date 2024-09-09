@@ -63,9 +63,7 @@ class ControllerBase:
         self.cmodel = robot_constructor.get_reduced_collision_model()
 
         self.rdata = self.rmodel.createData()
-        self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
-            get_last_joint(self.rmodel)
-        )
+        self.effector_frame_id = "panda_hand_tcp"
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
@@ -186,7 +184,7 @@ class ControllerBase:
         placement_ref = get_ee_pose_from_configuration(
             self.rmodel,
             self.rdata,
-            self.last_joint_frame_id,
+            self.effector_frame_id,
             new_x_ref[: self.rmodel.nq],
         )
         self.mpc.mpc_step(x0, new_x_ref, new_a_ref, placement_ref)

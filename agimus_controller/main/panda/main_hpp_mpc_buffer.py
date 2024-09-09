@@ -93,7 +93,7 @@ class APP(object):
                 placement_ref = get_ee_pose_from_configuration(
                     mpc.ocp._rmodel,
                     mpc.ocp._rdata,
-                    mpc.ocp._last_joint_frame_id,
+                    mpc.ocp._effector_frame_id,
                     new_x_ref[:nq],
                 )
                 x, u = mpc.mpc_step(x, new_x_ref, new_a_ref, placement_ref)

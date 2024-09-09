@@ -50,7 +50,7 @@ class APP(object):
         end = time.time()
         print("Time of solving: ", end - start)
         u_plan = mpc.ocp.get_u_plan(x_plan, a_plan)
-        mpc_plots = MPCPlots(
+        self.mpc_plots = MPCPlots(
             croco_xs=mpc.croco_xs,
             croco_us=mpc.croco_us,
             whole_x_plan=x_plan,
@@ -64,7 +64,7 @@ class APP(object):
         )
 
         if use_gui:
-            mpc_plots.display_path_gepetto_gui()
+            self.mpc_plots.display_path_gepetto_gui()
         return True
 
 

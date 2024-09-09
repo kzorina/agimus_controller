@@ -40,17 +40,28 @@ class MPC:
 
     def get_reference(self):
         model = self.ocp.solver.problem.runningModels[0]
-        x_ref = model.differential.costs.costs["xReg"].cost.residual.reference
+        x_ref = model.differential.costs.costs["xReg"].cost.residual.reference.copy()
         p_ref = model.differential.costs.costs[
             "gripperPose"
-        ].cost.residual.reference.translation
-        u_ref = model.differential.costs.costs["uReg"].cost.residual.reference
+        ].cost.residual.reference.translation.copy()
+        u_ref = model.differential.costs.costs["uReg"].cost.residual.reference.copy()
         return x_ref, p_ref, u_ref
 
     def get_predictions(self):
         xs = np.array(self.ocp.solver.xs)
         us = np.array(self.ocp.solver.us)
         return xs, us
+
+    def get_collision_residuals(self):
+        constraints_residual_dict = self.ocp.solver.problem.runningDatas[
+            0
+        ].differential.constraints.constraints.todict()
+        constraints_values = {}
+        for constraint_key in constraints_residual_dict.keys():
+            constraints_values[constraint_key] = list(
+                constraints_residual_dict[constraint_key].residual.r
+            )
+        return constraints_values
 
     def simulate_mpc(self, T, save_predictions=False, node_idx_breakpoint=None):
         """Simulate mpc behavior using crocoddyl integration as a simulator."""
@@ -85,7 +96,7 @@ class MPC:
             placement_ref = get_ee_pose_from_configuration(
                 self.ocp._rmodel,
                 self.ocp._rdata,
-                self.ocp._last_joint_frame_id,
+                self.ocp._effector_frame_id,
                 x_plan[-1, : self.nq],
             )
             x, u = self.mpc_step(x, x_plan[-1], a_plan[-1], placement_ref)
