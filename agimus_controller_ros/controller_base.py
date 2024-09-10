@@ -18,7 +18,6 @@ from agimus_controller.robot_model.panda_model import (
 )
 from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
-    get_last_joint,
 )
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
