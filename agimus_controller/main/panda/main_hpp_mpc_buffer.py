@@ -43,7 +43,14 @@ class APP(object):
             1e-2
         )
         armature = np.zeros(rmodel.nq)
-        ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=False, armature=armature)
+        effector_frame_name = "panda_hand_tcp"
+        ocp = OCPCrocoHPP(
+            rmodel,
+            cmodel,
+            use_constraints=False,
+            armature=armature,
+            effector_frame_name=effector_frame_name,
+        )
         mpc = MPC(ocp, whole_x_plan, whole_a_plan, rmodel, cmodel)
         mpc.ocp.set_weights(10**4, 1, 10**-3, 0)
 
