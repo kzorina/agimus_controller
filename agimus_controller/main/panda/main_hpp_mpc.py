@@ -2,6 +2,7 @@ import time
 import numpy as np
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
+from agimus_controller.utils.path_finder import get_package_path
 from agimus_controller.visualization.plots import MPCPlots
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.robot_model.panda_model import (
@@ -19,8 +20,14 @@ class APP(object):
 
         panda_params = PandaRobotModelParameters()
         panda_params.collision_as_capsule = True
-        panda_params.self_collision = True
-        pandawrapper = PandaRobotModel.load_model(params=panda_params)
+        panda_params.self_collision = False
+        agimus_demos_description_dir = get_package_path("agimus_demos_description")
+        collision_file_path = (
+            agimus_demos_description_dir / "pick_and_place" / "obstacle_params.yaml"
+        )
+        pandawrapper = PandaRobotModel.load_model(
+            params=panda_params, env=collision_file_path
+        )
 
         rmodel = pandawrapper.get_reduced_robot_model()
         cmodel = pandawrapper.get_reduced_collision_model()
@@ -33,7 +40,8 @@ class APP(object):
         x_plan, a_plan, _ = hpp_interface.get_hpp_x_a_planning(1e-2)
 
         armature = np.zeros(rmodel.nq)
-        ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=False, armature=armature)
+        ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=True, armature=armature)
+
         mpc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
 
         start = time.time()
@@ -48,12 +56,15 @@ class APP(object):
             whole_x_plan=x_plan,
             whole_u_plan=u_plan,
             rmodel=rmodel,
+            vmodel=pandawrapper.get_reduced_visual_model(),
+            cmodel=cmodel,
             DT=mpc.ocp.DT,
             ee_frame_name=ee_frame_name,
             viewer=viewer,
         )
+
         if use_gui:
-            self.mpc_plots.display_path()
+            self.mpc_plots.display_path_gepetto_gui()
         return True
 
 

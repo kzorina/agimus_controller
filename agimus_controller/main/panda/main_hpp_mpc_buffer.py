@@ -1,6 +1,7 @@
 import numpy as np
 from agimus_controller.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
+from agimus_controller.utils.path_finder import get_package_path
 from agimus_controller.visualization.plots import MPCPlots
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
@@ -21,8 +22,14 @@ class APP(object):
 
         panda_params = PandaRobotModelParameters()
         panda_params.collision_as_capsule = True
-        panda_params.self_collision = True
-        pandawrapper = PandaRobotModel.load_model(params=panda_params)
+        panda_params.self_collision = False
+        agimus_demos_description_dir = get_package_path("agimus_demos_description")
+        collision_file_path = (
+            agimus_demos_description_dir / "pick_and_place" / "obstacle_params.yaml"
+        )
+        pandawrapper = PandaRobotModel.load_model(
+            params=panda_params, env=collision_file_path
+        )
 
         rmodel = pandawrapper.get_reduced_robot_model()
         cmodel = pandawrapper.get_reduced_collision_model()
@@ -86,7 +93,7 @@ class APP(object):
                 placement_ref = get_ee_pose_from_configuration(
                     mpc.ocp._rmodel,
                     mpc.ocp._rdata,
-                    mpc.ocp._last_joint_frame_id,
+                    mpc.ocp._effector_frame_id,
                     new_x_ref[:nq],
                 )
                 x, u = mpc.mpc_step(x, new_x_ref, new_a_ref, placement_ref)
@@ -100,11 +107,14 @@ class APP(object):
             whole_x_plan=whole_x_plan,
             whole_u_plan=u_plan,
             rmodel=rmodel,
+            vmodel=pandawrapper.get_reduced_visual_model(),
+            cmodel=cmodel,
             DT=mpc.ocp.DT,
             ee_frame_name=ee_frame_name,
             viewer=viewer,
         )
         if use_gui:
+            self.mpc_plots.display_path_gepetto_gui()
             self.mpc_plots.plot_traj()
         return True
 

@@ -5,7 +5,7 @@
         <node pkg="agimus_controller" name="hpp_corbaserver" type="hpp_corbaserver"/>
         <include file="$(find agimus_controller)/launch/record_rosbag.launch"/>
         <node pkg="agimus_controller" name="hpp_agimus_controller_node"
-        type="hpp_agimus_controller_node" launch-prefix="xterm -hold -e"/>
+        type="hpp_agimus_controller_node" output="screen"/>
         <rosparam command="load" file="$(find agimus_controller)/config/mpc_params.yaml"
         subst_value="true" />
     </group>

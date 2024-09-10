@@ -9,6 +9,7 @@ from linear_feedback_controller_msgs.msg import Control, Sensor
 import atexit
 
 from agimus_controller_ros.ros_np_multiarray import to_multiarray_f64
+from agimus_controller.utils.path_finder import get_package_path
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import PointAttribute
 from agimus_controller.robot_model.panda_model import (
@@ -17,7 +18,6 @@ from agimus_controller.robot_model.panda_model import (
 )
 from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
-    get_last_joint,
 )
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
@@ -49,16 +49,20 @@ class ControllerBase:
 
         robot_params = PandaRobotModelParameters()
         robot_params.collision_as_capsule = True
-        robot_params.self_collision = True
-        robot_constructor = PandaRobotModel.load_model()
+        robot_params.self_collision = False
+        agimus_demos_description_dir = get_package_path("agimus_demos_description")
+        collision_file_path = (
+            agimus_demos_description_dir / "pick_and_place" / "obstacle_params.yaml"
+        )
+        robot_constructor = PandaRobotModel.load_model(
+            params=robot_params, env=collision_file_path
+        )
 
         self.rmodel = robot_constructor.get_reduced_robot_model()
         self.cmodel = robot_constructor.get_reduced_collision_model()
 
         self.rdata = self.rmodel.createData()
-        self.last_joint_name, self.last_joint_id, self.last_joint_frame_id = (
-            get_last_joint(self.rmodel)
-        )
+        self.effector_frame_id = "panda_hand_tcp"
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
@@ -179,7 +183,7 @@ class ControllerBase:
         placement_ref = get_ee_pose_from_configuration(
             self.rmodel,
             self.rdata,
-            self.last_joint_frame_id,
+            self.effector_frame_id,
             new_x_ref[: self.rmodel.nq],
         )
         self.mpc.mpc_step(x0, new_x_ref, new_a_ref, placement_ref)
