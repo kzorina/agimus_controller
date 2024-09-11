@@ -1,4 +1,5 @@
 import rospy
+import time
 from dynamic_graph_bridge_msgs.msg import Vector
 from collections import deque
 from threading import Lock
@@ -132,6 +133,7 @@ class HPPSubscriber:
         print(self.fifo_q.get_size())
 
     def position_callback(self, msg):
+        self.last_time_got_traj_point = time.time()
         self.fifo_q.push_back(msg)
 
     def velocity_callback(self, msg):

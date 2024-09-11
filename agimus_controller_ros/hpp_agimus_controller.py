@@ -8,10 +8,14 @@ from agimus_controller_ros.controller_base import ControllerBase
 class HppAgimusController(ControllerBase):
     def __init__(self) -> None:
         super().__init__()
+
         self.q_goal = [-0.8311, 0.6782, 0.3201, -1.1128, 1.2190, 1.9823, 0.7248]
         self.hpp_interface = HppInterface()
         self.plan_is_set = False
         self.traj_idx = 0
+
+    def update_state_machine(self):
+        return
 
     def get_next_trajectory_point(self):
         if not self.plan_is_set:
