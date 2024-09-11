@@ -8,7 +8,8 @@ from enum import Enum
 from threading import Lock
 from std_msgs.msg import Duration, Header
 from vision_msgs.msg import Detection2DArray
-import tf2_ros, tf2_geometry_msgs
+import tf2_ros
+import tf2_geometry_msgs
 from linear_feedback_controller_msgs.msg import Control, Sensor
 import atexit
 
@@ -346,9 +347,9 @@ class ControllerBase:
         if self.params.use_constraints:
             collision_residuals = self.mpc.get_collision_residuals()
             for coll_residual_key in collision_residuals.keys():
-                self.mpc_data["coll_residuals"][
-                    coll_residual_key
-                ] += collision_residuals[coll_residual_key]
+                self.mpc_data["coll_residuals"][coll_residual_key] += (
+                    collision_residuals[coll_residual_key]
+                )
 
         if self.target_translation_object_to_effector is not None:
             self.mpc_data["obj_trans_ee"].append(
