@@ -131,7 +131,6 @@ class ControllerBase:
         self.init_in_world_M_object = None
         self.in_world_M_object = None
         self.target_translation_object_to_effector = None
-        self.in_world_M_effector = None
         self.start_time = 0.0
         self.first_robot_sensor_msg_received = False
         self.first_pose_ref_msg_received = True
@@ -241,7 +240,6 @@ class ControllerBase:
             [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
         )
         self.target_translation_object_to_effector = None
-        self.in_world_M_effector = None
         self.fill_buffer()
         if self.traj_buffer.get_size(self.point_attributes) > 0:
             point = self.traj_buffer.get_points(1, self.point_attributes)[0]
@@ -260,12 +258,8 @@ class ControllerBase:
             new_x_ref[: self.rmodel.nq],
         )
         # if last point of the pick trajectory is in horizon and we wanna use vision pose
-        if (
-            self.state_machine == HPPStateMachine.WAITING_PLACE_TRAJECTORY
-            and self.params.use_vision
-            and self.traj_buffer.get_size(self.point_attributes) == 0
-        ):
-            self.compute_new_placement(new_x_ref)
+        if self.last_pick_traj_point_is_in_horizon() and self.params.use_vision:
+            self.update_effector_placement_with_vision()
         self.mpc.mpc_step(x0, new_x_ref, new_a_ref, self.in_world_M_effector)
 
         if self.next_node_idx < self.mpc.whole_x_plan.shape[0] - 1:
@@ -277,13 +271,7 @@ class ControllerBase:
 
         return sensor_msg, u, k
 
-    def compute_new_placement(self, hpp_x_goal):
-        self.in_world_M_effector = get_ee_pose_from_configuration(
-            self.rmodel,
-            self.rdata,
-            self.effector_frame_id,
-            hpp_x_goal[: self.rmodel.nq],
-        )
+    def update_effector_placement_with_vision(self):
         in_object_rot_effector = (
             self.init_in_world_M_object.rotation.T * self.in_world_M_effector.rotation
         )
@@ -297,6 +285,12 @@ class ControllerBase:
         )
         self.in_world_M_effector.rotation = (
             self.in_world_M_object.rotation * in_object_rot_effector
+        )
+
+    def last_pick_traj_point_is_in_horizon(self):
+        return (
+            self.state_machine == HPPStateMachine.WAITING_PLACE_TRAJECTORY
+            and self.traj_buffer.get_size(self.point_attributes) == 0
         )
 
     def get_sensor_msg(self):
@@ -355,8 +349,6 @@ class ControllerBase:
             self.mpc_data["obj_trans_ee"].append(
                 self.target_translation_object_to_effector
             )
-        # if self.in_world_M_effector is not None:
-        # self.mpc_data["ee_target_pose"].append(self.in_world_M_effector)
 
         if "vision_refs" in self.mpc_data.keys():
             self.mpc_data["vision_refs"].append(

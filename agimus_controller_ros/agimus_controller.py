@@ -13,7 +13,7 @@ class AgimusControllerNode(ControllerBase):
         return self.hpp_subscriber.get_trajectory_point()
 
     def update_state_machine(self):
-        if self.hpp_subscriber.last_time_got_traj_point == None:
+        if self.hpp_subscriber.last_time_got_traj_point is None:
             return
         self.last_elapsed_time = self.elapsed_time
         self.elapsed_time = time.time() - self.hpp_subscriber.last_time_got_traj_point
