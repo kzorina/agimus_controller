@@ -40,7 +40,14 @@ class APP(object):
         x_plan, a_plan, _ = hpp_interface.get_hpp_x_a_planning(1e-2)
 
         armature = np.zeros(rmodel.nq)
-        ocp = OCPCrocoHPP(rmodel, cmodel, use_constraints=True, armature=armature)
+        effector_frame_name = "panda_hand_tcp"
+        ocp = OCPCrocoHPP(
+            rmodel,
+            cmodel,
+            use_constraints=True,
+            armature=armature,
+            effector_frame_name=effector_frame_name,
+        )
 
         mpc = MPC(ocp, x_plan, a_plan, rmodel, cmodel)
 

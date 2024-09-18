@@ -17,6 +17,7 @@ class OCPCrocoHPP:
         cmodel: pin.GeometryModel = None,
         use_constraints: bool = False,
         armature: np.ndarray = None,
+        effector_frame_name: str = "panda_hand_tcp",
     ) -> None:
         """Class to define the OCP linked witha HPP generated trajectory.
 
@@ -37,7 +38,7 @@ class OCPCrocoHPP:
         self._rdata = self._rmodel.createData()
 
         # Obtaining the gripper frame id
-        self._effector_frame_id = self._rmodel.getFrameId("panda_hand_tcp")
+        self._effector_frame_id = self._rmodel.getFrameId(effector_frame_name)
         # Weights of the different costs
         self._weight_x_reg = 1e-1
         self._weight_u_reg = 1e-4
