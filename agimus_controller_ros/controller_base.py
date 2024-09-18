@@ -345,9 +345,9 @@ class ControllerBase:
         if self.params.use_constraints:
             collision_residuals = self.mpc.get_collision_residuals()
             for coll_residual_key in collision_residuals.keys():
-                self.mpc_data["coll_residuals"][
-                    coll_residual_key
-                ] += collision_residuals[coll_residual_key]
+                self.mpc_data["coll_residuals"][coll_residual_key] += (
+                    collision_residuals[coll_residual_key]
+                )
 
         if self.target_translation_object_to_effector is not None:
             self.mpc_data["obj_trans_ee"].append(
