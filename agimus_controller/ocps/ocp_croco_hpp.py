@@ -18,6 +18,7 @@ class OCPCrocoHPP:
         use_constraints: bool = False,
         armature: np.ndarray = None,
         effector_frame_name: str = "panda_hand_tcp",
+        use_callbacks: bool = False,
     ) -> None:
         """Class to define the OCP linked witha HPP generated trajectory.
 
@@ -30,6 +31,7 @@ class OCPCrocoHPP:
         Raises:
             Exception: Unkown robot.
         """
+        self.use_callbacks = use_callbacks
         # Robot models
         self._rmodel = rmodel
         self._cmodel = cmodel
@@ -49,7 +51,7 @@ class OCPCrocoHPP:
         self.use_constraints = use_constraints
 
         # Safety marging for the collisions
-        self._safety_margin = 1e-3
+        self._safety_margin = 1e-1
 
         # Creating the state and actuation models
         self.state = crocoddyl.StateMultibody(self._rmodel)
@@ -352,11 +354,9 @@ class OCPCrocoHPP:
 
     def update_cost(self, model, new_model, cost_name, update_weight=True):
         """Update model's cost reference and weight by copying new_model's cost."""
-        model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference = new_model.differential.costs.costs[
-            cost_name
-        ].cost.residual.reference.copy()
+        model.differential.costs.costs[cost_name].cost.residual.reference = (
+            new_model.differential.costs.costs[cost_name].cost.residual.reference.copy()
+        )
         if update_weight:
             new_weight = new_model.differential.costs.costs[cost_name].weight
             model.differential.costs.costs[cost_name].weight = new_weight
@@ -374,7 +374,7 @@ class OCPCrocoHPP:
         runningModels = list(self.solver.problem.runningModels)
         for node_idx in range(len(runningModels) - 1):
             self.update_model(
-                runningModels[node_idx], runningModels[node_idx + 1], False
+                runningModels[node_idx], runningModels[node_idx + 1], True
             )
         self.update_model(runningModels[-1], self.solver.problem.terminalModel, False)
         if self.use_constraints:
@@ -387,12 +387,23 @@ class OCPCrocoHPP:
             )
         self.update_model(self.solver.problem.terminalModel, terminal_model, True)
 
+    def set_last_running_model_placement_cost(self, placement_reference, weight):
+        runningModels = list(self.solver.problem.runningModels)
+        runningModels[-1].differential.costs.costs[
+            "gripperPose"
+        ].cost.residual.reference = placement_reference
+        runningModels[-1].differential.costs.costs["gripperPose"].weight = weight
+
+    def set_last_running_model_placement_weight(self, weight):
+        runningModels = list(self.solver.problem.runningModels)
+        runningModels[-1].differential.costs.costs["gripperPose"].weight = weight
+
     def build_ocp_from_plannif(self, x_plan, a_plan, x0):
         """Set models based on state and acceleration planning, create crocoddyl problem from it."""
         self.set_models(x_plan, a_plan)
         return crocoddyl.ShootingProblem(x0, self.running_models, self.terminal_model)
 
-    def run_solver(self, problem, xs_init, us_init, max_iter, set_callback=False):
+    def run_solver(self, problem, xs_init, us_init, max_iter, max_qp_iter):
         """
         Run FDDP or CSQP solver
         problem : crocoddyl ocp problem.
@@ -405,13 +416,16 @@ class OCPCrocoHPP:
         if self.use_constraints:
             solver = mim_solvers.SolverCSQP(problem)
             solver.use_filter_line_search = True
-            solver.termination_tolerance = 1e-3
-            solver.max_qp_iters = 100
+            solver.termination_tolerance = 2e-4
+            solver.max_qp_iters = max_qp_iter
+            if self.use_callbacks:
+                solver.with_callbacks = True
         else:
             solver = crocoddyl.SolverFDDP(problem)
             solver.use_filter_line_search = True
             solver.termination_tolerance = 1e-3
-        if set_callback:
-            solver.setCallbacks([crocoddyl.CallbackVerbose()])
+            if self.use_callbacks:
+                solver.setCallbacks([crocoddyl.CallbackVerbose()])
+
         solver.solve(xs_init, us_init, max_iter)
         self.solver = solver
