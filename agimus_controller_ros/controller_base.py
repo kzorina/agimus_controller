@@ -15,16 +15,10 @@ from linear_feedback_controller_msgs.msg import Control, Sensor
 import atexit
 
 from agimus_controller_ros.ros_np_multiarray import to_multiarray_f64
-from agimus_controller.utils.path_finder import get_package_path
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import PointAttribute
-from agimus_controller.robot_model.panda_model import (
-    PandaRobotModel,
-    PandaRobotModelParameters,
-)
-from agimus_controller.utils.pin_utils import (
-    get_ee_pose_from_configuration,
-)
+from agimus_controller.robot_model.panda_model import get_pick_and_place_task_models
+from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller_ros.sim_utils import convert_float_to_ros_duration_msg
@@ -67,6 +61,10 @@ class AgimusControllerNodeParameters:
         self.use_constraints = rospy.get_param("use_constraints", False)
         self.use_vision = rospy.get_param("use_vision", False)
         self.use_vision_simulated = rospy.get_param("use_vision_simulated", False)
+        self.start_visual_servoing_dist = rospy.get_param(
+            "start_visual_servoing_dist", 0.03
+        )
+        self.increasing_weights = rospy.get_param("increasing_weights", [])
         self.effector_frame_name = rospy.get_param(
             "effector_frame_name", "panda_hand_tcp"
         )
@@ -86,6 +84,8 @@ class AgimusControllerNodeParameters:
         self.use_constraints = params_dict["use_constraints"]
         self.use_vision = params_dict["use_vision"]
         self.use_vision_simulated = params_dict["use_vision_simulated"]
+        self.start_visual_servoing_dist = params_dict["start_visual_servoing_dist"]
+        self.increasing_weights = params_dict["increasing_weights"]
         self.effector_frame_name = params_dict["effector_frame_name"]
         self.activate_callback = params_dict["activate_callback"]
 
@@ -104,6 +104,8 @@ class AgimusControllerNodeParameters:
         params["use_constraints"] = self.use_constraints
         params["use_vision"] = self.use_vision
         params["use_vision_simulated"] = self.use_vision_simulated
+        params["start_visual_servoing_dist"] = self.start_visual_servoing_dist
+        params["increasing_weights"] = self.increasing_weights
         params["effector_frame_name"] = self.effector_frame_name
         params["activate_callback"] = self.activate_callback
         return params
@@ -130,26 +132,16 @@ def find_tracked_object(detections):
     return current_detection.results[0].pose
 
 
+def get_increasing_weight(time, max_weight, percent, time_reach_percent):
+    return max_weight * np.tanh(time * np.arctanh(percent) / time_reach_percent)
+
+
 class ControllerBase:
     def __init__(self, params: AgimusControllerNodeParameters) -> None:
         self.params = params
         self.traj_buffer = TrajectoryBuffer()
-        self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
         self.initialize_state_machine_attributes()
-        robot_params = PandaRobotModelParameters()
-        robot_params.collision_as_capsule = True
-        robot_params.self_collision = False
-        agimus_demos_description_dir = get_package_path("agimus_demos_description")
-        collision_file_path = (
-            agimus_demos_description_dir / "pick_and_place" / "obstacle_params.yaml"
-        )
-        robot_constructor = PandaRobotModel.load_model(
-            params=robot_params, env=collision_file_path
-        )
-
-        self.rmodel = robot_constructor.get_reduced_robot_model()
-        self.cmodel = robot_constructor.get_reduced_collision_model()
-
+        self.rmodel, self.cmodel = get_pick_and_place_task_models()
         self.rdata = self.rmodel.createData()
         self.effector_frame_id = self.rmodel.getFrameId(self.params.effector_frame_name)
         self.nq = self.rmodel.nq
@@ -170,51 +162,14 @@ class ControllerBase:
             0,
         )
         self.mpc_data = {}
-
-        if self.params.use_ros_params:
-            self.rate = rospy.Rate(self.params.rate, reset=True)
-            self.mutex = Lock()
-            self.sensor_msg = Sensor()
-            self.control_msg = Control()
-            self.state_subscriber = rospy.Subscriber(
-                "robot_sensors", Sensor, self.sensor_callback
-            )
-            self.control_publisher = rospy.Publisher(
-                "motion_server_control", Control, queue_size=1, tcp_nodelay=True
-            )
-            self.ocp_solve_time_pub = rospy.Publisher(
-                "ocp_solve_time", Duration, queue_size=1, tcp_nodelay=True
-            )
-            self.ocp_x0_pub = rospy.Publisher(
-                "ocp_x0", Sensor, queue_size=1, tcp_nodelay=True
-            )
-            self.state_pub = rospy.Publisher(
-                "state", Int8, queue_size=1, tcp_nodelay=True
-            )
-            self.happypose_pose_pub = rospy.Publisher(
-                "happypose_pose", Pose, queue_size=1, tcp_nodelay=True
-            )
-
         self.init_in_world_M_object = None
         self.in_world_M_object = None
-        self.target_translation_object_to_effector = None
-        self.first_robot_sensor_msg_received = False
-        self.first_pose_ref_msg_received = True
-        self.last_point = None
-        self.pick_traj_last_pose = None
-        self.do_visual_servoing = False
-        if self.params.use_vision:
-            self.tf_buffer = tf2_ros.Buffer()
-            self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-            # to avoid errors when looking at transforms too early in time
-            time.sleep(0.5)
-            self.vision_subscriber = rospy.Subscriber(
-                "/labeled/detections", Detection2DArray, self.vision_callback
-            )
-        if self.params.use_vision_simulated:
-            self.simulate_happypose_callback()
-        if self.params.use_vision and self.params.use_vision_simulated:
-            raise RuntimeError("use_vision and use_vision_simulated can't both be true")
+
+        if self.params.use_ros_params:
+            self.initialize_ros_attributes()
+
+        if self.params.use_vision or self.params.use_vision_simulated:
+            self.initialize_vision_attributes()
 
     def initialize_state_machine_attributes(self):
         self.elapsed_time = None
@@ -231,6 +186,50 @@ class ControllerBase:
         self.state_machine = self.state_machine_timeline[
             self.state_machine_timeline_idx
         ]
+        self.point_attributes = [PointAttribute.Q, PointAttribute.V, PointAttribute.A]
+
+    def initialize_ros_attributes(self):
+        self.rate = rospy.Rate(self.params.rate, reset=True)
+        self.mutex = Lock()
+        self.sensor_msg = Sensor()
+        self.control_msg = Control()
+        self.state_subscriber = rospy.Subscriber(
+            "robot_sensors", Sensor, self.sensor_callback
+        )
+        self.control_publisher = rospy.Publisher(
+            "motion_server_control", Control, queue_size=1, tcp_nodelay=True
+        )
+        self.ocp_solve_time_pub = rospy.Publisher(
+            "ocp_solve_time", Duration, queue_size=1, tcp_nodelay=True
+        )
+        self.ocp_x0_pub = rospy.Publisher(
+            "ocp_x0", Sensor, queue_size=1, tcp_nodelay=True
+        )
+        self.state_pub = rospy.Publisher("state", Int8, queue_size=1, tcp_nodelay=True)
+        self.happypose_pose_pub = rospy.Publisher(
+            "happypose_pose", Pose, queue_size=1, tcp_nodelay=True
+        )
+        self.first_robot_sensor_msg_received = False
+        self.first_pose_ref_msg_received = True
+
+    def initialize_vision_attributes(self):
+        self.target_translation_object_to_effector = None
+        self.last_point = None
+        self.pick_traj_last_pose = None
+        self.start_visual_servoing_time = None
+        self.do_visual_servoing = False
+        if self.params.use_vision:
+            self.tf_buffer = tf2_ros.Buffer()
+            self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+            # to avoid errors when looking at transforms too early in time
+            time.sleep(0.5)
+            self.vision_subscriber = rospy.Subscriber(
+                "/labeled/detections", Detection2DArray, self.vision_callback
+            )
+        if self.params.use_vision_simulated:
+            self.simulate_happypose_callback()
+        if self.params.use_vision and self.params.use_vision_simulated:
+            raise RuntimeError("use_vision and use_vision_simulated can't both be true")
 
     def simulate_happypose_callback(self):
         self.init_in_world_M_object = pin.XYZQUATToSE3(
@@ -342,13 +341,13 @@ class ControllerBase:
             new_x_ref[: self.rmodel.nq],
         )
         # if last point of the pick trajectory is in horizon and we wanna use vision pose
-        if self.pick_traj_last_point_is_near(x0) and (
-            self.params.use_vision or self.params.use_vision_simulated
+        if (
+            self.params.use_vision
+            or self.params.use_vision_simulated
+            and (self.pick_traj_last_point_is_near(x0))
         ):
             self.update_effector_placement_with_vision()
-            self.mpc.ocp.set_last_running_model_placement_cost(
-                self.in_world_M_effector, self.params.gripper_weight / self.params.dt
-            )
+            self.set_increasing_weight()
         else:
             self.mpc.ocp.set_last_running_model_placement_weight(0)
         self.mpc.mpc_step(
@@ -366,6 +365,25 @@ class ControllerBase:
             self.fill_predictions_and_refs_arrays()
         _, u, k = self.mpc.get_mpc_output()
         return u, k
+
+    def set_increasing_weight(self):
+        visual_servoing_time = time.time() - self.start_visual_servoing_time
+        gripper_weight_last_running_node = get_increasing_weight(
+            max(visual_servoing_time - self.params.dt, 0.0),
+            self.params.increasing_weights["max"] / self.params.dt,
+            self.params.increasing_weights["percent"],
+            self.params.increasing_weights["time_reach_percent"],
+        )
+        self.mpc.ocp.set_last_running_model_placement_cost(
+            self.in_world_M_effector, gripper_weight_last_running_node
+        )
+        gripper_weight_terminal_node = get_increasing_weight(
+            visual_servoing_time,
+            self.params.increasing_weights["max"],
+            self.params.increasing_weights["percent"],
+            self.params.increasing_weights["time_reach_percent"],
+        )
+        self.mpc.ocp.set_ee_placement_weight(gripper_weight_terminal_node)
 
     def update_effector_placement_with_vision(self):
         in_object_rot_effector = (
@@ -419,8 +437,10 @@ class ControllerBase:
                     self.do_visual_servoing = (
                         self.state_machine == HPPStateMachine.WAITING_PLACE_TRAJECTORY
                         and np.linalg.norm(self.pick_traj_last_pose - current_pose)
-                        < 0.02
+                        < self.params.start_visual_servoing_dist
                     )
+                    if self.do_visual_servoing:
+                        self.start_visual_servoing_time = time.time()
             else:
                 self.do_visual_servoing = False
             return self.do_visual_servoing

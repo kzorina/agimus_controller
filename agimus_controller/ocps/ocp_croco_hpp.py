@@ -107,6 +107,9 @@ class OCPCrocoHPP:
                 u_plan[idx, :] = tau[: self.nq]
         return u_plan
 
+    def set_ee_placement_weight(self, weight_ee_placement):
+        self._weight_ee_placement = weight_ee_placement
+
     def set_weights(
         self,
         weight_ee_placement: float,
