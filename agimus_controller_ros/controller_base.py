@@ -544,15 +544,17 @@ class ControllerBase:
         self.publish_vision_pose()
         self.rate.sleep()
         atexit.register(self.exit_handler)
-        while not rospy.is_shutdown():
-            start_compute_time = time.time()
-            self.update_state_machine()
-            sensor_msg = self.get_sensor_msg()
-            u, k = self.solve(self.get_x0_from_sensor_msg(sensor_msg))
-            self.send(sensor_msg, u, k)
-            compute_time = time.time() - start_compute_time
-            self.publish_ocp_solve_time(compute_time)
-            self.state_pub.publish(Int8(self.state_machine.value))
-            self.ocp_x0_pub.publish(sensor_msg)
-            self.publish_vision_pose()
-            self.rate.sleep()
+        self.run_timer = rospy.Timer(rospy.Duration(self.params.dt), self.run_callback)
+        rospy.spin()
+
+    def run_callback(self, *args):
+        start_compute_time = time.time()
+        self.update_state_machine()
+        sensor_msg = self.get_sensor_msg()
+        u, k = self.solve(self.get_x0_from_sensor_msg(sensor_msg))
+        self.send(sensor_msg, u, k)
+        compute_time = time.time() - start_compute_time
+        self.publish_ocp_solve_time(compute_time)
+        self.state_pub.publish(Int8(self.state_machine.value))
+        self.ocp_x0_pub.publish(sensor_msg)
+        self.publish_vision_pose()
