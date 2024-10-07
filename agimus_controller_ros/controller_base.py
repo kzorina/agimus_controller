@@ -54,6 +54,9 @@ class AgimusControllerNodeParameters:
         self.control_weight = rospy.get_param("control_weight", 0.001)
         self.use_constraints = rospy.get_param("use_constraints", False)
         self.use_vision = rospy.get_param("use_vision", False)
+        self.effector_frame_name = rospy.get_param(
+            "effector_frame_name", "panda_hand_tcp"
+        )
 
 
 class ControllerBase:
@@ -91,7 +94,7 @@ class ControllerBase:
         self.cmodel = robot_constructor.get_reduced_collision_model()
 
         self.rdata = self.rmodel.createData()
-        self.effector_frame_id = self.rmodel.getFrameId("panda_hand_tcp")
+        self.effector_frame_id = self.rmodel.getFrameId(self.params.effector_frame_name)
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
@@ -100,6 +103,7 @@ class ControllerBase:
             self.cmodel,
             use_constraints=self.params.use_constraints,
             armature=self.params.armature,
+            effector_frame_name=self.params.effector_frame_name,
         )
         self.ocp.set_weights(
             self.params.gripper_weight,

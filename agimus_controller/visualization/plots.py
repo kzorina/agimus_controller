@@ -2,7 +2,8 @@ import time
 import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
-
+from agimus_controller.visualization.wrapper_meshcat import MeshcatWrapper
+from agimus_controller.utils.process_handler import MeshcatServer
 from agimus_controller.utils.pin_utils import (
     get_ee_pose_from_configuration,
     get_last_joint,
@@ -17,6 +18,8 @@ class MPCPlots:
         whole_x_plan,
         whole_u_plan,
         rmodel,
+        vmodel,
+        cmodel,
         DT,
         ee_frame_name: str,
         viewer=None,
@@ -25,6 +28,8 @@ class MPCPlots:
             self.viewer = viewer
         self.DT = DT
         self.rmodel = rmodel
+        self.vmodel = vmodel
+        self.cmodel = cmodel
         self._rdata = self.rmodel.createData()
 
         self._last_joint_name, self._last_joint_id, self._last_joint_frame_id = (
@@ -40,6 +45,14 @@ class MPCPlots:
 
         self._ee_frame_name = ee_frame_name
         self._id_ee_frame_name = self.rmodel.getFrameId(self._ee_frame_name)
+        self.meshcat_server = MeshcatServer()
+        self.meshcat_server.start()
+        self.MeshcatVis = MeshcatWrapper()
+        self.vis = self.MeshcatVis.visualize(
+            robot_model=self.rmodel,
+            robot_visual_model=self.vmodel,
+            robot_collision_model=self.cmodel,
+        )
 
     def update_croco_predictions(self, croco_xs, croco_us):
         self.croco_xs = croco_xs
@@ -131,7 +144,7 @@ class MPCPlots:
             plt.legend(["crocoddyl", "hpp"], loc="best")
         plt.show()
 
-    def display_path(self):
+    def display_path_gepetto_gui(self):
         """Display in Gepetto Viewer the trajectory found with crocoddyl."""
         if self.rmodel.existJointName("panda_joint7") or self.rmodel.existJointName(
             "panda2_joint7"
@@ -141,6 +154,12 @@ class MPCPlots:
             environnement_pose = [-0.2, 0, 0.02, 0, 0, 0, 1]  # pose of the ball
         for x in self.croco_xs:
             self.viewer(list(x)[: self.nq] + environnement_pose)
+            time.sleep(self.DT)
+
+    def display_path_meshcat(self):
+        """Display in Meshcat the trajectory found with crocoddyl."""
+        for x in self.croco_xs:
+            self.vis[0].display(x[: self.nq])
             time.sleep(self.DT)
 
     def print_final_placement(self):
