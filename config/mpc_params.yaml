@@ -8,14 +8,14 @@ state_weight: 5
 control_weight: 0.001
 max_qp_iter: 100
 max_iter: 7
-use_vision: False
-use_vision_simulated: True
-start_visual_servoing_dist: 0.03
+use_vision: True
+use_vision_simulated: False
+start_visual_servoing_dist: 0.08
 effector_frame_name: "panda_hand_tcp"
 use_constraints: True
 increasing_weights:
-    max: 200
+    max: 100
     percent: 0.9
-    time_reach_percent: 4
+    time_reach_percent: 6
 activate_callback: False
 

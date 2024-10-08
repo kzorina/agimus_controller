@@ -170,6 +170,14 @@ class ControllerBase:
 
         if self.params.use_vision or self.params.use_vision_simulated:
             self.initialize_vision_attributes()
+        self.target_translation_object_to_effector = None
+        self.last_point = None
+        self.pick_traj_last_pose = None
+        self.start_visual_servoing_time = None
+        self.do_visual_servoing = False
+        self.in_world_M_prev_world = pin.XYZQUATToSE3(
+            np.array([0.563, -0.166, 0.78, 0, 0, 1, 0])
+        ).inverse()
 
     def initialize_state_machine_attributes(self):
         self.elapsed_time = None
@@ -213,11 +221,7 @@ class ControllerBase:
         self.first_pose_ref_msg_received = True
 
     def initialize_vision_attributes(self):
-        self.target_translation_object_to_effector = None
-        self.last_point = None
-        self.pick_traj_last_pose = None
-        self.start_visual_servoing_time = None
-        self.do_visual_servoing = False
+
         if self.params.use_vision:
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -263,10 +267,10 @@ class ControllerBase:
         trans = pose.position
         rot = pose.orientation
         pose_array = [trans.x, trans.y, trans.z, rot.w, rot.x, rot.y, rot.z]
-        self.in_world_M_object = pin.XYZQUATToSE3(pose_array)
+        in_prev_world_M_object = pin.XYZQUATToSE3(pose_array)
+        self.in_world_M_object = self.in_world_M_prev_world * in_prev_world_M_object
         if self.init_in_world_M_object is None:
             self.init_in_world_M_object = self.in_world_M_object
-            print("Initialized object pose")
 
     def wait_first_sensor_msg(self):
         wait_for_input = True
@@ -341,10 +345,8 @@ class ControllerBase:
             new_x_ref[: self.rmodel.nq],
         )
         # if last point of the pick trajectory is in horizon and we wanna use vision pose
-        if (
-            self.params.use_vision
-            or self.params.use_vision_simulated
-            and (self.pick_traj_last_point_is_near(x0))
+        if (self.params.use_vision or self.params.use_vision_simulated) and (
+            self.pick_traj_last_point_is_near(x0)
         ):
             self.update_effector_placement_with_vision()
             self.set_increasing_weight()
@@ -393,6 +395,7 @@ class ControllerBase:
             self.in_world_M_effector.translation
             - self.init_in_world_M_object.translation
         )
+
         self.in_world_M_effector.translation = (
             self.in_world_M_object.translation
             + self.target_translation_object_to_effector
