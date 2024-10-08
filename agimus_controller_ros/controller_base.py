@@ -221,7 +221,6 @@ class ControllerBase:
         self.first_pose_ref_msg_received = True
 
     def initialize_vision_attributes(self):
-
         if self.params.use_vision:
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -495,9 +494,9 @@ class ControllerBase:
         if self.params.use_constraints:
             collision_residuals = self.mpc.get_collision_residuals()
             for coll_residual_key in collision_residuals.keys():
-                self.mpc_data["coll_residuals"][
-                    coll_residual_key
-                ] += collision_residuals[coll_residual_key]
+                self.mpc_data["coll_residuals"][coll_residual_key] += (
+                    collision_residuals[coll_residual_key]
+                )
 
         if "vision_refs" in self.mpc_data.keys():
             self.mpc_data["vision_refs"].append(
