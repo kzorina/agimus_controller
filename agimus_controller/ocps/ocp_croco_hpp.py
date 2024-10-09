@@ -423,8 +423,7 @@ class OCPCrocoHPP:
             solver.use_filter_line_search = True
             solver.termination_tolerance = 2e-4
             solver.max_qp_iters = max_qp_iter
-            if self.use_callbacks:
-                solver.with_callbacks = True
+            solver.with_callbacks = self.use_callbacks
         else:
             solver = crocoddyl.SolverFDDP(problem)
             solver.use_filter_line_search = True
