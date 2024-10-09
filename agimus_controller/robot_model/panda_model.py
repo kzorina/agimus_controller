@@ -5,6 +5,7 @@ import rospkg
 import xacro
 from agimus_controller.robot_model.robot_model import RobotModelParameters
 from agimus_controller.robot_model.robot_model import RobotModel
+from agimus_controller.utils.path_finder import get_package_path
 
 
 class PandaRobotModelParameters(RobotModelParameters):
@@ -43,3 +44,20 @@ class PandaRobotModel(RobotModel):
             return super().load_model(params, env)
         else:
             return super().load_model(PandaRobotModelParameters(), env)
+
+
+def get_pick_and_place_task_models():
+    robot_params = PandaRobotModelParameters()
+    robot_params.collision_as_capsule = True
+    robot_params.self_collision = False
+    agimus_demos_description_dir = get_package_path("agimus_demos_description")
+    collision_file_path = (
+        agimus_demos_description_dir / "pick_and_place" / "obstacle_params.yaml"
+    )
+    robot_constructor = PandaRobotModel.load_model(
+        params=robot_params, env=collision_file_path
+    )
+
+    rmodel = robot_constructor.get_reduced_robot_model()
+    cmodel = robot_constructor.get_reduced_collision_model()
+    return rmodel, cmodel

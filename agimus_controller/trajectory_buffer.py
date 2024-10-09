@@ -18,24 +18,35 @@ class TrajectoryBuffer:
 
     def get_size(self, attributes: list[PointAttribute]):
         """Returns the size of the buffer until the first invalid TrajectoryPoint"""
-        for idx, point in enumerate(self._buffer):
+        for idx in range(len(self._buffer) - 1, 0, -1):
+            attribute_is_valid = True
             for attribute in attributes:
-                if not point.attribute_is_valid(attribute):
+                if not self._buffer[idx].attribute_is_valid(attribute):
+                    attribute_is_valid = False
                     print(
                         f"buffer point at index {idx} is not valid for attribute {attribute}"
                     )
-                    return idx
-        return len(self._buffer)
+            if attribute_is_valid:
+                return idx
+        return 0
 
     def get_points(self, nb_points: int, attributes: list[PointAttribute]):
         """Get nb_points of valid TrajectoryPoints from the buffer"""
         buffer_size = self.get_size(attributes)
         if nb_points > buffer_size:
             raise Exception(
-                "the buffer size is {buffer_size} and you ask for {nb_points}"
+                f"the buffer size is {buffer_size} and you ask for {nb_points} points"
             )
         else:
             return [self._buffer.popleft() for _ in range(nb_points)]
+
+    def get_last_point(self, attributes: list[PointAttribute]):
+        """Return last point in buffer without removing it from buffer"""
+        buffer_size = self.get_size(attributes)
+        if buffer_size == 0:
+            return None
+        else:
+            return self._buffer[-1]
 
     def get_state_horizon_planning(self):
         """Return the state planning for the horizon, state is composed of joints positions and velocities"""

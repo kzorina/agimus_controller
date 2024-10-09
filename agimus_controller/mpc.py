@@ -1,6 +1,5 @@
 from __future__ import annotations
 import numpy as np
-
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 
 
@@ -99,7 +98,7 @@ class MPC:
                 self.ocp._effector_frame_id,
                 x_plan[-1, : self.nq],
             )
-            x, u = self.mpc_step(x, x_plan[-1], a_plan[-1], placement_ref)
+            x, u = self.mpc_step(x, x_plan[-1], a_plan[-1], placement_ref, 5, 80)
             if next_node_idx < self.whole_x_plan.shape[0] - 1:
                 next_node_idx += 1
             mpc_xs[idx + 1, :] = x
@@ -136,11 +135,13 @@ class MPC:
     def mpc_first_step(self, x_plan, a_plan, x0, T):
         """Create crocoddyl problem from planning, run solver and get new state."""
         problem = self.ocp.build_ocp_from_plannif(x_plan, a_plan, x0)
-        self.ocp.run_solver(problem, list(x_plan), list(self.ocp.u_plan[: T - 1]), 1000)
+        self.ocp.run_solver(
+            problem, list(x_plan), list(self.ocp.u_plan[: T - 1]), 1000, 100
+        )
         x = self.get_next_state(x0, self.ocp.solver.problem)
         return x, self.ocp.solver.us[0]
 
-    def mpc_step(self, x0, new_x_ref, new_a_ref, placement_ref):
+    def mpc_step(self, x0, new_x_ref, new_a_ref, placement_ref, max_iter, max_qp_iter):
         """Reset ocp, run solver and get new state."""
         u_ref_terminal_node = self.ocp.get_inverse_dynamic_control(new_x_ref, new_a_ref)
         self.ocp.reset_ocp(x0, new_x_ref, u_ref_terminal_node[: self.nq], placement_ref)
@@ -148,6 +149,8 @@ class MPC:
         xs_init[0] = x0
         us_init = list(self.ocp.solver.us[1:]) + [self.ocp.solver.us[-1]]
         self.ocp.solver.problem.x0 = x0
-        self.ocp.run_solver(self.ocp.solver.problem, xs_init, us_init, 1)
+        self.ocp.run_solver(
+            self.ocp.solver.problem, xs_init, us_init, max_iter, max_qp_iter
+        )
         x0 = self.get_next_state(x0, self.ocp.solver.problem)
         return x0, self.ocp.solver.us[0]

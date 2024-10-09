@@ -34,21 +34,52 @@ class FIFO:
 
 
 class HPPSubscriber:
-    def __init__(self) -> None:
-        rospy.loginfo("Load parameters")
-        self.params = HPPSubscriberParameters()
+    def __init__(self, use_ros_params=True) -> None:
+        if use_ros_params:
+            rospy.loginfo("Load parameters")
+            self.params = HPPSubscriberParameters()
 
-        rospy.loginfo("Create the rate object.")
-        self.wait_subscribers = rospy.Rate(10000)  # 10kHz
+            rospy.loginfo("Create the rate object.")
+            self.wait_subscribers = rospy.Rate(10000)  # 10kHz
 
-        rospy.loginfo("Parse the prefix/name params.")
-        if not self.params.prefix.endswith("/"):
-            self.params.prefix = self.params.prefix + "/"
-        if not self.params.prefix.startswith("/"):
-            self.params.prefix = "/" + self.params.prefix
-        self.params.name.replace("/", "")
+            rospy.loginfo("Parse the prefix/name params.")
+            if not self.params.prefix.endswith("/"):
+                self.params.prefix = self.params.prefix + "/"
+            if not self.params.prefix.startswith("/"):
+                self.params.prefix = "/" + self.params.prefix
+            self.params.name.replace("/", "")
 
-        rospy.loginfo("Create FIFO for all elements of trajectory_point")
+            rospy.loginfo("Spawn the subscribers.")
+            self.subscribers = []
+
+            # q
+            rospy.loginfo("\t- Robot configuration subscriber.")
+            self.subscribers += [
+                rospy.Subscriber(
+                    "/hpp/target/position",  # self.params.prefix + "position",
+                    Vector,
+                    self.position_callback,
+                )
+            ]
+            # v
+            rospy.loginfo("\t- Robot velocity subscriber.")
+            self.subscribers += [
+                rospy.Subscriber(
+                    "/hpp/target/velocity",  # self.params.prefix + "velocity",
+                    Vector,
+                    self.velocity_callback,
+                )
+            ]
+            # a
+            rospy.loginfo("\t- Robot acceleration subscriber.")
+            self.subscribers += [
+                rospy.Subscriber(
+                    "/hpp/target/acceleration",  # self.params.prefix + "acceleration",
+                    Vector,
+                    self.acceleration_callback,
+                )
+            ]
+
         self.fifo_q = FIFO()  # q
         self.fifo_v = FIFO()  # v
         self.fifo_a = FIFO()  # a
@@ -58,37 +89,6 @@ class HPPSubscriber:
         self.fifo_op_frame_velocity = FIFO()  # op_vel
 
         self.index = 0
-
-        rospy.loginfo("Spawn the subscribers.")
-        self.subscribers = []
-
-        # q
-        rospy.loginfo("\t- Robot configuration subscriber.")
-        self.subscribers += [
-            rospy.Subscriber(
-                "/hpp/target/position",  # self.params.prefix + "position",
-                Vector,
-                self.position_callback,
-            )
-        ]
-        # v
-        rospy.loginfo("\t- Robot velocity subscriber.")
-        self.subscribers += [
-            rospy.Subscriber(
-                "/hpp/target/velocity",  # self.params.prefix + "velocity",
-                Vector,
-                self.velocity_callback,
-            )
-        ]
-        # a
-        rospy.loginfo("\t- Robot acceleration subscriber.")
-        self.subscribers += [
-            rospy.Subscriber(
-                "/hpp/target/acceleration",  # self.params.prefix + "acceleration",
-                Vector,
-                self.acceleration_callback,
-            )
-        ]
         # # com_q
         # rospy.loginfo("\t- CoM pose subscriber.")
         # self.subscribers += [
@@ -175,3 +175,9 @@ class HPPSubscriber:
 
             self.index += 1
             return tp
+
+    def fill_buffer_manually(self, poses, vels, accs):
+        for idx in range(poses.shape[0]):
+            self.fifo_q.push_back(Vector(poses[idx, 0]))
+            self.fifo_v.push_back(Vector(vels[idx, 0]))
+            self.fifo_a.push_back(Vector(accs[idx, 0]))
