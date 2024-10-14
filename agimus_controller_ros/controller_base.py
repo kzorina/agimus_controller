@@ -322,7 +322,7 @@ class ControllerBase:
         self.mpc.mpc_first_step(x_plan, a_plan, x0, self.params.horizon_size)
         self.next_node_idx = self.params.horizon_size
         if self.params.save_predictions_and_refs:
-            self.create_mpc_data()
+            self.mpc.create_mpc_data(self.params.use_constraints)
         _, u, k = self.mpc.get_mpc_output()
         return u, k
 
@@ -363,7 +363,7 @@ class ControllerBase:
             self.next_node_idx += 1
 
         if self.params.save_predictions_and_refs:
-            self.fill_predictions_and_refs_arrays()
+            self.mpc.fill_predictions_and_refs_arrays(self.params.use_constraints)
         _, u, k = self.mpc.get_mpc_output()
         return u, k
 
@@ -507,7 +507,7 @@ class ControllerBase:
         print("saving data")
         np.save("mpc_params.npy", self.params.get_dict())
         if self.params.save_predictions_and_refs:
-            np.save("mpc_data.npy", self.mpc_data)
+            np.save("mpc_data.npy", self.mpc.mpc_data)
 
     def get_x0_from_sensor_msg(self, sensor_msg):
         return np.concatenate(
