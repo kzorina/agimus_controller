@@ -33,7 +33,7 @@ class HPPStateMachine(Enum):
     RECEIVING_GOING_INIT_POSE_TRAJECTORY = 6
 
 
-class AgimusControllerNodeParameters:
+class OCPParameters:
     def __init__(self, use_ros_params=True, params_dict=None) -> None:
         if use_ros_params:
             self.set_parameters_from_ros()
@@ -41,39 +41,27 @@ class AgimusControllerNodeParameters:
             self.set_parameters_from_dict(params_dict)
         else:
             raise RuntimeError("no parameters given for the controller")
-        self.use_ros_params = use_ros_params
+        print("ocp values ", self.get_dict())
 
     def set_parameters_from_ros(self):
-        self.save_predictions_and_refs = rospy.get_param(
-            "save_predictions_and_refs", False
-        )
-        self.dt = rospy.get_param("dt", 0.01)
-        self.rate = rospy.get_param("rate", 100)
-        self.horizon_size = rospy.get_param("horizon_size", 100)
+        self.dt = rospy.get_param("ocp/dt", 0.01)
+        self.horizon_size = rospy.get_param("ocp/horizon_size", 100)
         self.armature = np.array(
-            rospy.get_param("armature", [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
+            rospy.get_param("ocp/armature", [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
         )
-        self.gripper_weight = rospy.get_param("gripper_weight", 10000)
-        self.state_weight = rospy.get_param("state_weight", 10)
-        self.control_weight = rospy.get_param("control_weight", 0.001)
-        self.max_iter = rospy.get_param("max_iter", 1)
-        self.max_qp_iter = rospy.get_param("max_qp_iter", 100)
-        self.use_constraints = rospy.get_param("use_constraints", False)
-        self.use_vision = rospy.get_param("use_vision", False)
-        self.use_vision_simulated = rospy.get_param("use_vision_simulated", False)
-        self.start_visual_servoing_dist = rospy.get_param(
-            "start_visual_servoing_dist", 0.03
-        )
-        self.increasing_weights = rospy.get_param("increasing_weights", [])
+        self.gripper_weight = rospy.get_param("ocp/gripper_weight", 10000)
+        self.state_weight = rospy.get_param("ocp/state_weight", 10)
+        self.control_weight = rospy.get_param("ocp/control_weight", 0.001)
+        self.max_iter = rospy.get_param("ocp/max_iter", 1)
+        self.max_qp_iter = rospy.get_param("ocp/max_qp_iter", 100)
+        self.use_constraints = rospy.get_param("ocp/use_constraints", False)
         self.effector_frame_name = rospy.get_param(
-            "effector_frame_name", "panda_hand_tcp"
+            "ocp/effector_frame_name", "panda_hand_tcp"
         )
-        self.activate_callback = rospy.get_param("activate_callback", False)
+        self.activate_callback = rospy.get_param("ocp/activate_callback", False)
 
     def set_parameters_from_dict(self, params_dict):
-        self.save_predictions_and_refs = params_dict["save_predictions_and_refs"]
         self.dt = params_dict["dt"]
-        self.rate = params_dict["rate"]
         self.horizon_size = params_dict["horizon_size"]
         self.armature = np.array(params_dict["armature"])
         self.gripper_weight = params_dict["gripper_weight"]
@@ -82,18 +70,12 @@ class AgimusControllerNodeParameters:
         self.max_iter = params_dict["max_iter"]
         self.max_qp_iter = params_dict["max_qp_iter"]
         self.use_constraints = params_dict["use_constraints"]
-        self.use_vision = params_dict["use_vision"]
-        self.use_vision_simulated = params_dict["use_vision_simulated"]
-        self.start_visual_servoing_dist = params_dict["start_visual_servoing_dist"]
-        self.increasing_weights = params_dict["increasing_weights"]
         self.effector_frame_name = params_dict["effector_frame_name"]
         self.activate_callback = params_dict["activate_callback"]
 
     def get_dict(self):
         params = {}
-        params["save_predictions_and_refs"] = self.save_predictions_and_refs
         params["dt"] = self.dt
-        params["rate"] = self.rate
         params["horizon_size"] = self.horizon_size
         params["armature"] = self.armature
         params["gripper_weight"] = self.gripper_weight
@@ -102,12 +84,52 @@ class AgimusControllerNodeParameters:
         params["max_iter"] = self.max_iter
         params["max_qp_iter"] = self.max_qp_iter
         params["use_constraints"] = self.use_constraints
+        params["effector_frame_name"] = self.effector_frame_name
+        params["activate_callback"] = self.activate_callback
+        return params
+
+
+class AgimusControllerNodeParameters:
+    def __init__(self, use_ros_params=True, params_dict=None) -> None:
+        if use_ros_params:
+            self.set_parameters_from_ros()
+        elif params_dict is not None:
+            self.set_parameters_from_dict(params_dict)
+        else:
+            raise RuntimeError("no parameters given for the controller")
+        self.ocp = OCPParameters(use_ros_params, params_dict)
+        self.use_ros_params = use_ros_params
+
+    def set_parameters_from_ros(self):
+        self.save_predictions_and_refs = rospy.get_param(
+            "save_predictions_and_refs", False
+        )
+        self.rate = rospy.get_param("rate", 100)
+        self.use_vision = rospy.get_param("use_vision", False)
+        self.use_vision_simulated = rospy.get_param("use_vision_simulated", False)
+        self.start_visual_servoing_dist = rospy.get_param(
+            "start_visual_servoing_dist", 0.03
+        )
+        self.increasing_weights = rospy.get_param("increasing_weights", [])
+
+    def set_parameters_from_dict(self, params_dict):
+        self.save_predictions_and_refs = params_dict["save_predictions_and_refs"]
+        self.rate = params_dict["rate"]
+        self.use_vision = params_dict["use_vision"]
+        self.use_vision_simulated = params_dict["use_vision_simulated"]
+        self.start_visual_servoing_dist = params_dict["start_visual_servoing_dist"]
+        self.increasing_weights = params_dict["increasing_weights"]
+        self.ocp = OCPParameters(False, params_dict["ocp"])
+
+    def get_dict(self):
+        params = {}
+        params["save_predictions_and_refs"] = self.save_predictions_and_refs
+        params["rate"] = self.rate
         params["use_vision"] = self.use_vision
         params["use_vision_simulated"] = self.use_vision_simulated
         params["start_visual_servoing_dist"] = self.start_visual_servoing_dist
         params["increasing_weights"] = self.increasing_weights
-        params["effector_frame_name"] = self.effector_frame_name
-        params["activate_callback"] = self.activate_callback
+        params["ocp"] = self.ocp.get_dict()
         return params
 
 
@@ -143,22 +165,24 @@ class ControllerBase:
         self.initialize_state_machine_attributes()
         self.rmodel, self.cmodel = get_pick_and_place_task_models()
         self.rdata = self.rmodel.createData()
-        self.effector_frame_id = self.rmodel.getFrameId(self.params.effector_frame_name)
+        self.effector_frame_id = self.rmodel.getFrameId(
+            self.params.ocp.effector_frame_name
+        )
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
         self.ocp = OCPCrocoHPP(
             self.rmodel,
             self.cmodel,
-            use_constraints=self.params.use_constraints,
-            armature=self.params.armature,
-            effector_frame_name=self.params.effector_frame_name,
-            use_callbacks=self.params.activate_callback,
+            use_constraints=self.params.ocp.use_constraints,
+            armature=self.params.ocp.armature,
+            effector_frame_name=self.params.ocp.effector_frame_name,
+            use_callbacks=self.params.ocp.activate_callback,
         )
         self.ocp.set_weights(
-            self.params.gripper_weight,
-            self.params.state_weight,
-            self.params.control_weight,
+            self.params.ocp.gripper_weight,
+            self.params.ocp.state_weight,
+            self.params.ocp.control_weight,
             0,
         )
         self.mpc_data = {}
@@ -287,7 +311,7 @@ class ControllerBase:
     def wait_buffer_has_twice_horizon_points(self):
         while (
             self.traj_buffer.get_size(self.point_attributes)
-            < 2 * self.params.horizon_size
+            < 2 * self.params.ocp.horizon_size
         ):
             self.fill_buffer()
 
@@ -309,20 +333,20 @@ class ControllerBase:
     def first_solve(self, x0):
         # retrieve horizon state and acc references
         horizon_points = self.traj_buffer.get_points(
-            self.params.horizon_size, self.point_attributes
+            self.params.ocp.horizon_size, self.point_attributes
         )
-        x_plan = np.zeros([self.params.horizon_size, self.nx])
-        a_plan = np.zeros([self.params.horizon_size, self.nv])
+        x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
+        a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
         for idx_point, point in enumerate(horizon_points):
             x_plan[idx_point, :] = point.get_x_as_q_v()
             a_plan[idx_point, :] = point.a
 
         # First solve
         self.mpc = MPC(self.ocp, x_plan, a_plan, self.rmodel, self.cmodel)
-        self.mpc.mpc_first_step(x_plan, a_plan, x0, self.params.horizon_size)
-        self.next_node_idx = self.params.horizon_size
+        self.mpc.mpc_first_step(x_plan, a_plan, x0, self.params.ocp.horizon_size)
+        self.next_node_idx = self.params.ocp.horizon_size
         if self.params.save_predictions_and_refs:
-            self.create_mpc_data()
+            self.mpc.create_mpc_data(self.params.ocp.use_constraints)
         _, u, k = self.mpc.get_mpc_output()
         return u, k
 
@@ -356,22 +380,22 @@ class ControllerBase:
             new_x_ref,
             new_a_ref,
             self.in_world_M_effector,
-            self.params.max_iter,
-            self.params.max_qp_iter,
+            self.params.ocp.max_iter,
+            self.params.ocp.max_qp_iter,
         )
         if self.next_node_idx < self.mpc.whole_x_plan.shape[0] - 1:
             self.next_node_idx += 1
 
         if self.params.save_predictions_and_refs:
-            self.fill_predictions_and_refs_arrays()
+            self.mpc.fill_predictions_and_refs_arrays(self.params.ocp.use_constraints)
         _, u, k = self.mpc.get_mpc_output()
         return u, k
 
     def set_increasing_weight(self):
         visual_servoing_time = time.time() - self.start_visual_servoing_time
         gripper_weight_last_running_node = get_increasing_weight(
-            max(visual_servoing_time - self.params.dt, 0.0),
-            self.params.increasing_weights["max"] / self.params.dt,
+            max(visual_servoing_time - self.params.ocp.dt, 0.0),
+            self.params.increasing_weights["max"] / self.params.ocp.dt,
             self.params.increasing_weights["percent"],
             self.params.increasing_weights["time_reach_percent"],
         )
@@ -507,7 +531,7 @@ class ControllerBase:
         print("saving data")
         np.save("mpc_params.npy", self.params.get_dict())
         if self.params.save_predictions_and_refs:
-            np.save("mpc_data.npy", self.mpc_data)
+            np.save("mpc_data.npy", self.mpc.mpc_data)
 
     def get_x0_from_sensor_msg(self, sensor_msg):
         return np.concatenate(
@@ -546,7 +570,9 @@ class ControllerBase:
         self.publish_vision_pose()
         self.rate.sleep()
         atexit.register(self.exit_handler)
-        self.run_timer = rospy.Timer(rospy.Duration(self.params.dt), self.run_callback)
+        self.run_timer = rospy.Timer(
+            rospy.Duration(self.params.ocp.dt), self.run_callback
+        )
         rospy.spin()
 
     def run_callback(self, *args):
