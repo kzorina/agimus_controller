@@ -11,7 +11,7 @@ from agimus_controller.robot_model.panda_model import (
     PandaRobotModel,
     PandaRobotModelParameters,
 )
-from agimus_controller_ros.parameters import OCPParameters
+from agimus_controller.ocps.parameters import OCPParameters
 from agimus_controller.main.servers import Servers
 
 
@@ -36,9 +36,8 @@ class APP(object):
         cmodel = pandawrapper.get_reduced_collision_model()
         ee_frame_name = panda_params.ee_frame_name
         mpc_params_dict = get_mpc_params_dict()
-        ocp_params = OCPParameters(
-            use_ros_params=False, params_dict=mpc_params_dict["ocp"]
-        )
+        ocp_params = OCPParameters()
+        ocp_params.set_parameters_from_dict(mpc_params_dict["ocp"])
 
         hpp_interface = HppInterface()
         q_init, q_goal = hpp_interface.get_panda_q_init_q_goal()

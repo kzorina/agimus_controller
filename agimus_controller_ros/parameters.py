@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 import rospy
 import numpy as np
+from agimus_controller.ocps.parameters import OCPParameters
 
 
-class OCPParameters:
-    def __init__(self, use_ros_params=True, params_dict=None) -> None:
-        if use_ros_params:
-            self.set_parameters_from_ros()
-        elif params_dict is not None:
-            self.set_parameters_from_dict(params_dict)
-        else:
-            raise RuntimeError("no parameters given for the controller")
+class OCPParametersROS(OCPParameters):
+    def __init__(self) -> None:
+        super().__init__()
 
     def set_parameters_from_ros(self):
         self.dt = rospy.get_param("ocp/dt", 0.01)
@@ -29,45 +25,17 @@ class OCPParameters:
         )
         self.activate_callback = rospy.get_param("ocp/activate_callback", False)
 
-    def set_parameters_from_dict(self, params_dict):
-        self.dt = params_dict["dt"]
-        self.horizon_size = params_dict["horizon_size"]
-        self.armature = np.array(params_dict["armature"])
-        self.gripper_weight = params_dict["gripper_weight"]
-        self.state_weight = params_dict["state_weight"]
-        self.control_weight = params_dict["control_weight"]
-        self.max_iter = params_dict["max_iter"]
-        self.max_qp_iter = params_dict["max_qp_iter"]
-        self.use_constraints = params_dict["use_constraints"]
-        self.effector_frame_name = params_dict["effector_frame_name"]
-        self.activate_callback = params_dict["activate_callback"]
-
-    def get_dict(self):
-        params = {}
-        params["dt"] = self.dt
-        params["horizon_size"] = self.horizon_size
-        params["armature"] = self.armature
-        params["gripper_weight"] = self.gripper_weight
-        params["state_weight"] = self.state_weight
-        params["control_weight"] = self.control_weight
-        params["max_iter"] = self.max_iter
-        params["max_qp_iter"] = self.max_qp_iter
-        params["use_constraints"] = self.use_constraints
-        params["effector_frame_name"] = self.effector_frame_name
-        params["activate_callback"] = self.activate_callback
-        return params
-
 
 class AgimusControllerNodeParameters:
-    def __init__(self, use_ros_params=True, params_dict=None) -> None:
-        if use_ros_params:
-            self.set_parameters_from_ros()
-        elif params_dict is not None:
-            self.set_parameters_from_dict(params_dict)
-        else:
-            raise RuntimeError("no parameters given for the controller")
-        self.ocp = OCPParameters(use_ros_params, params_dict)
-        self.use_ros_params = use_ros_params
+    def __init__(self) -> None:
+        self.save_predictions_and_refs = None
+        self.rate = None
+        self.use_vision = None
+        self.use_vision_simulated = None
+        self.start_visual_servoing_dist = None
+        self.increasing_weights = None
+        self.ocp = OCPParametersROS()
+        self.use_ros_params = None
 
     def set_parameters_from_ros(self):
         self.save_predictions_and_refs = rospy.get_param(
@@ -80,6 +48,8 @@ class AgimusControllerNodeParameters:
             "start_visual_servoing_dist", 0.03
         )
         self.increasing_weights = rospy.get_param("increasing_weights", [])
+        self.ocp.set_parameters_from_ros()
+        self.use_ros_params = True
 
     def set_parameters_from_dict(self, params_dict):
         self.save_predictions_and_refs = params_dict["save_predictions_and_refs"]
@@ -88,7 +58,8 @@ class AgimusControllerNodeParameters:
         self.use_vision_simulated = params_dict["use_vision_simulated"]
         self.start_visual_servoing_dist = params_dict["start_visual_servoing_dist"]
         self.increasing_weights = params_dict["increasing_weights"]
-        self.ocp = OCPParameters(False, params_dict["ocp"])
+        self.ocp.set_parameters_from_dict(params_dict["ocp"])
+        self.use_ros_params = False
 
     def get_dict(self):
         params = {}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import time
 from agimus_controller.robot_model.ur3_model import UR3RobotModel
-from agimus_controller_ros.parameters import OCPParameters
+from agimus_controller.ocps.parameters import OCPParameters
 from agimus_controller.utils.path_finder import get_mpc_params_dict
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller.mpc import MPC
@@ -23,9 +23,8 @@ class APP(object):
         x_plan, a_plan, _ = hpp_interface.get_hpp_x_a_planning(1e-2)
         viewer = hpp_interface.get_viewer()
         mpc_params_dict = get_mpc_params_dict()
-        ocp_params = OCPParameters(
-            use_ros_params=False, params_dict=mpc_params_dict["ocp"]
-        )
+        ocp_params = OCPParameters()
+        ocp_params.set_parameters_from_dict(mpc_params_dict["ocp"])
         ocp = OCPCrocoHPP(rmodel=rmodel, cmodel=None, params=ocp_params)
         mpc = MPC(ocp, x_plan, a_plan, rmodel)
         start = time.time()
