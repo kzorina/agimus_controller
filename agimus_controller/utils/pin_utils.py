@@ -254,7 +254,7 @@ def get_ee_pose_from_configuration(
     """
     pin.framesForwardKinematics(rmodel, rdata, q)
     pose = rdata.oMf[id_ee_frame_id]
-    return pose
+    return pose.copy()
 
 
 def get_last_joint(rmodel) -> Tuple[str, int, int]:
