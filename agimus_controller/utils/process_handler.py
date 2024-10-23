@@ -55,11 +55,6 @@ class HppCorbaServer(ProcessHandler):
         super().__init__("hppcorbaserver")
 
 
-class RosCore(ProcessHandler):
-    def __init__(self) -> None:
-        super().__init__("roscore")
-
-
 class MeshcatServer(ProcessHandler):
     def __init__(self) -> None:
         super().__init__("meshcat-server")

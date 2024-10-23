@@ -1,7 +1,6 @@
 from agimus_controller.utils.process_handler import (
     HppCorbaServer,
     GepettoGuiServer,
-    RosCore,
     MeshcatServer,
 )
 
@@ -28,10 +27,8 @@ class Servers(object):
         self._servers.append(HppCorbaServer())
         if use_gui:
             self._servers.append(GepettoGuiServer())
-        self._servers.append(RosCore())
 
     def spawn_servers_meshcat(self, use_gui):
         self._servers.append(HppCorbaServer())
         if use_gui:
             self._servers.append(MeshcatServer())
-        self._servers.append(RosCore())
