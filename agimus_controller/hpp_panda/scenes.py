@@ -58,7 +58,7 @@ class Scene:
             )
             if self.obstacle_pose is None:
                 self.obstacle_pose = pin.SE3.Identity()
-                self.obstacle_pose.translation = np.array([0.6, 0, 1.0])
+                self.obstacle_pose.translation = np.array([0.6, 0.5, 1.0])
         else:
             raise NotImplementedError(
                 f"The input {self._name_scene} is not implemented."
@@ -75,7 +75,6 @@ class Scene:
             rmodel (pin.Model): robot model
             cmodel (pin.Model): collision model of the robot
         """
-
         obs_model, obs_cmodel, _ = self._load_obstacle_urdf(self.urdf_filename)
         self._rmodel, self._cmodel = pin.appendModel(
             rmodel,
