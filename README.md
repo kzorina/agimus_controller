@@ -64,7 +64,7 @@ terminal 5 : cd ~/ros_ws/src/agimus-demos/franka/manipulation/
 python -i script_hpp.py
 q_init, p = GrabAndDrop(robot, ps, binPicking, q_init, ros_bridge_config,vision_listener)
 terminal 6 :
-rosservice call /hpp/target/set_joint_names "names: 
+rosservice call /hpp/target/set_joint_names "names:
 - 'pandas/panda_joint1'
 - 'pandas/panda_joint2'
 - 'pandas/panda_joint3'
@@ -79,7 +79,7 @@ rostopic pub /hpp/target/publish std_msgs/Empty
 ### Experiment
 set ROS_IP and ROS_MASTER_URI :
 `export ROS_MASTER_URI=http://172.17.1.1:11311 ROS_IP=172.17.1.1` (laas)
-set PANDA_IP : 
+set PANDA_IP :
 `export PANDA_IP=172.17.1.3`  (laas)
 the experiment can be launched with the following commands :
 ```bash
@@ -90,7 +90,7 @@ terminal 4 : cd ~/ros_ws/src/agimus-demos/franka/manipulation/
 python -i script_hpp.py
 q_init, p = GrabAndDrop(robot, ps, binPicking, q_init, ros_bridge_config,vision_listener)
 terminal 5 :
-rosservice call /hpp/target/set_joint_names "names: 
+rosservice call /hpp/target/set_joint_names "names:
 - 'pandas/panda_joint1'
 - 'pandas/panda_joint2'
 - 'pandas/panda_joint3'
