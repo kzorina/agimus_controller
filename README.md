@@ -1,10 +1,10 @@
 # agimus_controller
 
-Whole-body model predictive controller to track a planned trajectory with ROS. 
+Whole-body model predictive controller to track a planned trajectory with ROS.
 
 ## Dependencies
 
-- Humanoid Path Planner 
+- Humanoid Path Planner
 - Agimus software
 - Crocoddyl
 
@@ -23,21 +23,21 @@ https://gitlab.laas.fr/agimus-project/agimus_dev_container
 
 #### Without ROS
 
-Different mains are available:  
-- ur3 scripts :  
-    - `python3 -m agimus_controller.main.ur3.main_hpp_mpc -N=1`  
-- panda scripts :  
-    -  `python3 -m agimus_controller.main.panda.main_hpp_mpc_buffer`  
-    -  `python3 -m agimus_controller.main.panda.main_hpp_mpc`  
-    -  `python3 -m agimus_controller.main.panda.main_reaching_goal`  
-    -  `python3 -m agimus_controller.main.panda.main_meshcat_display`  
-    -  `python3 -m agimus_controller.main.panda.main_optim_traj`  
-    -  `python3 -m agimus_controller.main.panda.main_scenes`  
+Different mains are available:
+- ur3 scripts :
+    - `python3 -m agimus_controller.main.ur3.main_hpp_mpc -N=1`
+- panda scripts :
+    -  `python3 -m agimus_controller.main.panda.main_hpp_mpc_buffer`
+    -  `python3 -m agimus_controller.main.panda.main_hpp_mpc`
+    -  `python3 -m agimus_controller.main.panda.main_reaching_goal`
+    -  `python3 -m agimus_controller.main.panda.main_meshcat_display`
+    -  `python3 -m agimus_controller.main.panda.main_optim_traj`
+    -  `python3 -m agimus_controller.main.panda.main_scenes`
 
 
 #### With ROS
 
-Two mpc nodes can be launched :  
+Two mpc nodes can be launched :
 mpc node with hpp trajectory given through topics :
 ```bash
 rosrun agimus_controller agimus_controller_node
@@ -70,10 +70,10 @@ rostopic pub /hpp/target/publish std_msgs/Empty
 ```
 
 ### Experiment
-set ROS_IP and ROS_MASTER_URI :  
-`export ROS_MASTER_URI=http://172.17.1.1:11311 ROS_IP=172.17.1.1` (laas)  
-set PANDA_IP :  
-`export PANDA_IP=172.17.1.3`  (laas)  
+set ROS_IP and ROS_MASTER_URI :
+`export ROS_MASTER_URI=http://172.17.1.1:11311 ROS_IP=172.17.1.1` (laas)
+set PANDA_IP :
+`export PANDA_IP=172.17.1.3`  (laas)
 the experiment can be launched with the following commands :
 
 ```bash
