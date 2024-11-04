@@ -79,13 +79,13 @@ rostopic pub /hpp/target/publish std_msgs/Empty
 ##### Environment variables setup
 
 set ROS_IP and ROS_MASTER_URI :
-```bash 
+```bash
 export ROS_MASTER_URI=http://172.17.1.1:11311 ROS_IP=172.17.1.1 (laas)
-``` 
+```
 set PANDA_IP :
 ```bash
 export PANDA_IP=172.17.1.3 (laas)
-``` 
+```
 
 ##### Running experiment
 
