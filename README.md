@@ -37,7 +37,10 @@ Different mains are available:
 
 #### With ROS
 
+##### MPC nodes
+
 Two mpc nodes can be launched :
+
 mpc node with hpp trajectory given through topics :
 ```bash
 rosrun agimus_controller agimus_controller_node
@@ -46,6 +49,8 @@ mpc node with hpp trajectory computed inside the node :
 ```bash
 roslaunch agimus_controller hpp_agimus_controller.launch
 ```
+
+##### Running simulation
 
 the simulation can be launched with the following commands :
 ```bash
@@ -70,11 +75,21 @@ rostopic pub /hpp/target/publish std_msgs/Empty
 ```
 
 ### Experiment
+
+##### Environment variables setup
+
 set ROS_IP and ROS_MASTER_URI :
-`export ROS_MASTER_URI=http://172.17.1.1:11311 ROS_IP=172.17.1.1` (laas)
+```bash 
+export ROS_MASTER_URI=http://172.17.1.1:11311 ROS_IP=172.17.1.1 (laas)
+``` 
 set PANDA_IP :
-`export PANDA_IP=172.17.1.3`  (laas)
-the experiment can be launched with the following commands :
+```bash
+export PANDA_IP=172.17.1.3 (laas)
+``` 
+
+##### Running experiment
+
+The experiment can be launched with the following commands :
 
 ```bash
 terminal 1 : roslaunch panda_torque_mpc real_controllers.launch controller:=ctrl_mpc_linearized robot:=panda robot_ip:=$PANDA_IP
