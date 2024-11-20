@@ -41,7 +41,7 @@ if(NOT INSTALL_ROS_INTERFACE_ONLY)
   set(pkg3 ${PROJECT_NAME}/main/panda main_hpp_mpc_buffer.py main_hpp_mpc.py
            main_meshcat_display.py main_optim_traj.py main_scenes.py)
   set(pkg4 ${PROJECT_NAME}/main/ur3 main_hpp_mpc.py)
-  set(pkg5 ${PROJECT_NAME}/ocps ocp_croco_hpp.py ocp.py)
+  set(pkg5 ${PROJECT_NAME}/ocps ocp_croco_hpp.py ocp_pose_ref.py ocp.py)
   set(pkg6 ${PROJECT_NAME}/robot_model obstacle_params_parser.py panda_model.py
            robot_model.py ur3_model.py)
   set(pkg7 ${PROJECT_NAME}/utils iostream.py ocp_analyzer.py pin_utils.py
@@ -83,7 +83,8 @@ if(BUILD_ROS_INTERFACE)
   catkin_package(CATKIN_DEPENDS ${MY_CATKIN_DEPENDENCIES} DEPENDS
                  ${MY_PYTHON_DEPENDENCIES})
   catkin_install_python(
-    PROGRAMS node/agimus_controller_node node/hpp_agimus_controller_node
+    PROGRAMS node/agimus_controller_node node/hpp_agimus_controller_node 
+             node/reaching_goal_controller_node
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
   install(PROGRAMS node/hpp_corbaserver
           DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}/node)
