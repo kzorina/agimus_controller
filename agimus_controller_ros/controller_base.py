@@ -57,7 +57,6 @@ def find_tracked_object(detections):
 
 class ControllerBase:
     def __init__(self, params: AgimusControllerNodeParameters) -> None:
-
         self.params = params
         self.traj_buffer = TrajectoryBuffer()
         self.initialize_state_machine_attributes()
