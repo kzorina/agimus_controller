@@ -43,7 +43,7 @@ Two mpc nodes can be launched :
 
 mpc node with hpp trajectory given through topics :
 ```bash
-rosrun agimus_controller agimus_controller_node
+roslaunch agimus_controller agimus_controller.launch
 ```
 mpc node with hpp trajectory computed inside the node :
 ```bash

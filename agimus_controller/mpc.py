@@ -63,7 +63,7 @@ class MPC:
             )
         return constraints_values
 
-    def simulate_mpc(self, save_predictions=False, node_idx_breakpoint=None):
+    def simulate_mpc(self, save_predictions=False):
         """Simulate mpc behavior using crocoddyl integration as a simulator."""
         T = self.ocp.params.horizon_size
         mpc_xs = np.zeros([self.whole_traj_T, 2 * self.nq])
@@ -73,14 +73,13 @@ class MPC:
 
         x_plan = self.whole_x_plan[:T, :]
         a_plan = self.whole_a_plan[:T, :]
-        x, u0 = self.mpc_first_step(x_plan, a_plan, x0, T)
+        self.ocp.set_planning_variables(x_plan, a_plan)
+        x, u0 = self.mpc_first_step(x_plan, self.ocp.u_plan[: T - 1], x0)
         mpc_xs[1, :] = x
         mpc_us[0, :] = u0
         next_node_idx = T
-
         if save_predictions:
-            self.create_mpc_data(self.ocp.use_constraints)
-
+            self.create_mpc_data()
         for idx in range(1, self.whole_traj_T - 1):
             x_plan = self.update_planning(x_plan, self.whole_x_plan[next_node_idx, :])
             a_plan = self.update_planning(a_plan, self.whole_a_plan[next_node_idx, :])
@@ -95,12 +94,8 @@ class MPC:
                 next_node_idx += 1
             mpc_xs[idx + 1, :] = x
             mpc_us[idx, :] = u
-
             if save_predictions:
-                self.fill_predictions_and_refs_arrays(self.ocp.use_constraints)
-
-            if idx == node_idx_breakpoint:
-                breakpoint()
+                self.fill_predictions_and_refs_arrays()
         self.croco_xs = mpc_xs
         self.croco_us = mpc_us
         if save_predictions:
@@ -115,13 +110,16 @@ class MPC:
     def get_mpc_output(self):
         return self.ocp.solver.problem.x0, self.ocp.solver.us[0], self.ocp.solver.K[0]
 
-    def mpc_first_step(self, x_plan, a_plan, x0, T):
+    def mpc_first_step(self, xs_init, us_init, x0):
         """Create crocoddyl problem from planning, run solver and get new state."""
-        problem = self.ocp.build_ocp_from_plannif(x_plan, a_plan, x0)
+        problem = self.ocp.build_ocp_from_plannif(x0)
         max_iter = self.ocp.params.max_iter
+        max_qp_iter = self.ocp.params.max_qp_iter
         self.ocp.params.max_iter = 1000
-        self.ocp.run_solver(problem, list(x_plan), list(self.ocp.u_plan[: T - 1]))
+        self.ocp.params.max_qp_iter = 1000
+        self.ocp.run_solver(problem, list(xs_init), list(us_init))
         self.ocp.params.max_iter = max_iter
+        self.ocp.params.max_qp_iter = max_qp_iter
         x = self.get_next_state(x0, self.ocp.solver.problem)
         return x, self.ocp.solver.us[0]
 
@@ -137,36 +135,64 @@ class MPC:
         x0 = self.get_next_state(x0, self.ocp.solver.problem)
         return x0, self.ocp.solver.us[0]
 
-    def create_mpc_data(self, use_constraints):
+    def create_mpc_data(self):
         xs, us = self.get_predictions()
         x_ref, p_ref, u_ref = self.get_reference()
-
         self.mpc_data["preds_xs"] = [xs]
         self.mpc_data["preds_us"] = [us]
         self.mpc_data["state_refs"] = [x_ref]
         self.mpc_data["translation_refs"] = [p_ref]
         self.mpc_data["control_refs"] = [u_ref]
         self.mpc_data["kkt_norm"] = [self.ocp.solver.KKT]
-
-        if use_constraints:
+        self.mpc_data["nb_iter"] = [self.ocp.solver.iter]
+        if self.ocp.params.use_constraints:
             collision_residuals = self.get_collision_residuals()
             self.mpc_data["coll_residuals"] = collision_residuals
 
-    def fill_predictions_and_refs_arrays(self, use_constraints):
+    def fill_predictions_and_refs_arrays(self):
         xs, us = self.get_predictions()
         x_ref, p_ref, u_ref = self.get_reference()
         self.mpc_data["preds_xs"].append(xs)
-
         self.mpc_data["preds_us"].append(us)
         self.mpc_data["state_refs"].append(x_ref)
         self.mpc_data["translation_refs"].append(p_ref)
         self.mpc_data["control_refs"].append(u_ref)
         self.mpc_data["kkt_norm"].append(self.ocp.solver.KKT)
-        # if self.init_in_world_M_object is not None:
-        #    self.mpc_data["init_in_world_M_object"] = self.init_in_world_M_object
-        if use_constraints:
+        self.mpc_data["nb_iter"].append(self.ocp.solver.iter)
+        if self.ocp.params.use_constraints:
             collision_residuals = self.get_collision_residuals()
             for coll_residual_key in collision_residuals.keys():
-                self.mpc_data["coll_residuals"][coll_residual_key] += (
-                    collision_residuals[coll_residual_key]
-                )
+                self.mpc_data["coll_residuals"][
+                    coll_residual_key
+                ] += collision_residuals[coll_residual_key]
+
+    def get_ee_pred_from_xs_pred(self, xs):
+        pred_ee = np.zeros((xs.shape[0], 3))
+        for idx in range(xs.shape[0]):
+            pred_ee[idx, :] = get_ee_pose_from_configuration(
+                self.ocp._rmodel,
+                self.ocp._rdata,
+                self.ocp._effector_frame_id,
+                xs[idx, : self.nq],
+            )
+        return pred_ee
+
+    def save_ocp_data(self):
+        ocp_data = {}
+        xs, us = self.get_predictions()
+        pred_ee = self.get_ee_pred_from_xs_pred(xs)
+        x_ref, p_ref, u_ref = self.get_reference()
+        ocp_data["preds_xs"] = [xs]
+        ocp_data["preds_us"] = [us]
+        ocp_data["preds_ee"] = [pred_ee]
+        ocp_data["state_refs"] = [x_ref]
+        ocp_data["translation_refs"] = [p_ref]
+        ocp_data["control_refs"] = [u_ref]
+        ocp_data["kkt_norm"] = [self.ocp.solver.KKT]
+        if self.ocp.params.use_constraints:
+            collision_residuals = self.get_collision_residuals()
+            for coll_residual_key in collision_residuals.keys():
+                self.mpc_data["coll_residuals"][
+                    coll_residual_key
+                ] += collision_residuals[coll_residual_key]
+        np.save("ocp_data.npy", ocp_data)

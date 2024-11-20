@@ -15,6 +15,7 @@ class OCPParameters:
         self.use_constraints = None
         self.effector_frame_name = None
         self.activate_callback = None
+        self.increasing_weights = None
 
     def set_parameters_from_dict(self, params_dict):
         self.dt = params_dict["dt"]
@@ -28,6 +29,7 @@ class OCPParameters:
         self.use_constraints = params_dict["use_constraints"]
         self.effector_frame_name = params_dict["effector_frame_name"]
         self.activate_callback = params_dict["activate_callback"]
+        self.increasing_weights = params_dict["increasing_weights"]
 
     def get_dict(self):
         params = {}
@@ -42,4 +44,5 @@ class OCPParameters:
         params["use_constraints"] = self.use_constraints
         params["effector_frame_name"] = self.effector_frame_name
         params["activate_callback"] = self.activate_callback
+        params["increasing_weights"] = self.increasing_weights
         return params

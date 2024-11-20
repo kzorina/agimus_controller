@@ -28,7 +28,7 @@ class APP(object):
         pandawrapper = PandaRobotModel.load_model(
             params=panda_params, env=collision_file_path
         )
-        mpc_params_dict = get_mpc_params_dict()
+        mpc_params_dict = get_mpc_params_dict(task_name="pick_and_place")
         ocp_params = OCPParameters()
         ocp_params.set_parameters_from_dict(mpc_params_dict["ocp"])
         rmodel = pandawrapper.get_reduced_robot_model()
