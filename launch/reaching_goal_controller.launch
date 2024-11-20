@@ -1,0 +1,11 @@
+<launch>
+
+    <arg name="ctrl_ns" default="/ctrl_mpc_linearized"/>
+    <group ns="$(arg ctrl_ns)">
+        <node pkg="agimus_controller" name="reaching_goal_controller_node"
+        type="reaching_goal_controller_node" output="screen"/>
+        <include file="$(find agimus_controller)/launch/record_rosbag.launch"/>
+        <rosparam command="load" file="$(find agimus_demos_description)/reaching_goal/mpc_params.yaml"
+        subst_value="true" />
+    </group>
+</launch>
