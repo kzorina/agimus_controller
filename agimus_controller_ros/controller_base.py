@@ -17,7 +17,7 @@ import atexit
 from agimus_controller_ros.ros_np_multiarray import to_multiarray_f64
 from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.trajectory_point import PointAttribute
-from agimus_controller.robot_model.panda_model import get_pick_and_place_task_models
+from agimus_controller.robot_model.panda_model import get_task_models
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
@@ -55,16 +55,14 @@ def find_tracked_object(detections):
     return current_detection.results[0].pose
 
 
-def get_increasing_weight(time, max_weight, percent, time_reach_percent):
-    return max_weight * np.tanh(time * np.arctanh(percent) / time_reach_percent)
-
-
 class ControllerBase:
     def __init__(self, params: AgimusControllerNodeParameters) -> None:
         self.params = params
         self.traj_buffer = TrajectoryBuffer()
         self.initialize_state_machine_attributes()
-        self.rmodel, self.cmodel = get_pick_and_place_task_models()
+        self.rmodel, self.cmodel, self.vmodel = get_task_models(
+            task_name="pick_and_place"
+        )
         self.rdata = self.rmodel.createData()
         self.effector_frame_id = self.rmodel.getFrameId(
             self.params.ocp.effector_frame_name
@@ -73,7 +71,6 @@ class ControllerBase:
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
         self.ocp = OCPCrocoHPP(self.rmodel, self.cmodel, params.ocp)
-        self.mpc_data = {}
         self.init_in_world_M_object = None
         self.in_world_M_object = None
 
@@ -87,9 +84,6 @@ class ControllerBase:
         self.pick_traj_last_pose = None
         self.start_visual_servoing_time = None
         self.do_visual_servoing = False
-        self.in_world_M_prev_world = pin.XYZQUATToSE3(
-            np.array([0.563, -0.166, 0.78, 0, 0, 1, 0])
-        ).inverse()
 
     def initialize_state_machine_attributes(self):
         self.elapsed_time = None
@@ -133,6 +127,9 @@ class ControllerBase:
         self.first_pose_ref_msg_received = True
 
     def initialize_vision_attributes(self):
+        self.in_world_M_prev_world = pin.XYZQUATToSE3(
+            np.array([0.563, -0.166, 0.78, 0, 0, 1, 0])
+        ).inverse()
         if self.params.use_vision:
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -150,10 +147,14 @@ class ControllerBase:
         self.init_in_world_M_object = pin.XYZQUATToSE3(
             np.array([0.0, 0.0, 0.85, 0.0, 0.0, 0.0, 1.0])
         )
+        self.init_in_world_M_object = (
+            self.in_world_M_prev_world * self.init_in_world_M_object
+        )
 
         self.in_world_M_object = pin.XYZQUATToSE3(
             np.array([-0.03, -0.03, 0.85, 0.0, 0.0, 0.0, 1.0])
         )
+        self.in_world_M_object = self.in_world_M_prev_world * self.in_world_M_object
 
     def sensor_callback(self, sensor_msg):
         with self.mutex:
@@ -230,11 +231,13 @@ class ControllerBase:
             a_plan[idx_point, :] = point.a
 
         # First solve
+        self.ocp.set_planning_variables(x_plan, a_plan)
         self.mpc = MPC(self.ocp, x_plan, a_plan, self.rmodel, self.cmodel)
-        self.mpc.mpc_first_step(x_plan, a_plan, x0, self.params.ocp.horizon_size)
+        us_init = self.mpc.ocp.u_plan[: self.params.ocp.horizon_size - 1]
+        self.mpc.mpc_first_step(x_plan, us_init, x0)
         self.next_node_idx = self.params.ocp.horizon_size
         if self.params.save_predictions_and_refs:
-            self.mpc.create_mpc_data(self.params.ocp.use_constraints)
+            self.mpc.create_mpc_data()
         _, u, k = self.mpc.get_mpc_output()
         return u, k
 
@@ -264,30 +267,24 @@ class ControllerBase:
         else:
             self.mpc.ocp.set_last_running_model_placement_weight(0)
         self.mpc.mpc_step(x0, new_x_ref, new_a_ref, self.in_world_M_effector)
-        if self.next_node_idx < self.mpc.whole_x_plan.shape[0] - 1:
-            self.next_node_idx += 1
 
         if self.params.save_predictions_and_refs:
-            self.mpc.fill_predictions_and_refs_arrays(self.params.ocp.use_constraints)
+            self.mpc.fill_predictions_and_refs_arrays()
         _, u, k = self.mpc.get_mpc_output()
         return u, k
 
     def set_increasing_weight(self):
         visual_servoing_time = time.time() - self.start_visual_servoing_time
-        gripper_weight_last_running_node = get_increasing_weight(
+
+        gripper_weight_last_running_node = self.mpc.ocp.get_increasing_weight(
             max(visual_servoing_time - self.params.ocp.dt, 0.0),
-            self.params.increasing_weights["max"] / self.params.ocp.dt,
-            self.params.increasing_weights["percent"],
-            self.params.increasing_weights["time_reach_percent"],
+            self.params.ocp.increasing_weights["max"] / self.params.ocp.dt,
         )
         self.mpc.ocp.set_last_running_model_placement_cost(
             self.in_world_M_effector, gripper_weight_last_running_node
         )
-        gripper_weight_terminal_node = get_increasing_weight(
-            visual_servoing_time,
-            self.params.increasing_weights["max"],
-            self.params.increasing_weights["percent"],
-            self.params.increasing_weights["time_reach_percent"],
+        gripper_weight_terminal_node = self.mpc.ocp.get_increasing_weight(
+            visual_servoing_time, self.params.ocp.increasing_weights["max"]
         )
         self.mpc.ocp.set_ee_placement_weight(gripper_weight_terminal_node)
 
@@ -364,49 +361,6 @@ class ControllerBase:
         self.control_msg.feedforward = to_multiarray_f64(u)
         self.control_msg.initial_state = sensor_msg
         self.control_publisher.publish(self.control_msg)
-
-    def create_mpc_data(self):
-        xs, us = self.mpc.get_predictions()
-        x_ref, p_ref, u_ref = self.mpc.get_reference()
-
-        self.mpc_data["preds_xs"] = [xs]
-        self.mpc_data["preds_us"] = [us]
-        self.mpc_data["state_refs"] = [x_ref]
-        self.mpc_data["translation_refs"] = [p_ref]
-        self.mpc_data["control_refs"] = [u_ref]
-        self.mpc_data["state"] = [self.state_machine.value]
-        if self.params.use_constraints:
-            collision_residuals = self.mpc.get_collision_residuals()
-            self.mpc_data["coll_residuals"] = collision_residuals
-        if self.in_world_M_object is not None:
-            self.mpc_data["vision_refs"] = [
-                np.array(self.in_world_M_object.translation)
-            ]
-            self.mpc_data["obj_trans_ee"] = []
-
-    def fill_predictions_and_refs_arrays(self):
-        xs, us = self.mpc.get_predictions()
-        x_ref, p_ref, u_ref = self.mpc.get_reference()
-        self.mpc_data["preds_xs"].append(xs)
-
-        self.mpc_data["preds_us"].append(us)
-        self.mpc_data["state_refs"].append(x_ref)
-        self.mpc_data["translation_refs"].append(p_ref)
-        self.mpc_data["control_refs"].append(u_ref)
-        self.mpc_data["state"].append(self.state_machine.value)
-        if self.init_in_world_M_object is not None:
-            self.mpc_data["init_in_world_M_object"] = self.init_in_world_M_object
-        if self.params.use_constraints:
-            collision_residuals = self.mpc.get_collision_residuals()
-            for coll_residual_key in collision_residuals.keys():
-                self.mpc_data["coll_residuals"][coll_residual_key] += (
-                    collision_residuals[coll_residual_key]
-                )
-
-        if "vision_refs" in self.mpc_data.keys():
-            self.mpc_data["vision_refs"].append(
-                np.array(self.in_world_M_object.translation)
-            )
 
     def exit_handler(self):
         print("saving data")

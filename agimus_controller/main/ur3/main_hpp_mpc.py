@@ -22,7 +22,7 @@ class APP(object):
         hpp_interface.set_ur3_problem_solver(ur3_wrapper)
         x_plan, a_plan, _ = hpp_interface.get_hpp_x_a_planning(1e-2)
         viewer = hpp_interface.get_viewer()
-        mpc_params_dict = get_mpc_params_dict()
+        mpc_params_dict = get_mpc_params_dict(task_name="pick_and_place")
         ocp_params = OCPParameters()
         ocp_params.set_parameters_from_dict(mpc_params_dict["ocp"])
         ocp = OCPCrocoHPP(rmodel=rmodel, cmodel=None, params=ocp_params)

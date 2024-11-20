@@ -6,6 +6,7 @@
                 /ctrl_mpc_linearized/happypose_pose
                 /hpp/target/position
                 /hpp/target/velocity
-                /hpp/target/acceleration"
+                /hpp/target/acceleration
+                /sensor_force"
     />
    </launch>

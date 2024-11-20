@@ -96,16 +96,18 @@ class OCPCrocoHPP:
         self._weight_u_reg = weight_u_reg
         self._weight_vel_reg = weight_vel_reg
 
-    def set_models(self, x_plan: np.ndarray, a_plan: np.ndarray):
+    def set_planning_variables(self, x_plan: np.ndarray, a_plan: np.ndarray):
+        self.x_plan = x_plan
+        self.a_plan = a_plan
+        self.u_plan = self.get_u_plan(x_plan, a_plan)
+
+    def set_models(self):
         """Set running models and terminal model for the ocp.
 
         Args:
             x_plan (np.ndarray): Array of (q,v) for each node, describing the trajectory found by the planner.
             a_plan (np.ndarray): Array of (dv/dt) for each node, describing the trajectory found by the planner.
         """
-        self.x_plan = x_plan
-        self.a_plan = a_plan
-        self.u_plan = self.get_u_plan(x_plan, a_plan)
         placement_ref = get_ee_pose_from_configuration(
             self._rmodel,
             self._rdata,
@@ -114,6 +116,13 @@ class OCPCrocoHPP:
         )
         self.set_running_models()
         self.set_terminal_model(placement_ref)
+
+    def get_increasing_weight(self, time, max_weight):
+        return max_weight * np.tanh(
+            time
+            * np.arctanh(self.params.increasing_weights["percent"])
+            / self.params.increasing_weights["time_reach_percent"]
+        )
 
     def set_running_models(self):
         """Set running models based on state and acceleration reference trajectory."""
@@ -203,13 +212,13 @@ class OCPCrocoHPP:
         return crocoddyl.IntegratedActionModelEuler(terminal_DAM, self.params.dt)
 
     def get_terminal_model_with_constraints(
-        self, placement_ref, x_ref: np.ndarray, u_plan: np.ndarray
+        self, placement_ref, x_ref: np.ndarray, u_ref: np.ndarray
     ):
         """Return terminal model with constraints for mim_solvers."""
         terminal_cost_model = crocoddyl.CostModelSum(self.state)
         placement_reg_cost = self.get_placement_residual(placement_ref)
         x_reg_cost = self.get_state_residual(x_ref)
-        u_reg_cost = self.get_control_residual(u_plan)
+        u_reg_cost = self.get_control_residual(u_ref)
         vel_cost = self.get_velocity_residual()
         terminal_cost_model.addCost("xReg", x_reg_cost, 0)
         if np.linalg.norm(x_ref[self.nq :]) < 1e-9:
@@ -368,9 +377,9 @@ class OCPCrocoHPP:
         runningModels = list(self.solver.problem.runningModels)
         runningModels[-1].differential.costs.costs["gripperPose"].weight = weight
 
-    def build_ocp_from_plannif(self, x_plan, a_plan, x0):
+    def build_ocp_from_plannif(self, x0):
         """Set models based on state and acceleration planning, create crocoddyl problem from it."""
-        self.set_models(x_plan, a_plan)
+        self.set_models()
         return crocoddyl.ShootingProblem(x0, self.running_models, self.terminal_model)
 
     def run_solver(self, problem, xs_init, us_init):

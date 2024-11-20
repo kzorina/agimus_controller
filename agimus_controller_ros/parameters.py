@@ -24,6 +24,7 @@ class OCPParametersROS(OCPParameters):
             "ocp/effector_frame_name", "panda_hand_tcp"
         )
         self.activate_callback = rospy.get_param("ocp/activate_callback", False)
+        self.increasing_weights = rospy.get_param("ocp/increasing_weights", [])
 
 
 class AgimusControllerNodeParameters:
@@ -33,7 +34,6 @@ class AgimusControllerNodeParameters:
         self.use_vision = None
         self.use_vision_simulated = None
         self.start_visual_servoing_dist = None
-        self.increasing_weights = None
         self.ocp = OCPParametersROS()
         self.use_ros_params = None
 
@@ -47,7 +47,6 @@ class AgimusControllerNodeParameters:
         self.start_visual_servoing_dist = rospy.get_param(
             "start_visual_servoing_dist", 0.03
         )
-        self.increasing_weights = rospy.get_param("increasing_weights", [])
         self.ocp.set_parameters_from_ros()
         self.use_ros_params = True
 
@@ -57,7 +56,7 @@ class AgimusControllerNodeParameters:
         self.use_vision = params_dict["use_vision"]
         self.use_vision_simulated = params_dict["use_vision_simulated"]
         self.start_visual_servoing_dist = params_dict["start_visual_servoing_dist"]
-        self.increasing_weights = params_dict["increasing_weights"]
+
         self.ocp.set_parameters_from_dict(params_dict["ocp"])
         self.use_ros_params = False
 
@@ -68,6 +67,5 @@ class AgimusControllerNodeParameters:
         params["use_vision"] = self.use_vision
         params["use_vision_simulated"] = self.use_vision_simulated
         params["start_visual_servoing_dist"] = self.start_visual_servoing_dist
-        params["increasing_weights"] = self.increasing_weights
         params["ocp"] = self.ocp.get_dict()
         return params

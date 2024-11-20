@@ -35,7 +35,7 @@ class APP(object):
         rmodel = pandawrapper.get_reduced_robot_model()
         cmodel = pandawrapper.get_reduced_collision_model()
         ee_frame_name = panda_params.ee_frame_name
-        mpc_params_dict = get_mpc_params_dict()
+        mpc_params_dict = get_mpc_params_dict(task_name="pick_and_place")
         ocp_params = OCPParameters()
         ocp_params.set_parameters_from_dict(mpc_params_dict["ocp"])
 
@@ -84,7 +84,9 @@ class APP(object):
                         x_plan[idx_point, :] = point.get_x_as_q_v()
                         a_plan[idx_point, :] = point.a
                     # next_node_idx = T
-                    x, u = mpc.mpc_first_step(x_plan, a_plan, x, T)
+                    mpc.ocp.set_planning_variables(x_plan, a_plan)
+                    us_init = mpc.ocp.u_plan[: mpc.ocp.params.horizon_size - 1]
+                    x, u = mpc.mpc_first_step(x_plan, us_init, x)
                     mpc_xs[idx - 2 * T, :] = x
                     mpc_us[idx - 2 * T - 1, :] = u
                     first_step_done = True
