@@ -1,18 +1,18 @@
 import numpy as np
-from agimus_controller.hpp_interface import HppInterface
-from agimus_controller.mpc import MPC
-from agimus_controller.utils.path_finder import get_package_path, get_mpc_params_dict
-from agimus_controller.visualization.plots import MPCPlots
-from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
-from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
-from agimus_controller.trajectory_buffer import TrajectoryBuffer
-from agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
-from agimus_controller.robot_model.panda_model import (
+from agimus_controller_examples.hpp_interface import HppInterface
+from agimus_controller.agimus_controller.mpc import MPC
+from agimus_controller.agimus_controller.utils.path_finder import get_package_path, get_mpc_params_dict
+from agimus_controller.agimus_controller.visualization.plots import MPCPlots
+from agimus_controller.agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
+from agimus_controller.agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
+from agimus_controller.agimus_controller.trajectory_buffer import TrajectoryBuffer
+from agimus_controller.agimus_controller.trajectory_point import TrajectoryPoint, PointAttribute
+from agimus_controller.agimus_controller.robot_model.panda_model import (
     PandaRobotModel,
     PandaRobotModelParameters,
 )
-from agimus_controller.ocps.parameters import OCPParameters
-from agimus_controller.main.servers import Servers
+from agimus_controller.agimus_controller.ocps.parameters import OCPParameters
+from agimus_controller_examples.main.servers import Servers
 
 
 class APP(object):
