@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from agimus_controller.hpp_interface import HppInterface
+from agimus_controller_examples.hpp_interface import HppInterface
 from agimus_controller.mpc import MPC
 from agimus_controller.utils.path_finder import get_mpc_params_dict
 from agimus_controller.visualization.plots import MPCPlots
@@ -10,8 +10,8 @@ from agimus_controller.robot_model.panda_model import (
     get_robot_constructor,
 )
 from agimus_controller.ocps.parameters import OCPParameters
-from agimus_controller.main.servers import Servers
-from agimus_controller.utils.ocp_analyzer import (
+from agimus_controller_examples.agimus_controller_examples.main.servers import Servers
+from agimus_controller_examples.utils.ocp_analyzer import (
     return_cost_vectors,
     return_constraint_vector,
     plot_costs_from_dic,
