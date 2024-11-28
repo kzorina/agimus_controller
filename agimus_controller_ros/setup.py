@@ -19,7 +19,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            'mpc_input_dummy_publisher = agimus_controller_ros.mpc_input_dummy_publisher:main',
+            "mpc_input_dummy_publisher = agimus_controller_ros.mpc_input_dummy_publisher:main",
         ],
     },
 )
