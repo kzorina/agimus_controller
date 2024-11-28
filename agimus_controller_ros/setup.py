@@ -18,6 +18,8 @@ setup(
     license="Apache-2.0",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": [],
+        "console_scripts": [
+            'mpc_input_dummy_publisher = agimus_controller_ros.mpc_input_dummy_publisher:main',
+        ],
     },
 )
