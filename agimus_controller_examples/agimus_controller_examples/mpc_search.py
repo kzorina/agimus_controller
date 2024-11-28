@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from .mpc import MPC
+from ...agimus_controller.agimus_controller.mpc import MPC
 import pinocchio as pin
 
 
