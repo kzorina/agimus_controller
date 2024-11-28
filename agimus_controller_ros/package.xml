@@ -7,10 +7,22 @@
   <maintainer email="kateryna.zorina@cvut.cz">gepetto</maintainer>
   <license>Apache-2.0</license>
 
+    <!-- Build dependencies -->
+  <build_depend>mpc_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+
+  <!-- Run-time dependencies -->
+  <exec_depend>mpc_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+
+    <!-- Group for interface packages -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>
     <build_type>ament_python</build_type>
