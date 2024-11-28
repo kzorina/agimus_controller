@@ -1,20 +1,39 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>agimus_controller_ros</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="kateryna.zorina@cvut.cz">gepetto</maintainer>
-  <license>Apache-2.0</license>
+  <description>The agimus_controller package</description>
 
-    <!-- Build dependencies -->
+  <maintainer email="guilhem.saurel@laas.fr">Guilhem Saurel</maintainer>
+  <author email="tmartinezf@laas.fr">Théo Martinez</author>
+
+  <license>BSD-3-clause</license>
+  <url type="website">https://github.com/agimus-project/agimus_controller</url>
+
+
+  <build_depend>jrl-cmakemodules</build_depend>
+  <!-- The following tags are recommended by REP-136 -->
+  <exec_depend condition="$ROS_VERSION == 1">catkin</exec_depend>
+  <exec_depend condition="$ROS_VERSION == 2">ament_cmake</exec_depend>
+
+  <!-- ROS dependencies. -->
+  <depend>linear_feedback_controller_msgs</depend> <!-- install manually. -->
+  <depend>rclpy</depend>
+  <depend>xacro</depend>
+  <depend>std_msgs</depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <!-- Python dependencies. -->
+  <exec_depend>python3-numpy</exec_depend>
+
+      <!-- Build dependencies -->
   <build_depend>mpc_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
 
   <!-- Run-time dependencies -->
   <exec_depend>mpc_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
-
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
@@ -24,7 +43,16 @@
     <!-- Group for interface packages -->
   <member_of_group>rosidl_interface_packages</member_of_group>
 
+  <!-- LAAS dependencies. -->
+  <exec_depend>pinocchio</exec_depend>
+  <exec_depend>example-robot-data</exec_depend> <!-- install manually. -->
+
+  <!-- Tests -->
+  <build_depend>rostest</build_depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
   <export>
-    <build_type>ament_python</build_type>
+    <!-- Other tools can request additional information be placed here -->
+     <build_type>ament_python</build_type>
   </export>
 </package>
