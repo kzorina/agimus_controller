@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 
-from agimus_controller.trajectory import TrajectoryBuffer, TrajectoryPoint
 from agimus_msgs.msg import MpcInput
 from geometry_msgs.msg import Pose
 from std_msgs.msg import String
@@ -26,14 +25,14 @@ class AgimusControllerNode(Node):
                 reliability=ReliabilityPolicy.RELIABLE,
             ),
         )
-        
+
         self.timer = self.create_timer(self.controller_period, self.run_mpc)
         self.get_logger().info("agimus_controller_node started.")
 
     def extract_ros_parameters(self):
         self.declare_parameter("moving_joint_names", [""])
         self.declare_parameter("controller_period", 0.01)
-        
+
         self.moving_joint_names = (
             self.get_parameter("moving_joint_names")
             .get_parameter_value()
@@ -115,4 +114,3 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
-
