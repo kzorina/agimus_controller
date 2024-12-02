@@ -1,7 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from agimus_controller.trajectory import ReferenceTrajectory, ReferenceTrajectoryPoint
-from agimus_controller.mpc_output import MPCOutput
+from .trajectory import ReferenceTrajectory, ReferenceTrajectoryPoint
+from .mpc_output import MPCOutput
 
 
 class OCPBase(ABC):

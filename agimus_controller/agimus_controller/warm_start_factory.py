@@ -1,4 +1,4 @@
-from agimus_controller.warm_start_base import WarmStartBase
+from .warm_start_base import WarmStartBase
 
 
 class WarmStartFactory(object):

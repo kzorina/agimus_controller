@@ -1,8 +1,8 @@
 import time
-from agimus_controller.ocp_base import OCPBase
-from agimus_controller.warm_start_base import WarmStartBase
-from agimus_controller.trajectory import TrajectoryBuffer, TrajectoryPoint
-from mpc_output import MPCOutputData, MPCDebugData
+from .ocp_base import OCPBase
+from .warm_start_base import WarmStartBase
+from .trajectory import TrajectoryBuffer, TrajectoryPoint
+from .mpc_output import MPCOutputData, MPCDebugData
 
 
 class MPC(object):

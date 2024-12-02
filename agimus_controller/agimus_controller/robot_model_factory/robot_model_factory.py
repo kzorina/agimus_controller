@@ -1,5 +1,4 @@
 from typing import Union
-
 try:
     from typing import Self
 except ImportError:
@@ -9,7 +8,7 @@ from copy import deepcopy
 import pinocchio as pin
 import numpy as np
 from pathlib import Path
-from agimus_controller.robot_model.obstacle_params_parser import ObstacleParamsParser
+from .obstacle_params_parser import ObstacleParamsParser
 
 
 @dataclass
@@ -27,13 +26,13 @@ class RobotModelFactory:
     """Complete model of the robot."""
 
     _model = pin.Model()
-    """ Complete model of the robot with visualisation meshes. """
+    """ Complete model of the robot with visualization meshes. """
     _cmodel = pin.GeometryModel()
     """ Complete model of the robot with collision meshes. """
     _vmodel = pin.GeometryModel()
     """ Reduced model of the robot. """
     _rmodel = pin.Model()
-    """ Reduced model of the robot with visualisation meshes. """
+    """ Reduced model of the robot with visualization meshes. """
     _rcmodel = pin.GeometryModel()
     """ Reduced model of the robot with collision meshes. """
     _rvmodel = pin.GeometryModel()

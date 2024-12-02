@@ -1,8 +1,8 @@
 from __future__ import annotations
 import numpy as np
 from abc import ABC, abstractmethod
-from agimus_controller.ocp_base import OCPBase
-from agimus_controller.trajectory import TrajectoryPoint
+from .ocp_base import OCPBase
+from .trajectory import TrajectoryPoint
 
 
 class WarmStartBase(ABC):
