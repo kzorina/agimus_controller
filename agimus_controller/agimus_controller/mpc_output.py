@@ -1,10 +1,10 @@
-import numpy as np
 from dataclasses import dataclass
 
 
 @dataclass
 class MPCOutputData:
     """Output data structure of the MPC."""
+
     x: list  # List of numpy.ndarray, the output state.
     u: list  # List of numpy.ndarray, the output control.
     ricatti_gains: list  # List of numpy.ndarray, the Ricatti gains.

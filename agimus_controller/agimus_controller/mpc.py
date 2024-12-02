@@ -6,7 +6,6 @@ from mpc_output import MPCOutputData, MPCDebugData
 
 
 class MPC(object):
-
     def __init__(self) -> None:
         self._ocp = None
         self._warm_start = None
@@ -17,18 +16,20 @@ class MPC(object):
         self._duration_horizon_update = 0.0
         self._duration_generate_warm_start = 0.0
         self._duration_ocp_solve = 0.0
-        
 
     def setup(self, ocp: OCPBase, warm_start: WarmStartBase) -> None:
         self._ocp = ocp
         self._warm_start = warm_start
 
-    def run(self, initial_state: TrajectoryPoint, trajectory_buffer: TrajectoryBuffer) -> MPCOutputData:
+    def run(
+        self, initial_state: TrajectoryPoint, trajectory_buffer: TrajectoryBuffer
+    ) -> MPCOutputData:
         assert self._ocp is not None
         assert self._warm_start is not None
         timer1 = time.perf_counter()
         reference_trajectory = trajectory_buffer.get_points(
-            self._ocp.get_horizon_size())
+            self._ocp.get_horizon_size()
+        )
         self._ocp.update_horizon_from_reference(reference_trajectory)
         timer2 = time.perf_counter()
         x_init, u_init = self._warm_start.generate(reference_trajectory)
@@ -40,4 +41,4 @@ class MPC(object):
         self._duration_iteration = timer4 - timer1
         self._duration_horizon_update = timer2 - timer1
         self._duration_generate_warm_start = timer3 - timer2
-        self._duration_ocp_solve= timer4 - timer3
+        self._duration_ocp_solve = timer4 - timer3

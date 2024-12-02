@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 PACKAGE_NAME = "agimus_controller"
-REQUIRES_PYTHON = '>=3.10.0'
+REQUIRES_PYTHON = ">=3.10.0"
 
 setup(
     name=PACKAGE_NAME,
@@ -10,7 +10,7 @@ setup(
     python_requires=REQUIRES_PYTHON,
     install_requires=[
         "setuptools",
-        'numpy==1.21.5',
+        "numpy==1.21.5",
     ],
     zip_safe=True,
     maintainer="Guilhem Saurel",

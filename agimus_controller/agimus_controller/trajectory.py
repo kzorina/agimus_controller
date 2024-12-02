@@ -7,6 +7,7 @@ from pinocchio import SE3, Force
 @dataclass
 class TrajectoryPoint:
     """Trajectory point aiming at being a reference for the MPC."""
+
     robot_configuration: np.ndarray
     robot_velocity: np.ndarray
     robot_acceleration: np.ndarray
