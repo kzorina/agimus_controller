@@ -14,8 +14,8 @@ class WarmStartBase(ABC):
         pass
 
     @abstractmethod
-    def generate(self, reference_trajectory: list[TrajectoryPoint]) -> tuple(
-        np.ndarray, np.ndarray
-    ):
+    def generate(
+        self, reference_trajectory: list[TrajectoryPoint]
+    ) -> tuple(np.ndarray, np.ndarray):
         """Returns x_init, u_init."""
         pass
