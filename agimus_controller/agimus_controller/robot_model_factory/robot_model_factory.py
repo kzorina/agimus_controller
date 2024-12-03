@@ -24,8 +24,9 @@ class RobotModelParameters:
 
 
 class RobotModelFactory:
-    """Complete model of the robot."""
+    """Parse the robot model, reduce it and filter the collision model."""
 
+    """Complete model of the robot."""
     _model = pin.Model()
     """ Complete model of the robot with visualization meshes. """
     _cmodel = pin.GeometryModel()
