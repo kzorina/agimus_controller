@@ -1,15 +1,12 @@
 from typing import Union
-
-try:
-    from typing import Self
-except ImportError:
-    from typing_extensions import Self
 from dataclasses import dataclass
 from copy import deepcopy
 import pinocchio as pin
 import numpy as np
 from pathlib import Path
-from .obstacle_params_parser import ObstacleParamsParser
+from agimus_controller.robot_model_factory.obstacle_params_parser import (
+    ObstacleParamsParser,
+)
 
 
 @dataclass
