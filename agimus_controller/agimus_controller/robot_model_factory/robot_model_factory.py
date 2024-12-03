@@ -47,18 +47,15 @@ class RobotModelFactory:
     """ Path to the collisions environment. """
     _env = Path()
 
-    @classmethod
-    def load_model(cls, param: RobotModelParameters, env: Union[Path, None]) -> Self:
-        model = cls()
-        model._params = param
-        model._env = env
-        model._load_pinocchio_models(param.urdf, param.free_flyer)
-        model._load_default_configuration(param.srdf, param.q0_name)
-        model._load_reduced_model(param.locked_joint_names, param.q0_name)
-        model._update_collision_model(
+    def load_model(self, param: RobotModelParameters, env: Union[Path, None]) -> None:
+        self._params = param
+        self._env = env
+        self._load_pinocchio_models(param.urdf, param.free_flyer)
+        self._load_default_configuration(param.srdf, param.q0_name)
+        self._load_reduced_model(param.locked_joint_names, param.q0_name)
+        self._update_collision_model(
             env, param.collision_as_capsule, param.self_collision, param.srdf
         )
-        return model
 
     def _load_pinocchio_models(self, urdf: Path, free_flyer: bool) -> None:
         verbose = False
@@ -116,28 +113,28 @@ class RobotModelFactory:
         if env is not None:
             self._rcmodel = self._collision_parser.add_collisions(self._rcmodel, env)
 
-    def get_complete_robot_model(self) -> pin.Model:
+    def create_complete_robot_model(self) -> pin.Model:
         return self._model.copy()
 
-    def get_complete_collision_model(self) -> pin.GeometryModel:
+    def create_complete_collision_model(self) -> pin.GeometryModel:
         return self._cmodel.copy()
 
-    def get_complete_visual_model(self) -> pin.GeometryModel:
+    def create_complete_visual_model(self) -> pin.GeometryModel:
         return self._vmodel.copy()
 
-    def get_reduced_robot_model(self) -> pin.Model:
+    def create_reduced_robot_model(self) -> pin.Model:
         return self._rmodel.copy()
 
-    def get_reduced_collision_model(self) -> pin.GeometryModel:
+    def create_reduced_collision_model(self) -> pin.GeometryModel:
         return self._rcmodel.copy()
 
-    def get_reduced_visual_model(self) -> pin.GeometryModel:
+    def create_reduced_visual_model(self) -> pin.GeometryModel:
         return self._rvmodel.copy()
 
-    def get_default_configuration(self) -> np.array:
+    def create_default_configuration(self) -> np.array:
         return self._q0.copy()
 
-    def get_model_parameters(self) -> RobotModelParameters:
+    def create_model_parameters(self) -> RobotModelParameters:
         return deepcopy(self._params)
 
     def print_model(self):
