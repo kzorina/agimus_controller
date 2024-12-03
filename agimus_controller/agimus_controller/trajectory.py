@@ -46,7 +46,7 @@ class TrajectoryBuffer(deque):
 
     def get_last_point(self):
         """Return last point in buffer without removing it from buffer."""
-        if self.get_size():
+        if not self.get_size():
             return None
         else:
             return self._buffer[-1]

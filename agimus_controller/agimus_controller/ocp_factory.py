@@ -1,4 +1,4 @@
-from .ocp_base import OCPBase
+from agimus_controller.ocp_base import OCPBase
 
 
 class OCPFactory(object):
