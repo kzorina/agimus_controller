@@ -9,7 +9,6 @@ class MPC(object):
     def __init__(self) -> None:
         self._ocp = None
         self._warm_start = None
-        self._trajectory_buffer = TrajectoryBuffer()
         self._mpc_output_data = MPCOutputData()
         self._mpc_debug_data = MPCDebugData()
 
