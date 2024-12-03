@@ -14,7 +14,7 @@ class MPCOutputData:
 @dataclass
 class MPCDebugData:
     # Solver infos
-    problem_solved: bool
+    problem_solved: bool = False
     others: int  # TODO: TBD
 
     # Debug data
@@ -24,3 +24,9 @@ class MPCDebugData:
     list_robot_effort: list
     list_forces: list
     list_end_effector_pose: list
+
+    # Timers
+    duration_iteration: float = 0.0
+    duration_horizon_update: float = 0.0
+    duration_generate_warm_start: float = 0.0
+    duration_ocp_solve: float = 0.0

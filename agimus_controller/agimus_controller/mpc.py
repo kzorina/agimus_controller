@@ -12,10 +12,6 @@ class MPC(object):
         self._trajectory_buffer = TrajectoryBuffer()
         self._mpc_output_data = MPCOutputData()
         self._mpc_debug_data = MPCDebugData()
-        self._duration_iteration = 0.0
-        self._duration_horizon_update = 0.0
-        self._duration_generate_warm_start = 0.0
-        self._duration_ocp_solve = 0.0
 
     def setup(self, ocp: OCPBase, warm_start: WarmStartBase) -> None:
         self._ocp = ocp
@@ -38,7 +34,7 @@ class MPC(object):
         self._ocp.solve(x0, x_init, u_init)
         timer4 = time.perf_counter_ns()
 
-        self._duration_iteration = timer4 - timer1
-        self._duration_horizon_update = timer2 - timer1
-        self._duration_generate_warm_start = timer3 - timer2
-        self._duration_ocp_solve = timer4 - timer3
+        self._mpc_debug_data.duration_iteration = timer4 - timer1
+        self._mpc_debug_data.duration_horizon_update = timer2 - timer1
+        self._mpc_debug_data.duration_generate_warm_start = timer3 - timer2
+        self._mpc_debug_data.duration_ocp_solve = timer4 - timer3
