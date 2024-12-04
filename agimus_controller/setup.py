@@ -11,7 +11,7 @@ setup(
     maintainer="gepetto",
     maintainer_email="guilhem.saurel@laas.fr",
     description="TODO: Package description",
-    license="Apache-2.0",
+    license="BSD",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [],
