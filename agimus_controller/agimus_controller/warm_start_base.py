@@ -9,10 +9,6 @@ class WarmStartBase(ABC):
         super().__init__()
 
     @abstractmethod
-    def setup(self, ocp: OCPBase = None) -> None:
-        pass
-
-    @abstractmethod
     def generate(
         self, reference_trajectory: list[TrajectoryPoint]
     ) -> tuple(np.ndarray, np.ndarray):
