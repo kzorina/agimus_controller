@@ -1,4 +1,3 @@
-from __future__ import annotations
 import numpy as np
 from abc import ABC, abstractmethod
 from agimus_controller.ocp_base import OCPBase

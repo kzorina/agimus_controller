@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer="Guilhem Saurel",
     maintainer_email="guilhem.saurel@laas.fr",
-    description="Implements whole body MPC in python using the Croccodyl software.",
+    description="Implements whole body MPC in python using the Croccodyl framework.",
     license="BSD-2",
     tests_require=["pytest"],
 )

@@ -1,39 +1,63 @@
 import time
 from agimus_controller.ocp_base import OCPBase
 from agimus_controller.warm_start_base import WarmStartBase
-from agimus_controller.trajectory import TrajectoryBuffer, TrajectoryPoint
-from agimus_controller.mpc_output import MPCOutputData, MPCDebugData
+from agimus_controller.trajectory import (
+    TrajectoryPoint,
+    WeightedTrajectoryPoint,
+    TrajectoryBuffer,
+)
+from agimus_controller.mpc_data import MPCResults, MPCDebugData
 
 
 class MPC(object):
     def __init__(self) -> None:
         self._ocp = None
         self._warm_start = None
-        self._mpc_output_data = MPCOutputData()
-        self._mpc_debug_data = MPCDebugData()
+        self._mpc_results: MPCResults = None
+        self._mpc_debug_data: MPCDebugData = None
+        self._trajectory_buffer = TrajectoryBuffer()
 
     def setup(self, ocp: OCPBase, warm_start: WarmStartBase) -> None:
         self._ocp = ocp
         self._warm_start = warm_start
 
-    def run(
-        self, initial_state: TrajectoryPoint, trajectory_buffer: TrajectoryBuffer
-    ) -> MPCOutputData:
+    def run(self, initial_state: TrajectoryPoint, current_time_ns: int) -> MPCResults:
         assert self._ocp is not None
         assert self._warm_start is not None
-        timer1 = time.perf_counter()
-        reference_trajectory = trajectory_buffer.get_points(
-            self._ocp.get_horizon_size()
+        timer1 = time.perf_counter_ns()
+        self._clear_buffer_past(current_time_ns)
+        reference_trajectory = self._extract_horizon_from_buffer()
+        self._ocp.set_reference_horizon(reference_trajectory)
+        timer2 = time.perf_counter_ns()
+        x0, x_init, u_init = self._warm_start.generate(
+            initial_state, reference_trajectory
         )
-        self._ocp.update_horizon_from_reference(reference_trajectory)
-        timer2 = time.perf_counter()
-        x_init, u_init = self._warm_start.generate(reference_trajectory)
-        timer3 = time.perf_counter()
-        x0 = self._ocp.get_x_from_trajectory_point(initial_state)
+        timer3 = time.perf_counter_ns()
         self._ocp.solve(x0, x_init, u_init)
         timer4 = time.perf_counter_ns()
 
+        # Extract the solution.
+        self._mpc_results = self._ocp.mpc_results
+        self._mpc_debug_data = self._ocp.debug_data
         self._mpc_debug_data.duration_iteration = timer4 - timer1
         self._mpc_debug_data.duration_horizon_update = timer2 - timer1
         self._mpc_debug_data.duration_generate_warm_start = timer3 - timer2
         self._mpc_debug_data.duration_ocp_solve = timer4 - timer3
+
+    def add_trajectory_point(self, trajectory_point: WeightedTrajectoryPoint):
+        self._trajectory_buffer.append(trajectory_point)
+
+    def add_trajectory_points(self, trajectory_points: list[WeightedTrajectoryPoint]):
+        for trajectory_point in trajectory_points:
+            self.add_trajectory_point(trajectory_point)
+
+    def _clear_buffer_past(self, current_time_ns: int):
+        nb_point_to_remove = 0
+        for point in self._trajectory_buffer:
+            if point.point.time_ns < current_time_ns:
+                nb_point_to_remove += 1
+        for _ in range(nb_point_to_remove):
+            self._trajectory_buffer.popleft()
+
+    def _extract_horizon_from_buffer(self):
+        return self._buffer[: self._ocp.horizon_size]
