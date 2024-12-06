@@ -7,9 +7,7 @@ import pinocchio as pin
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_system_default
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from rclpy.qos_overriding_options import QoSOverridingOptions
 
 from std_msgs.msg import Header, String
 from agimus_msgs.msg import MpcInput
@@ -36,7 +34,7 @@ class AgimusController(Node):
         self.params = params
         self.traj_buffer = TrajectoryBuffer()
         self.last_point = None
-        
+
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
 
@@ -49,10 +47,7 @@ class AgimusController(Node):
             reliability=ReliabilityPolicy.RELIABLE,
         )
         self.state_subscriber = self.create_subscription(
-            Sensor,
-            "robot_sensors",
-            self.sensor_callback,
-            qos_profile=qos_profile
+            Sensor, "robot_sensors", self.sensor_callback, qos_profile=qos_profile
         )
         self.subscriber_robot_description = self.create_subscription(
             String,
@@ -67,9 +62,11 @@ class AgimusController(Node):
             qos_profile=qos_profile,
         )
 
-        self.control_publisher = self.create_publisher(Control, "motion_server_control", 10)
+        self.control_publisher = self.create_publisher(
+            Control, "motion_server_control", 10
+        )
 
-        self.ocp_solve_time_pub =self.create_publisher(Duration, "ocp_solve_time", 10)
+        self.ocp_solve_time_pub = self.create_publisher(Duration, "ocp_solve_time", 10)
 
         self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
         self.first_robot_sensor_msg_received = False
@@ -87,9 +84,7 @@ class AgimusController(Node):
             for name in self.rmodel.names
             if name not in self.moving_joint_names and name != "universe"
         ]
-        locked_joint_ids = [
-            self.rmodel.getJointId(name) for name in locked_joint_names
-        ]
+        locked_joint_ids = [self.rmodel.getJointId(name) for name in locked_joint_names]
         self.rmodel = pin.buildReducedModel(
             self.rmodel,
             list_of_geom_models=[],

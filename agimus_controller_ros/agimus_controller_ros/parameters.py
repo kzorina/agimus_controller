@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import numpy as np
-from agimus_controller.ocps.parameters import OCPParameters
 from rclpy.node import Node
 
 
