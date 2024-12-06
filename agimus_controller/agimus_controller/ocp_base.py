@@ -11,7 +11,7 @@ class OCPBase(ABC):
     @abstractmethod
     def set_reference_horizon(
         self, reference_trajectory: list[WeightedTrajectoryPoint]
-    ) -> bool:
+    ) -> None:
         ...
 
     @abstractmethod
@@ -22,7 +22,7 @@ class OCPBase(ABC):
     @abstractmethod
     def solve(
         self, x0: np.ndarray, x_init: list[np.ndarray], u_init: list[np.ndarray]
-    ) -> bool:
+    ) -> None:
         ...
 
     @abstractmethod
