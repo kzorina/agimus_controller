@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 from dataclasses import dataclass
+from agimus_controller.trajectory import TrajectoryPoint
 
 
 @dataclass
@@ -18,18 +19,8 @@ class OCPDebugData:
     problem_solved: bool = False
 
     # Debug data
-    robot_configurations: list[npt.NDArray[np.float64]]
-    robot_velocities: list[npt.NDArray[np.float64]]
-    robot_accelerations: list[npt.NDArray[np.float64]]
-    robot_efforts: list[npt.NDArray[np.float64]]
-    operational_frame_forces: list[npt.NDArray[np.float64]]
-    operational_frame_poses: list[npt.NDArray[np.float64]]
-    robot_configurations_ref: list[npt.NDArray[np.float64]]
-    robot_velocities_ref: list[npt.NDArray[np.float64]]
-    robot_accelerations_ref: list[npt.NDArray[np.float64]]
-    robot_efforts_ref: list[npt.NDArray[np.float64]]
-    operational_frame_forces_ref: list[npt.NDArray[np.float64]]
-    operational_frame_poses_ref: list[npt.NDArray[np.float64]]
+    result: list[TrajectoryPoint]
+    references: list[TrajectoryPoint]
     kkt_norms: list[np.float64]
     collision_distance_residuals: list[dict[np.float64]]
 
