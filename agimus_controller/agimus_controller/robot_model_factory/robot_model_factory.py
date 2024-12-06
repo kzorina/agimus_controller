@@ -55,55 +55,13 @@ class RobotModelFactory:
         )
 
     def _load_pinocchio_models(self, urdf: Path, free_flyer: bool) -> None:
-        verbose = False
-        assert urdf.exists() and urdf.is_file()
-        if free_flyer:
-            (
-                self._complete_model,
-                self._complete_collision_model,
-                self._complete_visual_model,
-            ) = pin.buildModelsFromUrdf(
-                filename=str(urdf),
-                root_joint=pin.JointModelFreeFlyer(),
-                verbose=verbose,
-            )
-        else:
-            (
-                self._complete_model,
-                self._complete_collision_model,
-                self._complete_visual_model,
-            ) = pin.buildModelsFromUrdf(
-                filename=str(urdf), root_joint=None, verbose=verbose
-            )
+        pass
 
     def _load_default_configuration(self, srdf_path: Path, q0_name: str) -> None:
-        if not srdf_path.is_file():
-            return
-        pin.loadReferenceConfigurations(self._complete_model, str(srdf_path), False)
-        if q0_name and q0_name in self._complete_model.referenceConfigurations:
-            self._q0 = self._complete_model.referenceConfigurations[q0_name]
-        else:
-            self._q0 = pin.neutral(self._complete_model)
+        pass
 
     def _load_reduced_model(self, locked_joint_names, q0_name) -> None:
-        locked_joint_ids = [
-            self._complete_model.getJointId(name) for name in locked_joint_names
-        ]
-        self._rmodel, geometric_models_reduced = pin.buildReducedModel(
-            self._complete_model,
-            list_of_geom_models=[
-                self._complete_collision_model,
-                self._complete_visual_model,
-            ],
-            list_of_joints_to_lock=locked_joint_ids,
-            reference_configuration=self._q0,
-        )
-        self._rcmodel, self._rvmodel = geometric_models_reduced
-
-        if q0_name and q0_name in self._rmodel.referenceConfigurations:
-            self._q0 = self._rmodel.referenceConfigurations[q0_name]
-        else:
-            self._q0 = pin.neutral(self._rmodel)
+        pass
 
     def _update_collision_model(
         self,
@@ -112,16 +70,7 @@ class RobotModelFactory:
         self_collision: bool,
         srdf: Path,
     ) -> None:
-        if collision_as_capsule:
-            self._rcmodel = self._collision_parser.transform_model_into_capsules(
-                self._rcmodel
-            )
-        if self_collision and srdf.exists():
-            self._rcmodel = self._collision_parser.add_self_collision(
-                self._rmodel, self._rcmodel, srdf
-            )
-        if env is not None:
-            self._rcmodel = self._collision_parser.add_collisions(self._rcmodel, env)
+        pass
 
     def create_complete_robot_model(self) -> pin.Model:
         return self._complete_model.copy()
