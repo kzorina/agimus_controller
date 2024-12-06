@@ -5,7 +5,7 @@ from agimus_controller.trajectory import TrajectoryPoint
 
 
 @dataclass
-class MPCResults:
+class OCPResults:
     """Output data structure of the MPC."""
 
     states: list[npt.NDArray[np.float64]]

@@ -1,7 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from agimus_controller.trajectory import WeightedTrajectoryPoint
-from agimus_controller.mpc_data import MPCResults, OCPDebugData
+from agimus_controller.mpc_data import OCPResults, OCPDebugData
 
 
 class OCPBase(ABC):
@@ -27,7 +27,7 @@ class OCPBase(ABC):
 
     @abstractmethod
     @property
-    def mpc_results(self) -> MPCResults:
+    def ocp_results(self) -> OCPResults:
         ...
 
     @abstractmethod
