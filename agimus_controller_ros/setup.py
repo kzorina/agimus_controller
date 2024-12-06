@@ -20,6 +20,7 @@ setup(
     entry_points={
         "console_scripts": [
             "mpc_input_dummy_publisher = agimus_controller_ros.mpc_input_dummy_publisher:main",
+            "test_buffer = agimus_controller_ros.test_buffer_node:main",
         ],
     },
 )
