@@ -36,7 +36,7 @@ class MpcInputDummyPublisher(Node):
             self.robot_description_callback,
             qos_profile=qos_profile,
         )
-        self.publisher_ = self.create_publisher(MpcInput, "mpc_input", 10)
+        self.publisher_ = self.create_publisher(MpcInput, "mpc_input", qos_profile)
         self.timer = self.create_timer(0.05, self.publish_mpc_input)  # Publish at 20 Hz
         self.get_logger().info("MPC Dummy Input Publisher Node started.")
 
