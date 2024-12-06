@@ -7,13 +7,13 @@ import pinocchio as pin
 
 import rclpy
 from rclpy.node import Node
-from rclpy.time import Time
-from rclpy.duration import Duration
 from rclpy.qos import qos_profile_system_default
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.qos_overriding_options import QoSOverridingOptions
 
 from std_msgs.msg import Header, String
+from agimus_msgs.msg import MpcInput
+from builtin_interfaces.msg import Duration
 
 from linear_feedback_controller_msgs.msg import Control, Sensor
 from linear_feedback_controller_msgs_py.numpy_conversions import matrix_numpy_to_msg
@@ -35,50 +35,43 @@ class AgimusController(Node):
         super().__init__(node_name)
         self.params = params
         self.traj_buffer = TrajectoryBuffer()
-        self.rdata = self.rmodel.createData()
-        self.effector_frame_id = self.rmodel.getFrameId(
-            self.params.ocp.effector_frame_name
-        )
-        self.nq = self.rmodel.nq
-        self.nv = self.rmodel.nv
-        self.nx = self.nq + self.nv
-
         self.last_point = None
+        
+        self.initialize_ros_attributes()
+        self.get_logger().info("Init done")
 
     def initialize_ros_attributes(self):
         self.sensor_msg = Sensor()
         self.control_msg = Control()
-        self.state_subscriber = rclpy.Subscriber(
-            "robot_sensors", Sensor, self.sensor_callback
+        qos_profile = QoSProfile(
+            depth=1,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE,
         )
-        self.control_publisher = rclpy.Publisher(
-            "motion_server_control",
-            Control,
-            qos_profile=qos_profile_system_default,
-            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-        )
-        self.ocp_solve_time_pub = rclpy.Publisher(
-            "ocp_solve_time",
-            Duration,
-            qos_profile=qos_profile_system_default,
-            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-        )
-        self.ocp_x0_pub = rclpy.Publisher(
-            "ocp_x0",
+        self.state_subscriber = self.create_subscription(
             Sensor,
-            qos_profile=qos_profile_system_default,
-            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+            "robot_sensors",
+            self.sensor_callback,
+            qos_profile=qos_profile
         )
-        self.subscriber_robot_description_ = self.create_subscription(
+        self.subscriber_robot_description = self.create_subscription(
             String,
             "/robot_description",
             self.robot_description_callback,
-            qos_profile=QoSProfile(
-                depth=1,
-                durability=DurabilityPolicy.TRANSIENT_LOCAL,
-                reliability=ReliabilityPolicy.RELIABLE,
-            ),
+            qos_profile=qos_profile,
         )
+        self.subscriber_mpc_input = self.create_subscription(
+            MpcInput,
+            "mpc_input",
+            self.trajectory_callback,
+            qos_profile=qos_profile,
+        )
+
+        self.control_publisher = self.create_publisher(Control, "motion_server_control", 10)
+
+        self.ocp_solve_time_pub =self.create_publisher(Duration, "ocp_solve_time", 10)
+
+        self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
         self.first_robot_sensor_msg_received = False
         self.first_pose_ref_msg_received = True
 
@@ -88,22 +81,28 @@ class AgimusController(Node):
             self.first_robot_sensor_msg_received = True
 
     def robot_description_callback(self, msg: String):
-        pin_model_complete = pin.buildModelFromXML(msg.data)
+        self.rmodel = pin.buildModelFromXML(msg.data)
         locked_joint_names = [
             name
-            for name in pin_model_complete.names
+            for name in self.rmodel.names
             if name not in self.moving_joint_names and name != "universe"
         ]
         locked_joint_ids = [
-            pin_model_complete.getJointId(name) for name in locked_joint_names
+            self.rmodel.getJointId(name) for name in locked_joint_names
         ]
         self.rmodel = pin.buildReducedModel(
-            pin_model_complete,
+            self.rmodel,
             list_of_geom_models=[],
             list_of_joints_to_lock=locked_joint_ids,
-            reference_configuration=np.zeros(pin_model_complete.nq),
+            reference_configuration=np.zeros(self.rmodel.nq),
         )[0]
         self.rdata = self.rmodel.createData()
+        self.effector_frame_id = self.rmodel.getFrameId(
+            self.params.ocp.effector_frame_name
+        )
+        self.nq = self.rmodel.nq
+        self.nv = self.rmodel.nv
+        self.nx = self.nq + self.nv
         self.get_logger().info("robot_description_callback")
         self.get_logger().info(f"pin_model.nq {self.rmodel.nq}")
 
@@ -226,7 +225,7 @@ class AgimusController(Node):
         self.ocp_x0_pub.publish(sensor_msg)
         self.rate.sleep()
         atexit.register(self.exit_handler)
-        self.create_timer(self.params.ocp.dt, self.timer_callback)
+        self.create_timer(self.params.ocp.dt, self.run_callback)
 
     def run_callback(self, *args):
         start_compute_time = time.time()
@@ -242,7 +241,7 @@ def main(args=None):
     rclpy.init(args=args)
     params = AgimusControllerNodeParameters()
     params.set_parameters_from_ros()
-    node = AgimusController()
+    node = AgimusController(params)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

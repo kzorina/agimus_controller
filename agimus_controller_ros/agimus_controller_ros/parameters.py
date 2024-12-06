@@ -51,77 +51,72 @@ class OCPParametersROS(Node):
         return params
 
     def set_parameters_from_ros(self):
-        self.declare_parameter("dt", 0.01)
+        self.declare_parameter("ocp/dt", 0.01)
         self.dt = self.get_parameter("ocp/dt").get_parameter_value().double_value
-        self.declare_parameter("horizon_size", 20)
+        self.declare_parameter("ocp/horizon_size", 20)
         self.horizon_size = (
             self.get_parameter("ocp/horizon_size").get_parameter_value().double_value
         )
-        self.declare_parameter("armature", [])
+        self.declare_parameter("ocp/armature", [])
         self.armature = (
             self.get_parameter("ocp/armature").get_parameter_value().double_array_value
         )
-        self.declare_parameter("armature", [])
-        self.declare_parameter("horizon_size", 20)
-        self.horizon_size = (
-            self.get_parameter("ocp/horizon_size").get_parameter_value().integer_value
-        )
 
-        self.declare_parameter("gripper_weight", 0.0)
+        self.declare_parameter("ocp/gripper_weight", 0.0)
         self.gripper_weight = (
             self.get_parameter("ocp/gripper_weight").get_parameter_value().double_value
         )
 
-        self.declare_parameter("state_weight", 0.0)
+        self.declare_parameter("ocp/state_weight", 0.0)
         self.state_weight = (
             self.get_parameter("ocp/state_weight").get_parameter_value().double_value
         )
 
-        self.declare_parameter("control_weight", 0.0)
+        self.declare_parameter("ocp/control_weight", 0.0)
         self.control_weight = (
             self.get_parameter("ocp/control_weight").get_parameter_value().double_value
         )
 
-        self.declare_parameter("max_iter", 0)
+        self.declare_parameter("ocp/max_iter", 0)
         self.max_iter = (
             self.get_parameter("ocp/max_iter").get_parameter_value().integer_value
         )
 
-        self.declare_parameter("max_qp_iter", 0)
+        self.declare_parameter("ocp/max_qp_iter", 0)
         self.max_qp_iter = (
             self.get_parameter("ocp/max_qp_iter").get_parameter_value().integer_value
         )
 
-        self.declare_parameter("use_constraints", False)
+        self.declare_parameter("ocp/use_constraints", False)
         self.use_constraints = (
             self.get_parameter("ocp/use_constraints").get_parameter_value().bool_value
         )
 
-        self.declare_parameter("effector_frame_name", "")
+        self.declare_parameter("ocp/effector_frame_name", "")
         self.effector_frame_name = (
             self.get_parameter("ocp/effector_frame_name")
             .get_parameter_value()
             .string_value
         )
-        self.declare_parameter("activate_callback", False)
+        self.declare_parameter("ocp/activate_callback", False)
         self.activate_callback = (
             self.get_parameter("ocp/activate_callback").get_parameter_value().bool_value
         )
         self.increasing_weights = {}
-        self.declare_parameter("increasing_weights/max", 0.0)
+        self.declare_parameter("ocp/increasing_weights/max", 0.0)
         self.increasing_weights["max"] = (
             self.get_parameter("ocp/increasing_weights/max")
             .get_parameter_value()
             .double_value
         )
-        self.declare_parameter("increasing_weights/percent", 0.0)
+        self.declare_parameter("ocp/increasing_weights/percent", 0.0)
 
         self.increasing_weights["percent"] = (
             self.get_parameter("ocp/increasing_weights/percent")
             .get_parameter_value()
             .double_value
         )
-        self.declare_parameter("increasing_weights/time_reach_percent", 0.0)
+        self.declare_parameter("ocp/increasing_weights/time_reach_percent", 0.0)
         self.increasing_weights["time_reach_percent"] = (
             self.get_parameter("ocp/increasing_weights/time_reach_percent")
             .get_parameter_value()
@@ -141,7 +136,7 @@ class AgimusControllerNodeParameters(Node):
         self.use_ros_params = None
 
     def set_parameters_from_ros(self):
-        self.declare_parameter("save_predictions_and_refs", "")
+        self.declare_parameter("save_predictions_and_refs", False)
         self.save_predictions_and_refs = (
             self.get_parameter("save_predictions_and_refs")
             .get_parameter_value()
