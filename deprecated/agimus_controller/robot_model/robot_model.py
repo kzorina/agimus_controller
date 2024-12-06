@@ -23,7 +23,7 @@ class RobotModelParameters:
     self_collision = False
 
 
-class RobotModelFactory:
+class RobotModel:
     """Complete model of the robot."""
 
     _model = pin.Model()
