@@ -16,12 +16,17 @@ from builtin_interfaces.msg import Duration
 from linear_feedback_controller_msgs.msg import Control, Sensor
 from linear_feedback_controller_msgs_py.numpy_conversions import matrix_numpy_to_msg
 
-from agimus_controller.trajectory_buffer import TrajectoryBuffer
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 from agimus_controller_ros.sim_utils import convert_float_to_ros_duration_msg
 from agimus_controller_ros.parameters import AgimusControllerNodeParameters
+from agimus_controller.trajectory import (
+    TrajectoryBuffer,
+    TrajectoryPoint,
+    TrajectoryPointWeights,
+    WeightedTrajectoryPoint
+)
 
 
 class AgimusController(Node):
@@ -57,8 +62,8 @@ class AgimusController(Node):
         )
         self.subscriber_mpc_input = self.create_subscription(
             MpcInput,
-            "mpc_input",
-            self.trajectory_callback,
+            "/mpc_input",
+            self.mpc_input_callback,
             qos_profile=qos_profile,
         )
 
@@ -76,6 +81,39 @@ class AgimusController(Node):
         self.sensor_msg = deepcopy(sensor_msg)
         if not self.first_robot_sensor_msg_received:
             self.first_robot_sensor_msg_received = True
+
+    def mpc_input_callback(self, msg: MpcInput):
+        xyz_quat = np.array([
+            msg.pose.position.x,
+            msg.pose.position.y,
+            msg.pose.position.z,
+            msg.pose.orientation.x,
+            msg.pose.orientation.y,
+            msg.pose.orientation.z,
+            msg.pose.orientation.w,
+        ])
+        traj_point = TrajectoryPoint(
+            robot_configuration=msg.q,
+            robot_velocity=msg.qdot,
+            robot_acceleration=msg.qddot,
+            end_effector_poses={
+                msg.ee_frame_name: pin.XYZQUATToSE3(xyz_quat)
+            }
+        )
+
+        traj_weights = TrajectoryPointWeights(
+            w_robot_configuration=msg.q_w,
+            w_robot_velocity=msg.qdot_w,
+            w_robot_acceleration=msg.qddot_w,
+            w_end_effector_poses=msg.pose_w
+        )
+
+        w_traj_point = WeightedTrajectoryPoint(
+            point=traj_point,
+            weights=traj_weights
+        )
+
+        self.traj_buffer.append(w_traj_point)
 
     def robot_description_callback(self, msg: String):
         self.rmodel = pin.buildModelFromXML(msg.data)
@@ -116,33 +154,23 @@ class AgimusController(Node):
 
     def wait_buffer_has_twice_horizon_points(self):
         while (
-            self.traj_buffer.get_size(self.point_attributes)
-            < 2 * self.params.ocp.horizon_size
+            len(self.traj_buffer) < 2 * self.params.ocp.horizon_size
         ):
-            self.fill_buffer()
+            pass
 
-    def get_next_trajectory_point(self):
-        raise RuntimeError("Not implemented")
-
-    def fill_buffer(self):
-        point = self.get_next_trajectory_point()
-        if point is not None:
-            self.traj_buffer.add_trajectory_point(point)
-        while point is not None:
-            point = self.get_next_trajectory_point()
-            if point is not None:
-                self.traj_buffer.add_trajectory_point(point)
 
     def first_solve(self, x0):
+
         # retrieve horizon state and acc references
-        horizon_points = self.traj_buffer.get_points(
-            self.params.ocp.horizon_size, self.point_attributes
-        )
         x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
         a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
-        for idx_point, point in enumerate(horizon_points):
-            x_plan[idx_point, :] = point.get_x_as_q_v()
-            a_plan[idx_point, :] = point.a
+        for idx_point in enumerate(self.params.ocp.horizon_size):
+            traj_point = self.traj_buffer.popleft()
+            x_plan[idx_point, :] = np.concatenate([
+                traj_point.robot_configuration,
+                traj_point.robot_velocity
+            ])
+            a_plan[idx_point, :] = traj_point.robot_acceleration
 
         # First solve
         self.ocp = OCPCrocoHPP(self.rmodel, self.cmodel, self.params.ocp)
@@ -159,14 +187,20 @@ class AgimusController(Node):
     def solve(self, x0):
         self.target_translation_object_to_effector = None
         self.fill_buffer()
-        if self.traj_buffer.get_size(self.point_attributes) > 0:
-            point = self.traj_buffer.get_points(1, self.point_attributes)[0]
-            self.last_point = point
-            new_x_ref = point.get_x_as_q_v()
+        if len(self.traj_buffer) > 0:
+            traj_point = self.traj_buffer.popleft()
+            self.last_point = traj_point
+            new_x_ref = np.concatenate([
+                traj_point.robot_configuration,
+                traj_point.robot_velocity
+            ])
         else:
-            point = self.last_point
-            new_x_ref = point.get_x_as_q_v()
-        new_a_ref = point.a
+            traj_point = self.last_point
+            new_x_ref = np.concatenate([
+                traj_point.robot_configuration,
+                traj_point.robot_velocity
+            ])
+        new_a_ref = traj_point.robot_acceleration
         self.in_world_M_effector = get_ee_pose_from_configuration(
             self.rmodel,
             self.rdata,
