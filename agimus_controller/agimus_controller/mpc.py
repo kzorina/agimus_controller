@@ -39,10 +39,10 @@ class MPC(object):
         # Extract the solution.
         self._mpc_results = self._ocp.mpc_results
         self._mpc_debug_data = self._ocp.debug_data
-        self._mpc_debug_data.duration_iteration = timer4 - timer1
-        self._mpc_debug_data.duration_horizon_update = timer2 - timer1
-        self._mpc_debug_data.duration_generate_warm_start = timer3 - timer2
-        self._mpc_debug_data.duration_ocp_solve = timer4 - timer3
+        self._mpc_debug_data.duration_iteration_ns = timer4 - timer1
+        self._mpc_debug_data.duration_horizon_update_ns = timer2 - timer1
+        self._mpc_debug_data.duration_generate_warm_start_ns = timer3 - timer2
+        self._mpc_debug_data.duration_ocp_solve_ns = timer4 - timer3
 
     def add_trajectory_point(self, trajectory_point: WeightedTrajectoryPoint):
         self._buffer.append(trajectory_point)
