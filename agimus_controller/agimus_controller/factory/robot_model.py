@@ -4,9 +4,6 @@ from copy import deepcopy
 import pinocchio as pin
 import numpy as np
 from pathlib import Path
-from agimus_controller.robot_model_factory.obstacle_params_parser import (
-    ObstacleParamsParser,
-)
 
 
 @dataclass
@@ -37,9 +34,7 @@ class RobotModelFactory:
     _rvmodel = pin.GeometryModel()
     """ Default configuration q0. """
     _q0 = np.array([])
-    """ Obstacle and collision meshes handler. """
-    _collision_parser = ObstacleParamsParser()
-    """ Paramters of the model. """
+    """ Parameters of the model. """
     _params = RobotModelParameters()
     """ Path to the collisions environment. """
     _env = Path()
