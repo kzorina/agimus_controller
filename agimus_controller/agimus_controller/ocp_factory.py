@@ -1,16 +1,24 @@
 from agimus_controller.ocp_base import OCPBase
 
 
-class OCPFactory(object):
-    def __init__(self) -> None:
-        pass
+def _create_ocp_hpp_crocco() -> OCPBase:
+    pass
 
-    def create_ocp(self, name: str) -> OCPBase:
-        if name == "hpp_crocco":
-            return None
 
-        if name == "collision_avoidance":
-            return None
+def _create_ocp_collision_avoidance() -> OCPBase:
+    pass
 
-        if name == "single_ee_ref":
-            return None
+
+def _create_ocp_single_ee_ref() -> OCPBase:
+    pass
+
+
+def create_ocp(name: str) -> OCPBase:
+    if name == "hpp_crocco":
+        return _create_ocp_hpp_crocco()
+
+    if name == "collision_avoidance":
+        return _create_ocp_collision_avoidance()
+
+    if name == "single_ee_ref":
+        return _create_ocp_single_ee_ref()
