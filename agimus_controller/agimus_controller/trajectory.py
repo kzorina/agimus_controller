@@ -39,3 +39,7 @@ class WeightedTrajectoryPoint:
 
 class TrajectoryBuffer(deque):
     """List of variable size in which the HPP trajectory nodes will be."""
+
+    def clear_past(self, current_time_ns):
+        while self and self[0].point.time_ns < current_time_ns:
+            self.popleft()

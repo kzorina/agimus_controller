@@ -15,7 +15,7 @@ class MPC(object):
         self._warm_start = None
         self._mpc_results: MPCResults = None
         self._mpc_debug_data: MPCDebugData = None
-        self._trajectory_buffer = TrajectoryBuffer()
+        self._buffer = TrajectoryBuffer()
 
     def setup(self, ocp: OCPBase, warm_start: WarmStartBase) -> None:
         self._ocp = ocp
@@ -45,19 +45,14 @@ class MPC(object):
         self._mpc_debug_data.duration_ocp_solve = timer4 - timer3
 
     def add_trajectory_point(self, trajectory_point: WeightedTrajectoryPoint):
-        self._trajectory_buffer.append(trajectory_point)
+        self._buffer.append(trajectory_point)
 
     def add_trajectory_points(self, trajectory_points: list[WeightedTrajectoryPoint]):
         for trajectory_point in trajectory_points:
             self.add_trajectory_point(trajectory_point)
 
     def _clear_buffer_past(self, current_time_ns: int):
-        nb_point_to_remove = 0
-        for point in self._trajectory_buffer:
-            if point.point.time_ns < current_time_ns:
-                nb_point_to_remove += 1
-        for _ in range(nb_point_to_remove):
-            self._trajectory_buffer.popleft()
+        self._buffer.clear_past(current_time_ns)
 
     def _extract_horizon_from_buffer(self):
         return self._buffer[: self._ocp.horizon_size]
