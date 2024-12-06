@@ -48,8 +48,7 @@ class MPC(object):
         self._buffer.append(trajectory_point)
 
     def add_trajectory_points(self, trajectory_points: list[WeightedTrajectoryPoint]):
-        for trajectory_point in trajectory_points:
-            self.add_trajectory_point(trajectory_point)
+        self._buffer.extend(trajectory_points)
 
     def _clear_buffer_past(self, current_time_ns: int):
         self._buffer.clear_past(current_time_ns)
