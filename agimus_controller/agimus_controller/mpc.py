@@ -15,11 +15,17 @@ class MPC(object):
         self._ocp = None
         self._warm_start = None
         self._mpc_debug_data: MPCDebugData = None
-        self._buffer = TrajectoryBuffer()
+        self._buffer = None
 
-    def setup(self, ocp: OCPBase, warm_start: WarmStartBase) -> None:
+    def setup(
+        self,
+        ocp: OCPBase,
+        warm_start: WarmStartBase,
+        buffer: TrajectoryBuffer = TrajectoryBuffer(),
+    ) -> None:
         self._ocp = ocp
         self._warm_start = warm_start
+        self._buffer = buffer
 
     def run(self, initial_state: TrajectoryPoint, current_time_ns: int) -> OCPResults:
         assert self._ocp is not None
