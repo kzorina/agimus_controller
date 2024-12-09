@@ -56,10 +56,12 @@ class MPC(object):
     def mpc_debug_data(self) -> MPCDebugData:
         return self._mpc_debug_data
 
-    def add_trajectory_point(self, trajectory_point: WeightedTrajectoryPoint):
+    def append_trajectory_point(self, trajectory_point: WeightedTrajectoryPoint):
         self._buffer.append(trajectory_point)
 
-    def add_trajectory_points(self, trajectory_points: list[WeightedTrajectoryPoint]):
+    def append_trajectory_points(
+        self, trajectory_points: list[WeightedTrajectoryPoint]
+    ):
         self._buffer.extend(trajectory_points)
 
     def _extract_horizon_from_buffer(self):
