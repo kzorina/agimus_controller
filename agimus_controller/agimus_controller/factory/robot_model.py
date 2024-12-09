@@ -1,9 +1,9 @@
-from typing import Union
-from dataclasses import dataclass
 from copy import deepcopy
-import pinocchio as pin
+from dataclasses import dataclass
 import numpy as np
 from pathlib import Path
+import pinocchio as pin
+from typing import Union
 
 
 @dataclass

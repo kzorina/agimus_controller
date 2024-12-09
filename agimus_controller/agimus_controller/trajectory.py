@@ -1,6 +1,6 @@
-import numpy as np
 from collections import deque
 from dataclasses import dataclass
+import numpy as np
 from pinocchio import SE3, Force
 
 
@@ -43,3 +43,7 @@ class TrajectoryBuffer(deque):
     def clear_past(self, current_time_ns):
         while self and self[0].point.time_ns < current_time_ns:
             self.popleft()
+
+    def horizon(self, horizon_size, dt_ocp):
+        # TBD improve this implementation in case the dt_mpc != dt_ocp
+        return self._buffer[: self._ocp.horizon_size]

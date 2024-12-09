@@ -1,7 +1,8 @@
-import numpy as np
 from abc import ABC, abstractmethod
-from agimus_controller.trajectory import WeightedTrajectoryPoint
+import numpy as np
+
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
+from agimus_controller.trajectory import WeightedTrajectoryPoint
 
 
 class OCPBase(ABC):
@@ -17,6 +18,11 @@ class OCPBase(ABC):
     @abstractmethod
     @property
     def horizon_size() -> int:
+        ...
+
+    @abstractmethod
+    @property
+    def dt() -> int:
         ...
 
     @abstractmethod

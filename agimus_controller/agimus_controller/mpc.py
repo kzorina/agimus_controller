@@ -1,12 +1,13 @@
 import time
+
+from agimus_controller.mpc_data import OCPResults, MPCDebugData
 from agimus_controller.ocp_base import OCPBase
-from agimus_controller.warm_start_base import WarmStartBase
 from agimus_controller.trajectory import (
+    TrajectoryBuffer,
     TrajectoryPoint,
     WeightedTrajectoryPoint,
-    TrajectoryBuffer,
 )
-from agimus_controller.mpc_data import OCPResults, MPCDebugData
+from agimus_controller.warm_start_base import WarmStartBase
 
 
 class MPC(object):
@@ -55,4 +56,4 @@ class MPC(object):
         self._buffer.extend(trajectory_points)
 
     def _extract_horizon_from_buffer(self):
-        return self._buffer[: self._ocp.horizon_size]
+        return self._buffer.horizon(self._ocp.horizon_size, self._ocp.dt)

@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
-from dataclasses import dataclass
+
 from agimus_controller.trajectory import TrajectoryPoint
 
 

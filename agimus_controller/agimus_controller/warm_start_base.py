@@ -1,6 +1,6 @@
-import numpy as np
 from abc import ABC, abstractmethod
-from agimus_controller.ocp_base import OCPBase
+import numpy as np
+
 from agimus_controller.trajectory import TrajectoryPoint
 
 
