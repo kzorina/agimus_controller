@@ -29,7 +29,7 @@ class OCPDebugData:
 class MPCDebugData:
     ocp: OCPDebugData
     # Timers
-    duration_iteration_ns: int = 0.0
-    duration_horizon_update_ns: int = 0.0
-    duration_generate_warm_start_ns: int = 0.0
-    duration_ocp_solve_ns: int = 0.0
+    duration_iteration_ns: int = 0
+    duration_horizon_update_ns: int = 0
+    duration_generate_warm_start_ns: int = 0
+    duration_ocp_solve_ns: int = 0
