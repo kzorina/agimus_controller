@@ -27,9 +27,34 @@ class WarmStartReference(WarmStartBase):
         list[npt.NDArray[np.float64]],
     ]:
         """
-        Fills the warmstart from the reference
-        Assumes that state `x` is [q, v] and
-        control `u` is initialized to zeros of same shape as v
+        Generate initial values for a warm-start of the optimization problem.
+
+        This method uses the provided initial state and reference trajectory to compute:
+        - `x0`: The initial state vector `[q, v]`, where:
+            - `q` is the robot's joint configuration.
+            - `v` is the robot's joint velocity.
+        - `init_xs`: A list of state vectors `[q, v]` constructed from the reference trajectory.
+        - `init_us`: A list of control inputs computed using inverse dynamics (RNEA) 
+            based on the reference trajectory.
+
+        Assumes:
+            - The state `x` is represented as `[q, v]`.
+            - `reference_trajectory` contains `TrajectoryPoint` objects with:
+                - `robot_configuration` (`q`).
+                - `robot_velocity` (`v`).
+
+        Args:
+            initial_state (TrajectoryPoint): The initial state of the robot, 
+                containing `robot_configuration` and `robot_velocity`.
+            reference_trajectory (list[TrajectoryPoint]): A list of `TrajectoryPoint` objects
+                representing the reference trajectory.
+
+        Returns:
+            tuple:
+                - x0 (npt.NDArray[np.float64]): The initial state vector `[q, v]`.
+                - init_xs (list[npt.NDArray[np.float64]]): List of state vectors `[q, v]` 
+                for each point in the reference trajectory.
+                - init_us (list[npt.NDArray[np.float64]]): List of control inputs computed using RNEA.
         """
         assert self._rmodel is not None
         x0 = np.concatenate(
