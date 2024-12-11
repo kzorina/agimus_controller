@@ -23,7 +23,7 @@ class WarmStartBase(ABC):
     ]:
         """
         Generate initial values for a warm-start of the optimization problem.
-        
+
         Args:
             initial_state (TrajectoryPoint): The initial state of the robot,
                 containing `robot_configuration` and `robot_velocity`.
