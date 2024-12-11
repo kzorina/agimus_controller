@@ -22,12 +22,12 @@ class TrajectoryPoint:
 class TrajectoryPointWeights:
     """Trajectory point weights aiming at being set in the MPC costs."""
 
-    w_robot_configuration: npt.NDArray[np.float64] = None
-    w_robot_velocity: npt.NDArray[np.float64] = None
-    w_robot_acceleration: npt.NDArray[np.float64] = None
-    w_robot_effort: npt.NDArray[np.float64] = None
-    w_forces: dict[npt.NDArray[np.float64]] = None
-    w_end_effector_poses: dict[npt.NDArray[np.float64]] = None
+    w_robot_configuration: npt.NDArray[np.float64] | None = None
+    w_robot_velocity: npt.NDArray[np.float64] | None = None
+    w_robot_acceleration: npt.NDArray[np.float64] | None = None
+    w_robot_effort: npt.NDArray[np.float64] | None = None
+    w_forces: dict[npt.NDArray[np.float64]] | None = None
+    w_end_effector_poses: dict[npt.NDArray[np.float64]] | None = None
 
 
 @dataclass
