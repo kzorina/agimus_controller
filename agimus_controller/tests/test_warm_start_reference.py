@@ -21,11 +21,14 @@ class TestWarmStart(unittest.TestCase):
             for q, v in zip(random_qs, random_vs)
         ]
         # Create the expected stacked array
-        expected_x_init = np.hstack((random_qs, random_vs))
+        expected_x0 = np.hstack((random_qs[0], random_vs[0]))
+        expected_x_init = np.hstack((random_qs[1:], random_vs[1:]))
         expected_u_init = np.zeros_like(random_vs)
 
         # Act
-        x_init, u_init = ws.generate(reference_trajectory)
+        x0, x_init, u_init = ws.generate(reference_trajectory)
+        x_init = np.array(x_init)
+        u_init = np.array(u_init)
 
         # Assert
         # Check shapes
@@ -33,6 +36,7 @@ class TestWarmStart(unittest.TestCase):
         self.assertEqual(u_init.shape, expected_u_init.shape)
 
         # Check values (assuming `generate` would use these random inputs)
+        np.testing.assert_array_equal(x0, expected_x0)
         np.testing.assert_array_equal(x_init, expected_x_init)
         np.testing.assert_array_equal(u_init, expected_u_init)
 

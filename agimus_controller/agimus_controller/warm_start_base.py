@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 import numpy as np
+import numpy.typing as npt
 
 from agimus_controller.trajectory import TrajectoryPoint
 
@@ -15,8 +16,10 @@ class WarmStartBase(ABC):
     def generate(
         self,
         reference_trajectory: list[TrajectoryPoint],
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Returns x_init, u_init."""
+    ) -> Tuple[npt.NDArray[np.float64], 
+               list[npt.NDArray[np.float64]], 
+               list[npt.NDArray[np.float64]]]:
+        """Returns x0, x_init, u_init."""
         ...
 
     def update_previous_solution(
