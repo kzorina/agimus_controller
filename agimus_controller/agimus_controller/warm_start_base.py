@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +15,7 @@ class WarmStartBase(ABC):
     def generate(
         self,
         reference_trajectory: list[TrajectoryPoint],
-    ) -> Tuple[
+    ) -> tuple[
         npt.NDArray[np.float64],
         list[npt.NDArray[np.float64]],
         list[npt.NDArray[np.float64]],

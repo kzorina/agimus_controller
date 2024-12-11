@@ -1,6 +1,7 @@
 from collections import deque
 from dataclasses import dataclass
 import numpy as np
+import numpy.typing as npt
 from pinocchio import SE3, Force
 
 
@@ -25,8 +26,8 @@ class TrajectoryPointWeights:
     w_robot_velocity: npt.NDArray[np.float64] = None
     w_robot_acceleration: npt.NDArray[np.float64] = None
     w_robot_effort: npt.NDArray[np.float64] = None
-    w_forces: Dict[npt.NDArray[np.float64]] = None
-    w_end_effector_poses: Dict[npt.NDArray[np.float64]] = None
+    w_forces: dict[npt.NDArray[np.float64]] = None
+    w_end_effector_poses: dict[npt.NDArray[np.float64]] = None
 
 
 @dataclass
