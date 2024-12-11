@@ -16,9 +16,11 @@ class WarmStartBase(ABC):
     def generate(
         self,
         reference_trajectory: list[TrajectoryPoint],
-    ) -> Tuple[npt.NDArray[np.float64], 
-               list[npt.NDArray[np.float64]], 
-               list[npt.NDArray[np.float64]]]:
+    ) -> Tuple[
+        npt.NDArray[np.float64],
+        list[npt.NDArray[np.float64]],
+        list[npt.NDArray[np.float64]],
+    ]:
         """Returns x0, x_init, u_init."""
         ...
 

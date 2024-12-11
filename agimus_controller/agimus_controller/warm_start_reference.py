@@ -10,9 +10,11 @@ from agimus_controller.trajectory import TrajectoryPoint
 class WarmStartReference(WarmStartBase):
     def generate(
         self, reference_trajectory: list[TrajectoryPoint]
-    ) -> Tuple[npt.NDArray[np.float64], 
-               list[npt.NDArray[np.float64]], 
-               list[npt.NDArray[np.float64]]]:
+    ) -> Tuple[
+        npt.NDArray[np.float64],
+        list[npt.NDArray[np.float64]],
+        list[npt.NDArray[np.float64]],
+    ]:
         """
         Fills the warmstart from the reference
         Assumes that state `x` is [q, v] and
