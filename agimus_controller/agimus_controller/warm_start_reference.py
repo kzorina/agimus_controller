@@ -28,27 +28,14 @@ class WarmStartReference(WarmStartBase):
     ]:
         """
         Generate initial values for a warm-start of the optimization problem.
-
-        This method uses the provided initial state and reference trajectory to compute:
-        - `x0`: The initial state vector `[q, v]`, where:
+        The state vector is `[q, v]`, where:
             - `q` is the robot's joint configuration.
             - `v` is the robot's joint velocity.
         - `init_xs`: A list of state vectors `[q, v]` constructed from the reference trajectory.
         - `init_us`: A list of control inputs computed using inverse dynamics (RNEA)
             based on the reference trajectory.
 
-        Args:
-            initial_state (TrajectoryPoint): The initial state of the robot,
-                containing `robot_configuration` and `robot_velocity`.
-            reference_trajectory (list[TrajectoryPoint]): A list of `TrajectoryPoint` objects
-                representing the reference trajectory.
-
-        Returns:
-            tuple:
-                - x0 (npt.NDArray[np.float64]): The initial state vector `[q, v]`.
-                - init_xs (list[npt.NDArray[np.float64]]): List of state vectors `[q, v]`
-                for each point in the reference trajectory.
-                - init_us (list[npt.NDArray[np.float64]]): List of control inputs computed using RNEA.
+        For more details, see base class.
         """
         # Ensure the robot model (_rmodel) is initialized before proceeding
         assert self._rmodel is not None
