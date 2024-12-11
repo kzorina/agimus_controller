@@ -14,8 +14,8 @@ setup(
     zip_safe=True,
     maintainer="Guilhem Saurel",
     maintainer_email="guilhem.saurel@laas.fr",
-    description="TODO: Package description",
-    license="Apache-2.0",
+    description="Set of Examples using Agimus_controller package",
+    license="BSD",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [],

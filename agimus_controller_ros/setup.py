@@ -26,7 +26,7 @@ setup(
             get_files(project_source_dir / "launch", "*.launch.py"),
         ),
     ],
-    maintainer="gepetto",
+    maintainer="Guilhem Saurel",
     maintainer_email="gsaurel@laas.fr",
     description="ROS2 agimus_controller package",
     license="BSD",
