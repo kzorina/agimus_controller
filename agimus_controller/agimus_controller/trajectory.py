@@ -2,20 +2,23 @@ import numpy as np
 from collections import deque
 from dataclasses import dataclass
 from geometry_msgs.msg import Pose
-from pinocchio import SE3, Force, XYZQUATToSE3
+from pinocchio import SE3, Force
 
 
 def ros_pose_to_array(pose: Pose):
     """Convert geometry_msgs.msg.Pose to a 7d numpy array"""
-    return np.array([
-        pose.position.x,
-        pose.position.y,
-        pose.position.z,
-        pose.orientation.x,
-        pose.orientation.y,
-        pose.orientation.z,
-        pose.orientation.w,
-    ])
+    return np.array(
+        [
+            pose.position.x,
+            pose.position.y,
+            pose.position.z,
+            pose.orientation.x,
+            pose.orientation.y,
+            pose.orientation.z,
+            pose.orientation.w,
+        ]
+    )
+
 
 @dataclass
 class TrajectoryPoint:

@@ -15,7 +15,7 @@ class MpcInputDummyPublisher(Node):
         self.pin_model = None
         self.pin_data = None
         self.ee_frame_id = None
-        self.ee_frame_name = "fer_link8"
+        self.ee_frame_name = "fer_joint7"
         # Zero pose from which the motion will start
         self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78])
         self.q = self.q0.copy()

@@ -1,11 +1,11 @@
-from rclpy.duration import Duration
+from builtin_interfaces.msg import Duration
 import numpy as np
 
 
-def convert_float_to_ros_duration_msg(time):
+def convert_float_to_ros_duration_msg(time: float):
     ros_duration = Duration()
-    ros_duration.data.secs = int(time)
-    ros_duration.data.nsecs = int((time % 1) * 1e9)
+    ros_duration.sec = int(time)
+    ros_duration.nanosec = int((time % 1) * 1e9)
     return ros_duration
 
 
