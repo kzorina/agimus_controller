@@ -18,7 +18,9 @@ class WarmStartReference(WarmStartBase):
         self._rdata = self._rmodel.createData()
 
     def generate(
-        self, initial_state: TrajectoryPoint, reference_trajectory: list[TrajectoryPoint]
+        self,
+        initial_state: TrajectoryPoint,
+        reference_trajectory: list[TrajectoryPoint],
     ) -> tuple[
         npt.NDArray[np.float64],
         list[npt.NDArray[np.float64]],
@@ -30,11 +32,15 @@ class WarmStartReference(WarmStartBase):
         control `u` is initialized to zeros of same shape as v
         """
         assert self._rmodel is not None
-        x0 = np.concatenate([initial_state.robot_configuration, initial_state.robot_velocity])
+        x0 = np.concatenate(
+            [initial_state.robot_configuration, initial_state.robot_velocity]
+        )
         qs = np.array([point.robot_configuration for point in reference_trajectory])
         vs = np.array([point.robot_velocity for point in reference_trajectory])
         acs = np.array([point.robot_acceleration for point in reference_trajectory])
 
         x_init = list(np.hstack([qs, vs]))
-        u_init = [pin.rnea(self._rmodel, self._rdata, q, v, a) for q, v, a in zip(qs, vs, acs)]
+        u_init = [
+            pin.rnea(self._rmodel, self._rdata, q, v, a) for q, v, a in zip(qs, vs, acs)
+        ]
         return x0, x_init, u_init
