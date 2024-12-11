@@ -1,5 +1,7 @@
 import unittest
+
 import numpy as np
+
 from agimus_controller.warm_start_reference import WarmStartReference
 from agimus_controller.trajectory import TrajectoryPoint
 

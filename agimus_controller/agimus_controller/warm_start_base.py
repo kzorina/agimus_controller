@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-import numpy as np
 from typing import Tuple
+
+import numpy as np
+
 from agimus_controller.trajectory import TrajectoryPoint
 
 
@@ -13,7 +15,7 @@ class WarmStartBase(ABC):
     def generate(
         self,
         reference_trajectory: list[TrajectoryPoint],
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns x_init, u_init."""
         ...
 
