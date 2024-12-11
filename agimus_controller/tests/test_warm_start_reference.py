@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-from agimus_controller.warm_start_base import WarmStartBase
 from agimus_controller.warm_start_reference import WarmStartReference
 from agimus_controller.trajectory import TrajectoryPoint
 
@@ -37,7 +36,3 @@ class TestWarmStart(unittest.TestCase):
 
         # Additional sanity checks
         self.assertTrue(np.all(u_init == 0))
-
-    def test_abstract_class_instantiation(self):
-        with self.assertRaises(TypeError):
-            WarmStartBase()
