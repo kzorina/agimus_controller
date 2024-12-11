@@ -27,7 +27,7 @@ class OCPBase(ABC):
 
     @abstractmethod
     def solve(
-        self, x0: np.ndarray, x_init: list[np.ndarray], u_init: list[np.ndarray]
+        self, x_init: list[np.ndarray], u_init: list[np.ndarray]
     ) -> None:
         ...
 
