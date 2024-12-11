@@ -36,7 +36,6 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             WeightedTrajectoryPoints=weighted_trajectory_points,
             armature=armature,
             ee_name=ee_name,
-            p_target=p_target
         )
 
         self.assertEqual(params.dt, dt)
@@ -50,7 +49,6 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         self.assertEqual(params.WeightedTrajectoryPoints, weighted_trajectory_points)
         self.assertTrue(np.array_equal(params.armature, armature))
         self.assertEqual(params.ee_name, ee_name)
-        self.assertTrue(np.array_equal(params.p_target, p_target))
 
 if __name__ == '__main__':
     unittest.main()
