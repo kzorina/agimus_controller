@@ -90,7 +90,7 @@ class OCPCrocoBase(OCPBase):
             frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
                 self._state,
                 self._OCPParams.ee_name,
-                self._OCPParams.p_target,
+                self._OCPParams.WeightedTrajectoryPoints[t].point.end_effector_poses[self._OCPParams.ee_name].translation,
             )
 
             goalTrackingCost = crocoddyl.CostModelResidual(
