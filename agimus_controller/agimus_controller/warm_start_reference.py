@@ -34,7 +34,7 @@ class WarmStartReference(WarmStartBase):
             - `q` is the robot's joint configuration.
             - `v` is the robot's joint velocity.
         - `init_xs`: A list of state vectors `[q, v]` constructed from the reference trajectory.
-        - `init_us`: A list of control inputs computed using inverse dynamics (RNEA) 
+        - `init_us`: A list of control inputs computed using inverse dynamics (RNEA)
             based on the reference trajectory.
 
         Assumes:
@@ -44,7 +44,7 @@ class WarmStartReference(WarmStartBase):
                 - `robot_velocity` (`v`).
 
         Args:
-            initial_state (TrajectoryPoint): The initial state of the robot, 
+            initial_state (TrajectoryPoint): The initial state of the robot,
                 containing `robot_configuration` and `robot_velocity`.
             reference_trajectory (list[TrajectoryPoint]): A list of `TrajectoryPoint` objects
                 representing the reference trajectory.
@@ -52,7 +52,7 @@ class WarmStartReference(WarmStartBase):
         Returns:
             tuple:
                 - x0 (npt.NDArray[np.float64]): The initial state vector `[q, v]`.
-                - init_xs (list[npt.NDArray[np.float64]]): List of state vectors `[q, v]` 
+                - init_xs (list[npt.NDArray[np.float64]]): List of state vectors `[q, v]`
                 for each point in the reference trajectory.
                 - init_us (list[npt.NDArray[np.float64]]): List of control inputs computed using RNEA.
         """
