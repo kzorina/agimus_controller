@@ -2,14 +2,19 @@ import unittest
 import numpy as np
 
 from agimus_controller.agimus_controller.ocp_param_base import OCPParamsCrocoBase
-from agimus_controller.agimus_controller.trajectory import WeightedTrajectoryPoint, TrajectoryPoint, TrajectoryPointWeights
+from agimus_controller.agimus_controller.trajectory import (
+    WeightedTrajectoryPoint,
+    TrajectoryPoint,
+    TrajectoryPointWeights,
+)
+
 
 class TestOCPParamsCrocoBase(unittest.TestCase):
     """Test the OCPParamsCrocoBase class."""
-    
-    def __init__(self, methodName = "runTest"):
+
+    def __init__(self, methodName="runTest"):
         super().__init__(methodName)
-        
+
     def test_initialization(self):
         dt = np.float64(0.01)
         T = 100
@@ -20,10 +25,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         weights = TrajectoryPointWeights(
             w_robot_configuration=np.array([1.0, 2.0, 3.0], dtype=np.float64),
         )
-        weighted_trajectory_point = WeightedTrajectoryPoint(
-            point, 
-            weights
-        )
+        weighted_trajectory_point = WeightedTrajectoryPoint(point, weights)
         weighted_trajectory_points = [weighted_trajectory_point]
         armature = np.array([1.0, 2.0, 3.0], dtype=np.float64)
         ee_name = "end_effector"
@@ -50,5 +52,6 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         self.assertTrue(np.array_equal(params.armature, armature))
         self.assertEqual(params.ee_name, ee_name)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -27,7 +27,7 @@ class OCPBase(ABC):
     @property
     def dt() -> int:
         pass
-    
+
     @abstractmethod
     @property
     def x0() -> npt.NDArray[np.float64]:
@@ -35,7 +35,9 @@ class OCPBase(ABC):
 
     @abstractmethod
     def solve(
-        self, x_init: List[npt.NDArray[np.float64]], u_init: List[npt.NDArray[np.float64]]
+        self,
+        x_init: List[npt.NDArray[np.float64]],
+        u_init: List[npt.NDArray[np.float64]],
     ) -> None:
         pass
 
