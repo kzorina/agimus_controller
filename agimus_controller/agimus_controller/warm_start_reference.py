@@ -1,6 +1,9 @@
+from typing import Tuple
+
+import numpy as np
+
 from agimus_controller.warm_start_base import WarmStartBase
 from agimus_controller.trajectory import TrajectoryPoint
-import numpy as np
 
 
 class WarmStartReference(WarmStartBase):
