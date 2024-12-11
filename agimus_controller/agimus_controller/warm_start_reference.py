@@ -36,7 +36,7 @@ class WarmStartReference(WarmStartBase):
         - `init_xs`: A list of state vectors `[q, v]` constructed from the reference trajectory.
         - `init_us`: A list of control inputs computed using inverse dynamics (RNEA)
             based on the reference trajectory.
-        
+
         Args:
             initial_state (TrajectoryPoint): The initial state of the robot,
                 containing `robot_configuration` and `robot_velocity`.
