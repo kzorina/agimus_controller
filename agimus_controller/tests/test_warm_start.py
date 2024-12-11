@@ -4,6 +4,7 @@ from agimus_controller.warm_start_base import WarmStartBase
 from agimus_controller.warm_start_reference import WarmStartReference
 from agimus_controller.trajectory import TrajectoryPoint
 
+
 class TestWarmStart(unittest.TestCase):
     def test_initialization(self):
         ws = WarmStartReference()
