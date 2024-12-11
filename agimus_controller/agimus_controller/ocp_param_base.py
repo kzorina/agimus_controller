@@ -24,5 +24,4 @@ class OCPParamsCrocoBase:
     WeightedTrajectoryPoints: List[WeightedTrajectoryPoint] | None = None # List of weighted trajectory points    
     armature: npt.NDArray[np.float64] | None = None # Armature of the robot
     ee_name: str | None = None # Name of the end-effector
-    p_target: npt.NDArray[np.float64] | None = None  # Target position of the end-effector in R3
         
