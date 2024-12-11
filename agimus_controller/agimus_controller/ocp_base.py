@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
-import numpy as np
+from typing import List
 
-from agimus_controller.mpc_data import OCPResults, OCPDebugData
-from agimus_controller.trajectory import WeightedTrajectoryPoint
+import numpy as np
+import numpy.typing as npt
+
+from agimus_controller.agimus_controller.mpc_data import OCPResults, OCPDebugData
+from agimus_controller.agimus_controller.trajectory import WeightedTrajectoryPoint
 
 
 class OCPBase(ABC):
@@ -13,30 +16,35 @@ class OCPBase(ABC):
     def set_reference_horizon(
         self, reference_trajectory: list[WeightedTrajectoryPoint]
     ) -> None:
-        ...
+        pass
 
     @abstractmethod
     @property
     def horizon_size() -> int:
-        ...
+        pass
 
     @abstractmethod
     @property
     def dt() -> int:
-        ...
+        pass
+    
+    @abstractmethod
+    @property
+    def x0() -> npt.NDArray[np.float64]:
+        pass
 
     @abstractmethod
     def solve(
-        self, x_init: list[np.ndarray], u_init: list[np.ndarray]
+        self, x_init: List[npt.NDArray[np.float64]], u_init: List[npt.NDArray[np.float64]]
     ) -> None:
-        ...
+        pass
 
     @abstractmethod
     @property
     def ocp_results(self) -> OCPResults:
-        ...
+        pass
 
     @abstractmethod
     @property
     def debug_data(self) -> OCPDebugData:
-        ...
+        pass

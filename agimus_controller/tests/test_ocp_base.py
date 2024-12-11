@@ -1,6 +1,6 @@
 import unittest
 
-from agimus_controller.ocp_base import OCPBase
+from agimus_controller.agimus_controller.ocp_base import OCPBase
 
 
 class TestOCPBase(unittest.TestCase):
