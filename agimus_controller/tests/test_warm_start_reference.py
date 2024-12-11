@@ -1,6 +1,8 @@
 import unittest
 
 import numpy as np
+import example_robot_data as robex 
+import pinocchio as pin
 
 from agimus_controller.warm_start_reference import WarmStartReference
 from agimus_controller.trajectory import TrajectoryPoint
@@ -14,19 +16,38 @@ class TestWarmStart(unittest.TestCase):
     def test_generate(self):
         ws = WarmStartReference()
         num_points = 10
-        random_qs = np.random.randn(num_points, 7)
-        random_vs = np.random.randn(num_points, 7)
+        robot = robex.load("ur5") 
+        rmodel = robot.model
+        rdata = robot.data
+        ws.setup(rmodel=rmodel)
+        
+        initial_q = np.random.randn(rmodel.nq)
+        initial_v = np.random.randn(rmodel.nv)
+        initial_state = TrajectoryPoint(
+            robot_configuration=initial_q, 
+            robot_velocity=initial_v
+        )
+
+        random_qs = np.random.randn(num_points, rmodel.nq)
+        random_vs = np.random.randn(num_points, rmodel.nv)
+        random_acs = np.random.randn(num_points, rmodel.nv)
         reference_trajectory = [
-            TrajectoryPoint(robot_configuration=q, robot_velocity=v)
-            for q, v in zip(random_qs, random_vs)
+            TrajectoryPoint(robot_configuration=q, 
+                            robot_velocity=v,
+                            robot_acceleration=a)
+            for q, v, a in zip(random_qs, random_vs,random_acs)
         ]
+        
         # Create the expected stacked array
-        expected_x0 = np.hstack((random_qs[0], random_vs[0]))
-        expected_x_init = np.hstack((random_qs[1:], random_vs[1:]))
-        expected_u_init = np.zeros_like(random_vs)
+        expected_x0 = np.concatenate([initial_q, initial_v])
+        expected_x_init = np.hstack((random_qs, random_vs))
+        expected_u_init = np.array([
+            pin.rnea(rmodel, rdata, q, v, a) for q, v, a in zip(random_qs, random_vs, random_acs)
+        ])
 
         # Act
-        x0, x_init, u_init = ws.generate(reference_trajectory)
+        x0, x_init, u_init = ws.generate(initial_state, reference_trajectory)
+        x0 = np.array(x0)
         x_init = np.array(x_init)
         u_init = np.array(u_init)
 
@@ -39,6 +60,3 @@ class TestWarmStart(unittest.TestCase):
         np.testing.assert_array_equal(x0, expected_x0)
         np.testing.assert_array_equal(x_init, expected_x_init)
         np.testing.assert_array_equal(u_init, expected_u_init)
-
-        # Additional sanity checks
-        self.assertTrue(np.all(u_init == 0))
