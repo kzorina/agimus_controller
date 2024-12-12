@@ -49,7 +49,6 @@ class TestWarmStart(unittest.TestCase):
 
         # Act
         x0, x_init, u_init = ws.generate(initial_state, reference_trajectory)
-        x0 = np.array(x0)
         x_init = np.array(x_init)
         u_init = np.array(u_init)
 
