@@ -16,22 +16,17 @@ class OCPBase(ABC):
     def set_reference_horizon(
         self, reference_trajectory: list[WeightedTrajectoryPoint]
     ) -> None:
-        pass
+        ...
 
     @abstractmethod
     @property
     def horizon_size() -> int:
-        pass
+        ...
 
     @abstractmethod
     @property
     def dt() -> int:
-        pass
-
-    @abstractmethod
-    @property
-    def x0() -> npt.NDArray[np.float64]:
-        pass
+        ...
 
     @abstractmethod
     def solve(
@@ -39,14 +34,14 @@ class OCPBase(ABC):
         x_init: List[npt.NDArray[np.float64]],
         u_init: List[npt.NDArray[np.float64]],
     ) -> None:
-        pass
+        ...
 
     @abstractmethod
     @property
     def ocp_results(self) -> OCPResults:
-        pass
+        ...
 
     @abstractmethod
     @property
     def debug_data(self) -> OCPDebugData:
-        pass
+        ...
