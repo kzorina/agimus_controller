@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 import example_robot_data as robex
 
-from agimus_controller.agimus_controller.ocp_base_croco import OCPCrocoBase
-from agimus_controller.agimus_controller.ocp_param_base import OCPParamsCrocoBase
+from agimus_controller.ocp_base_croco import OCPCrocoBase
+from agimus_controller.ocp_param_base import OCPParamsCrocoBase
 
 
 class TestOCPCrocoBase(unittest.TestCase):

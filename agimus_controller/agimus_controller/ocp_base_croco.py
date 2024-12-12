@@ -6,10 +6,10 @@ import mim_solvers
 import numpy as np
 import pinocchio as pin
 
-from agimus_controller.agimus_controller.mpc_data import OCPResults, OCPDebugData
-from agimus_controller.agimus_controller.trajectory import WeightedTrajectoryPoint
-from agimus_controller.agimus_controller.ocp_base import OCPBase
-from agimus_controller.agimus_controller.ocp_param_base import OCPParamsCrocoBase
+from agimus_controller.mpc_data import OCPResults, OCPDebugData
+from agimus_controller.trajectory import WeightedTrajectoryPoint
+from agimus_controller.ocp_base import OCPBase
+from agimus_controller.ocp_param_base import OCPParamsCrocoBase
 
 
 class OCPCrocoBase(OCPBase):

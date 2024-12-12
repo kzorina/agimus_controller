@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 import numpy.typing as npt
 
-from agimus_controller.agimus_controller.trajectory import WeightedTrajectoryPoint
+from agimus_controller.trajectory import WeightedTrajectoryPoint
 
 
 @dataclass
