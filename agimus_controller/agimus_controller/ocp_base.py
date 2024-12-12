@@ -31,8 +31,8 @@ class OCPBase(ABC):
     @abstractmethod
     def solve(
         self,
-        x_init: List[npt.NDArray[np.float64]],
-        u_init: List[npt.NDArray[np.float64]],
+        x_init: list[npt.NDArray[np.float64]],
+        u_init: list[npt.NDArray[np.float64]],
     ) -> None:
         ...
 
