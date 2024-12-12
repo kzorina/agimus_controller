@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 
+<<<<<<< Updated upstream
 from agimus_controller.agimus_controller.ocp_param_base import OCPParamsCrocoBase
 from agimus_controller.agimus_controller.trajectory import (
     WeightedTrajectoryPoint,
@@ -8,6 +9,10 @@ from agimus_controller.agimus_controller.trajectory import (
     TrajectoryPointWeights,
 )
 
+=======
+from agimus_controller.ocp_param_base import OCPParamsCrocoBase
+from agimus_controller.trajectory import WeightedTrajectoryPoint, TrajectoryPoint, TrajectoryPointWeights
+>>>>>>> Stashed changes
 
 class TestOCPParamsCrocoBase(unittest.TestCase):
     """Test the OCPParamsCrocoBase class."""
