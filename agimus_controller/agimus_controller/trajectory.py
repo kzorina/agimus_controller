@@ -9,13 +9,13 @@ from pinocchio import SE3, Force
 class TrajectoryPoint:
     """Trajectory point aiming at being a reference for the MPC."""
 
-    time_ns: int = None
-    robot_configuration: npt.NDArray[np.float64] = None
-    robot_velocity: npt.NDArray[np.float64] = None
-    robot_acceleration: npt.NDArray[np.float64] = None
-    robot_effort: npt.NDArray[np.float64] = None
-    forces: dict[Force] = None  # Dictionary of pinocchio.Force
-    end_effector_poses: dict[SE3] = None  # Dictionary of pinocchio.SE3
+    time_ns: int| None = None
+    robot_configuration: npt.NDArray[np.float64]| None = None
+    robot_velocity: npt.NDArray[np.float64]| None = None
+    robot_acceleration: npt.NDArray[np.float64]| None = None
+    robot_effort: npt.NDArray[np.float64]| None = None
+    forces: dict[Force]| None = None  # Dictionary of pinocchio.Force
+    end_effector_poses: dict[SE3] | None = None  # Dictionary of pinocchio.SE3
 
 
 @dataclass
