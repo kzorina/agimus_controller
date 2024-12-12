@@ -43,16 +43,19 @@ class WarmStartReference(WarmStartBase):
             [initial_state.robot_configuration, initial_state.robot_velocity]
         )
 
-        x_init = np.array([
-            np.hstack([point.robot_configuration, point.robot_velocity]) 
-            for point in reference_trajectory
-        ])
+        x_init = np.array(
+            [
+                np.hstack([point.robot_configuration, point.robot_velocity])
+                for point in reference_trajectory
+            ]
+        )
         u_init = [
             pin.rnea(
-                self._rmodel, self._rdata,
+                self._rmodel,
+                self._rdata,
                 point.robot_configuration,
                 point.robot_velocity,
-                point.robot_acceleration
+                point.robot_acceleration,
             )
             for point in reference_trajectory
         ]
