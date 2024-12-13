@@ -1,9 +1,7 @@
-from abc import ABC, abstractmethod
-from typing import List
-
 import crocoddyl
 import mim_solvers
 import numpy as np
+import numpy.typing as npt
 import pinocchio as pin
 
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
@@ -40,29 +38,11 @@ class OCPCrocoBase(OCPBase):
         """Integration step of the OCP."""
         return self._OCPParams.dt
 
-    @abstractmethod
-    def x_init(self) -> np.ndarray:
-        """Initial guess of the states."""
-        x_init = []
-        for TrajectoryPoint in self._OCPParams.WeightedTrajectoryPoints:
-            x = np.array(
-                TrajectoryPoint.point.robot_configuration
-                + TrajectoryPoint.point.robot_velocity
-            )
-            x_init.append(x)
-        return x_init
-
-    @abstractmethod
-    def u_init(self) -> np.ndarray:
-        """Initial guess of the controls."""
-        u_init = [
-            np.zeros(self._rmodel.nq) for _ in range(self.horizon_size) - 1
-        ]  # For the panda nu = nq, but i'm not sure nu exists in pinocchio
-        return u_init
-
-    @abstractmethod
     def solve(
         self,
+        x0: npt.NDArray[np.float64],
+        x_warmstart: list[npt.NDArray[np.float64]],
+        u_warmstart: list[npt.NDArray[np.float64]],
     ) -> bool:
         """Solves the OCP. Returns True if the OCP was solved successfully, False otherwise.
 
@@ -201,7 +181,6 @@ class OCPCrocoBase(OCPBase):
 
         return result
 
-    @abstractmethod
     @property
     def ocp_results(self) -> OCPResults:
         """Output data structure of the OCP.
@@ -211,7 +190,6 @@ class OCPCrocoBase(OCPBase):
         """
         return self._ocp_results
 
-    @abstractmethod
     @property
     def debug_data(self) -> OCPDebugData:
         ...
