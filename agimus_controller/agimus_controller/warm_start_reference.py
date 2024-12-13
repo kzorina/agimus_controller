@@ -38,16 +38,17 @@ class WarmStartReference(WarmStartBase):
             based on the reference trajectory.
         """
         # Ensure the robot model (_rmodel) is initialized before proceeding
-        assert self._rmodel is not None, \
-            "Robot model is missing in warmstart. please use warmstart.setup(rmodel)"
-        
-        
+        assert (
+            self._rmodel is not None
+        ), "Robot model is missing in warmstart. please use warmstart.setup(rmodel)"
+
         x0 = np.concatenate(
             [initial_state.robot_configuration, initial_state.robot_velocity]
         )
-        assert x0.shape[0] == (self._rmodel.nq + self._rmodel.nv), \
-            f"Expected x0 shape {(self._rmodel.nq + self._rmodel.nv)}," \
+        assert x0.shape[0] == (self._rmodel.nq + self._rmodel.nv), (
+            f"Expected x0 shape {(self._rmodel.nq + self._rmodel.nv)},"
             f"from provided reference got {x0.shape}"
+        )
 
         x_init = np.array(
             [
@@ -55,10 +56,14 @@ class WarmStartReference(WarmStartBase):
                 for point in reference_trajectory
             ]
         )
-        assert x_init.shape == (len(reference_trajectory), self._rmodel.nq + self._rmodel.nv), \
-            f"Expected x_init shape {(len(reference_trajectory), self._rmodel.nq + self._rmodel.nv)}, " \
+        assert x_init.shape == (
+            len(reference_trajectory),
+            self._rmodel.nq + self._rmodel.nv,
+        ), (
+            f"Expected x_init shape {(len(reference_trajectory), self._rmodel.nq + self._rmodel.nv)}, "
             f"from provided reference got {x_init.shape}"
-        
+        )
+
         u_init = [
             pin.rnea(
                 self._rmodel,
@@ -69,8 +74,9 @@ class WarmStartReference(WarmStartBase):
             )
             for point in reference_trajectory
         ]
-        assert np.array(u_init).shape == (len(reference_trajectory), self._rmodel.nv), \
-            f"Expected u_init shape {(len(reference_trajectory), self._rmodel.nv)}, " \
+        assert np.array(u_init).shape == (len(reference_trajectory), self._rmodel.nv), (
+            f"Expected u_init shape {(len(reference_trajectory), self._rmodel.nv)}, "
             f"from provided reference got {u_init.shape}"
-        
+        )
+
         return x0, x_init, u_init
