@@ -10,7 +10,7 @@ from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.trajectory import WeightedTrajectoryPoint
 from agimus_controller.ocp_base import OCPBase
 from agimus_controller.ocp_param_base import OCPParamsCrocoBase
-
+from agimus_controller.factory.robot_model import RobotModel
 
 class OCPCrocoBase(OCPBase):
     def __init__(
@@ -19,8 +19,7 @@ class OCPCrocoBase(OCPBase):
         cmodel: pin.GeometryModel,
         OCPParams: OCPParamsCrocoBase,
     ) -> None:
-        """Creates an instance of the OCPCrocoBase class. This is an example of an OCP class that inherits from OCPBase,
-        for a simple goal reaching task. The class is used to solve the Optimal Control Problem (OCP) using the Crocoddyl library.
+        """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
             rmodel (pin.Model): Robot model.
@@ -31,23 +30,15 @@ class OCPCrocoBase(OCPBase):
         self._cmodel = cmodel
         self._OCPParams = OCPParams
 
-    @abstractmethod
     @property
     def horizon_size(self) -> int:
         """Number of time steps in the horizon."""
         return self._OCPParams.T
 
-    @abstractmethod
     @property
     def dt(self) -> np.float64:
         """Integration step of the OCP."""
         return self._OCPParams.dt
-
-    @abstractmethod
-    @property
-    def x0(self) -> np.ndarray:
-        """Initial state of the robot."""
-        return self._OCPParams.WeightedTrajectoryPoints[0].point.robot_configuration
 
     @abstractmethod
     def x_init(self) -> np.ndarray:
