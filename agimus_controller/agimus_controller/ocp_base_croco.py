@@ -5,16 +5,14 @@ import numpy.typing as npt
 import pinocchio as pin
 
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
-from agimus_controller.trajectory import WeightedTrajectoryPoint
 from agimus_controller.ocp_base import OCPBase
 from agimus_controller.ocp_param_base import OCPParamsCrocoBase
-from agimus_controller.factory.robot_model import RobotModel
+from agimus_controller.factory.robot_model import RobotModelFactory
 
 class OCPCrocoBase(OCPBase):
     def __init__(
         self,
-        rmodel: pin.Model,
-        cmodel: pin.GeometryModel,
+        robot_model: RobotModelFactory,
         OCPParams: OCPParamsCrocoBase,
     ) -> None:
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
@@ -24,8 +22,13 @@ class OCPCrocoBase(OCPBase):
             cmodel (pin.GeometryModel): Collision Model of the robot.
             OCPParams (OCPParamsBase): Input data structure of the OCP.
         """
-        self._rmodel = rmodel
-        self._cmodel = cmodel
+        # Setting the robot model
+        self._robot_model = robot_model
+        self._rmodel = self._robot_model._rmodel
+        self._cmodel = self._robot_model._complete_collision_model
+        self._armature = self._robot_model._params.armature
+        
+        # Setting the OCP parameters
         self._OCPParams = OCPParams
 
     @property
@@ -45,6 +48,11 @@ class OCPCrocoBase(OCPBase):
         u_warmstart: list[npt.NDArray[np.float64]],
     ) -> bool:
         """Solves the OCP. Returns True if the OCP was solved successfully, False otherwise.
+
+        Args:
+            x0 (npt.NDArray[np.float64]): Current state of the robot.
+            x_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the state. This doesn't include the current state.
+            u_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the control inputs.
 
         Returns:
             bool: True if the OCP was solved successfully, False otherwise.
