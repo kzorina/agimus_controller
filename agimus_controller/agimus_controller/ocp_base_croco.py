@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 import crocoddyl
 import mim_solvers
 import numpy as np
@@ -28,6 +30,10 @@ class OCPCrocoBase(OCPBase):
         self._cmodel = self._robot_model._complete_collision_model
         self._armature = self._robot_model._params.armature
         
+        # Stat and actuation model
+        self._state = crocoddyl.StateMultibody(self._rmodel)
+        self._actuation = crocoddyl.ActuationModelFull(self._state)
+
         # Setting the OCP parameters
         self._OCPParams = OCPParams
 
@@ -41,6 +47,18 @@ class OCPCrocoBase(OCPBase):
         """Integration step of the OCP."""
         return self._OCPParams.dt
 
+    @abstractmethod
+    @property
+    def runningModelList(self) -> list[crocoddyl.ActionModelAbstract]:
+        """List of running models."""
+        ...
+            
+    @abstractmethod
+    @property
+    def terminalModel(self) -> crocoddyl.ActionModelAbstract:
+        """Terminal model."""
+        ...    
+    
     def solve(
         self,
         x0: npt.NDArray[np.float64],
@@ -59,117 +77,15 @@ class OCPCrocoBase(OCPBase):
         """
         ### Creation of the state and actuation models
 
-        # Stat and actuation model
-        self._state = crocoddyl.StateMultibody(self._rmodel)
-        self._actuation = crocoddyl.ActuationModelFull(self._state)
-
-        self._runningModelList = []
-        # Running & terminal cost models
-        for t in range(self.horizon_size):
-            ### Creation of cost terms
-            # State Regularization cost
-            xResidual = crocoddyl.ResidualModelState(self._state, self.x0)
-            xRegCost = crocoddyl.CostModelResidual(self._state, xResidual)
-
-            # Control Regularization cost
-            uResidual = crocoddyl.ResidualModelControl(self._state)
-            uRegCost = crocoddyl.CostModelResidual(self._state, uResidual)
-
-            # End effector frame cost
-            frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
-                self._state,
-                self._OCPParams.ee_name,
-                self._OCPParams.WeightedTrajectoryPoints[t]
-                .point.end_effector_poses[self._OCPParams.ee_name]
-                .translation,
-            )
-
-            goalTrackingCost = crocoddyl.CostModelResidual(
-                self._state, frameTranslationResidual
-            )
-
-            # Adding costs to the models
-            if t < self.horizon_size - 1:
-                runningCostModel = crocoddyl.CostModelSum(self._state)
-                runningCostModel.addCost(
-                    "stateReg",
-                    xRegCost,
-                    np.concatenate(
-                        [
-                            self._OCPParams.WeightedTrajectoryPoints[
-                                t
-                            ].weight.w_robot_configuration,
-                            self._OCPParams.WeightedTrajectoryPoints[
-                                t
-                            ].weight.w_robot_velocity,
-                        ]
-                    ),
-                )
-                runningCostModel.addCost(
-                    "ctrlRegGrav",
-                    uRegCost,
-                    self._OCPParams.WeightedTrajectoryPoints[t].weight.w_robot_effort,
-                )
-                runningCostModel.addCost(
-                    "gripperPoseRM",
-                    goalTrackingCost,
-                    self._OCPParams.WeightedTrajectoryPoints[
-                        t
-                    ].weight.w_end_effector_poses,
-                )
-                # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-                self._running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                    self._state,
-                    self._actuation,
-                    runningCostModel,
-                )
-                # Create Integrated Action Model (IAM), i.e. Euler integration of continuous dynamics and cost
-                runningModel = crocoddyl.IntegratedActionModelEuler(
-                    self._running_DAM, self.dt
-                )
-                runningModel.differential.armature = OCPParamsCrocoBase.armature
-                self._runningModelList.append(runningModel)
-            else:
-                terminalCostModel = crocoddyl.CostModelSum(self._state)
-                terminalCostModel.addCost(
-                    "stateReg",
-                    xRegCost,
-                    np.concatenate(
-                        [
-                            self._OCPParams.WeightedTrajectoryPoints[
-                                t
-                            ].weight.w_robot_configuration,
-                            self._OCPParams.WeightedTrajectoryPoints[
-                                t
-                            ].weight.w_robot_velocity,
-                        ]
-                    ),
-                )
-                terminalCostModel.addCost(
-                    "gripperPose",
-                    goalTrackingCost,
-                    self._OCPParams.WeightedTrajectoryPoints[
-                        t
-                    ].weight.w_end_effector_poses,
-                )
-
-                self._terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                    self._state, self._actuation, terminalCostModel
-                )
-
-                self._terminalModel = crocoddyl.IntegratedActionModelEuler(
-                    self._terminal_DAM, 0.0
-                )
-                self._terminalModel.differential.armature = OCPParamsCrocoBase.armature
 
         problem = crocoddyl.ShootingProblem(
-            self.x0, self._runningModelList, self._terminalModel
+            x0, self.runningModelList, self.terminalModel
         )
         # Create solver + callbacks
-        ocp = mim_solvers.SolverSQP(problem)
+        ocp = mim_solvers.SolverCSQP(problem)
 
         # Merit function
-        ocp.use_filter_line_search = False
+        ocp.use_filter_line_search = self._OCPParams.use_filter_line_search
 
         # Parameters of the solver
         ocp.termination_tolerance = OCPParamsCrocoBase.termination_tolerance
@@ -179,15 +95,16 @@ class OCPCrocoBase(OCPBase):
 
         ocp.with_callbacks = OCPParamsCrocoBase.callbacks
 
-        result = ocp.solve(self.x_init, self.u_init, OCPParamsCrocoBase.solver_iters)
+        x_init = [x0] + x_warmstart
+        u_init = u_warmstart
+        
+        result = ocp.solve(x_init, u_init, OCPParamsCrocoBase.solver_iters)
 
         self.ocp_results = OCPResults(
             states=ocp.xs,
-            ricatti_gains=ocp.Ks,  # Not sure about this one
+            ricatti_gains=ocp.K,
             feed_forward_terms=ocp.us,
         )
-
-        return result
 
     @property
     def ocp_results(self) -> OCPResults:
@@ -196,7 +113,7 @@ class OCPCrocoBase(OCPBase):
         Returns:
             OCPResults: Output data structure of the OCP. It contains the states, Ricatti gains and feed-forward terms.
         """
-        return self._ocp_results
+        return self.ocp_results
 
     @property
     def debug_data(self) -> OCPDebugData:
