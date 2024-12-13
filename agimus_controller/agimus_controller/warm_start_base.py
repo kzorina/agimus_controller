@@ -7,6 +7,22 @@ from agimus_controller.trajectory import TrajectoryPoint
 
 
 class WarmStartBase(ABC):
+    """
+    A template class for implementing methods that generate a warmstart for an optimal control problem.
+    The warmstart should generate the initial values for state and control trajectories, 
+    based on the initial robot state and a reference trajectory. 
+
+    Attributes:
+        _previous_solution (list[TrajectoryPoint]): Stores the previous solution of the optimization problem.
+
+    Methods:
+        generate(initial_state: TrajectoryPoint, reference_trajectory: list[TrajectoryPoint]) -> tuple:
+            Generates warm-start values for the optimization problem. This must be 
+            implemented by subclasses.
+
+        update_previous_solution(previous_solution: list[TrajectoryPoint]) -> None:
+            Updates the internally stored previous solution for later use.
+    """
     def __init__(self) -> None:
         super().__init__()
         self._previous_solution: list[TrajectoryPoint] = list()
@@ -42,5 +58,11 @@ class WarmStartBase(ABC):
     def update_previous_solution(
         self, previous_solution: list[TrajectoryPoint]
     ) -> None:
-        """Stores internally the previous solution of the OCP"""
+        """
+        This method stores the solution from a previous optimization cycle.
+        It can be used as a reference or initialization of warmstart.
+
+        Args:
+            previous_solution (list[TrajectoryPoint]): The solution of the optimization problem.
+        """
         self._previous_solution = previous_solution
