@@ -12,6 +12,7 @@ class OCPBase(ABC):
     If you want to implement a new OCP solver, you should derive from this class and implement the abstract methods.
     If you want to use Crocoddyl, you should inherit from the OCPCrocoBase class instead.
     """
+
     def __init__(self) -> None:
         pass
 
@@ -51,11 +52,11 @@ class OCPBase(ABC):
     ) -> None:
         """Solver for the OCP. This method should be implemented by the derived class.
         The method should solve the OCP for the given initial state and warmstart values.
-        
+
         Args:
             x0 (npt.NDArray[np.float64]): current state of the robot.
             x_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the state. This doesn't include the current state.
-            u_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the control inputs. 
+            u_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the control inputs.
         """
         ...
 
