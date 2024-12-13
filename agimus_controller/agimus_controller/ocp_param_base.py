@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+
 @dataclass
 class OCPParamsCrocoBase:
     """Input data structure of the OCP."""

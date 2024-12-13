@@ -11,6 +11,7 @@ from agimus_controller.ocp_base import OCPBase
 from agimus_controller.ocp_param_base import OCPParamsCrocoBase
 from agimus_controller.factory.robot_model import RobotModelFactory
 
+
 class OCPCrocoBase(OCPBase):
     def __init__(
         self,
@@ -29,7 +30,7 @@ class OCPCrocoBase(OCPBase):
         self._rmodel = self._robot_model._rmodel
         self._cmodel = self._robot_model._complete_collision_model
         self._armature = self._robot_model._params.armature
-        
+
         # Stat and actuation model
         self._state = crocoddyl.StateMultibody(self._rmodel)
         self._actuation = crocoddyl.ActuationModelFull(self._state)
@@ -52,13 +53,13 @@ class OCPCrocoBase(OCPBase):
     def runningModelList(self) -> list[crocoddyl.ActionModelAbstract]:
         """List of running models."""
         ...
-            
+
     @abstractmethod
     @property
     def terminalModel(self) -> crocoddyl.ActionModelAbstract:
         """Terminal model."""
-        ...    
-    
+        ...
+
     def solve(
         self,
         x0: npt.NDArray[np.float64],
@@ -74,7 +75,6 @@ class OCPCrocoBase(OCPBase):
             u_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the control inputs.
         """
         ### Creation of the state and actuation models
-
 
         problem = crocoddyl.ShootingProblem(
             x0, self.runningModelList, self.terminalModel
@@ -95,7 +95,7 @@ class OCPCrocoBase(OCPBase):
 
         x_init = [x0] + x_warmstart
         u_init = u_warmstart
-        
+
         result = ocp.solve(x_init, u_init, OCPParamsCrocoBase.solver_iters)
 
         self.ocp_results = OCPResults(
