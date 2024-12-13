@@ -22,8 +22,3 @@ class OCPParamsCrocoBase:
     eps_abs: np.float64 = 1e-6  # Absolute tolerance of the solver
     eps_rel: np.float64 = 0  # Relative tolerance of the solver
     callbacks: bool = False  # Flag to enable/disable callbacks
-
-    # Weights, costs & helpers for the costs & constraints
-    WeightedTrajectoryPoints: List[
-        WeightedTrajectoryPoint
-    ] | None = None  # List of weighted trajectory points
