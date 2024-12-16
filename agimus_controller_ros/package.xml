@@ -12,20 +12,17 @@
   <url type="website">https://github.com/agimus-project/agimus_controller</url>
 
   <!-- ROS dependencies. -->
-  <depend>linear_feedback_controller_msgs</depend> <!-- install manually. -->
+  <depend>linear_feedback_controller_msgs</depend>
   <depend>rclpy</depend>
   <depend>xacro</depend>
   <depend>std_msgs</depend>
-
-
-  <!-- Build dependencies -->
-  <build_depend>mpc_msgs</build_depend>
-  <build_depend>geometry_msgs</build_depend>
+  <depend>agimus_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>agimus_controller</depend>
 
   <!-- Run-time dependencies -->
-  <exec_depend>mpc_msgs</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>pinocchio</exec_depend>
