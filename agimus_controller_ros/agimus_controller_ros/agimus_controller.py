@@ -34,7 +34,10 @@ from agimus_controller_ros.agimus_controller_parameters import (
 
 
 class AgimusController(Node):
+    """Agimus controller's ROS 2 node class."""
+
     def __init__(self, node_name: str = "agimus_controller_node") -> None:
+        """Get ROS parameters, initialize trajectory buffer and ros attributes."""
         super().__init__(node_name)
         self._param_listener = agimus_controller_ros_params.ParamListener(self)
         self.params = self._param_listener.get_params()
@@ -96,7 +99,7 @@ class AgimusController(Node):
         w_traj_point = mpc_msg_to_weighted_traj_point(msg)
         self.traj_buffer.append(w_traj_point)
         self.params.ocp.effector_frame_name = msg.ee_frame_name
-        self.effector_frame_id = self.rmodel.getFrameId(msg.ee_frame_name)
+        self.effector_frame_name = msg.ee_frame_name
 
     def robot_description_callback(self, msg: String) -> None:
         """Create the models of the robot from the urdf string."""
@@ -109,6 +112,7 @@ class AgimusController(Node):
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
+        self.initialize_weighted_traj_attributes()
 
         # Build reduced models
         locked_joint_names = [
@@ -126,6 +130,26 @@ class AgimusController(Node):
         self.cmodel = geometric_models_reduced[0]
         self.get_logger().info("Robot Models initialized")
 
+    def initialize_weighted_traj_attributes(self) -> None:
+        """Initialize attributes to setup OCP from the weighted trajectory buffer."""
+        self.x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
+        self.a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
+        self.weight_q = np.zeros([self.params.ocp.horizon_size, self.nq])
+        self.weight_qdot = np.zeros([self.params.ocp.horizon_size, self.nv])
+        self.weight_pose = np.zeros([self.params.ocp.horizon_size, 6])
+
+    def set_weighted_traj_attributes(self) -> None:
+        """Set attributes to setup OCP from the weighted trajectory buffer."""
+        for idx_point in range(self.params.ocp.horizon_size):
+            traj_point = self.traj_buffer.popleft()
+            self.x_plan[idx_point, :] = np.concatenate(
+                [traj_point.point.robot_configuration, traj_point.point.robot_velocity]
+            )
+            self.a_plan[idx_point, :] = traj_point.point.robot_acceleration
+            self.weight_q[idx_point, :] = traj_point.weights.w_robot_configuration
+            self.weight_qdot[idx_point, :] = traj_point.weights.w_robot_velocity
+            self.weight_pose[idx_point, :] = traj_point.weights.w_end_effector_poses
+
     def buffer_has_twice_horizon_points(self) -> bool:
         """
         Return true if buffer size has more than two times
@@ -135,55 +159,28 @@ class AgimusController(Node):
 
     def first_solve(self, x0: npt.NDArray[np.float64]) -> None:
         """Initialize OCP, then do the first solve."""
-        # retrieve horizon state and acc references
-        x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
-        a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
-
-        for idx_point in range(self.params.ocp.horizon_size):
-            traj_point = self.traj_buffer.popleft()
-            x_plan[idx_point, :] = np.concatenate(
-                [traj_point.point.robot_configuration, traj_point.point.robot_velocity]
-            )
-            a_plan[idx_point, :] = traj_point.point.robot_acceleration
-
         # Initialize OCP
+        self.set_weighted_traj_attributes()
         self.ocp = OCPCrocoHPP(self.rmodel, self.cmodel, self.params.ocp)
-        self.ocp.set_planning_variables(x_plan, a_plan)
+        self.ocp.set_planning_variables(self.x_plan, self.a_plan)
+        self.ocp.set_weights_variables(
+            self.weight_q, self.weight_qdot, self.weight_pose
+        )
 
         # First solve
-        self.mpc = MPC(self.ocp, x_plan, a_plan, self.rmodel, self.cmodel)
+        self.mpc = MPC(self.ocp, self.x_plan, self.a_plan, self.rmodel, self.cmodel)
         us_init = self.mpc.ocp.u_plan[: self.params.ocp.horizon_size - 1]
-        self.mpc.mpc_first_step(x_plan, us_init, x0)
+        self.mpc.mpc_first_step(self.x_plan, us_init, x0)
         self.next_node_idx = self.params.ocp.horizon_size
         self.get_logger().info("First solve done ")
 
     def solve(self, x0: npt.NDArray[np.float64]) -> None:
-        """Reset and solve the OCP problem."""
-        # Get next point references
+        """get new trajectory point, reset and solve the OCP problem."""
         if len(self.traj_buffer) > 0:
             self.last_point = self.traj_buffer.popleft()
-        new_x_ref = np.concatenate(
-            [
-                self.last_point.point.robot_configuration,
-                self.last_point.point.robot_velocity,
-            ]
-        )
-        self.in_world_M_effector = get_ee_pose_from_configuration(
-            self.rmodel,
-            self.rdata,
-            self.effector_frame_id,
-            np.array(self.last_point.point.robot_configuration),
-        )
+        self.mpc.mpc_step(x0, self.last_point, self.effector_frame_name)
 
-        # Reset and solve the OCP Problem
-        self.mpc.mpc_step(
-            x0,
-            new_x_ref,
-            np.array(self.last_point.point.robot_acceleration),
-            self.in_world_M_effector,
-        )
-
-    def send(self, sensor_msg: Sensor) -> None:
+    def send_control_msg(self, sensor_msg: Sensor) -> None:
         """Get OCP control output and publish it."""
         _, tau, K_ricatti = self.mpc.get_mpc_output()
         ctrl_msg = lfc_py_types.Control(
@@ -223,13 +220,14 @@ class AgimusController(Node):
             self.first_run_done = True
         else:
             self.solve(self.get_x0_from_sensor_msg(np_sensor_msg))
-        self.send(np_sensor_msg)
+        self.send_control_msg(np_sensor_msg)
         compute_time = time.time() - start_compute_time
         self.ocp_solve_time_pub.publish(convert_float_to_ros_duration_msg(compute_time))
         self.ocp_x0_pub.publish(self.sensor_msg)
 
 
 def main(args=None) -> None:
+    """Creates the Agimus controller ROS node object and spins it."""
     rclpy.init(args=args)
     agimus_controller_node = AgimusController()
     try:
