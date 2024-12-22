@@ -9,7 +9,7 @@ from agimus_controller.trajectory import TrajectoryPoint
 class WarmStartBase(ABC):
     """
     A template class for implementing methods that generate a warmstart for an optimal control problem.
-    The warmstart should generate the initial values for state and control trajectories,
+    The warmstart is expected to generate the initial values for state and control trajectories,
     based on the initial robot state and a reference trajectory.
 
     Attributes:
