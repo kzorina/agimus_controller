@@ -60,7 +60,7 @@ class WarmStartBase(ABC):
         self, previous_solution: list[TrajectoryPoint]
     ) -> None:
         """
-        This method stores the solution from a previous optimization cycle.
+        Store the solution from a previous optimization cycle.
         It can be used as a reference or initialization of warmstart.
 
         Args:
