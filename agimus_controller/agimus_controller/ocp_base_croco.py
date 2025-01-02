@@ -21,8 +21,7 @@ class OCPCrocoBase(OCPBase):
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
-            rmodel (pin.Model): Robot model.
-            cmodel (pin.GeometryModel): Collision Model of the robot.
+            robot_model (RobotModelFactory): All models of the robot.
             ocp_params (OCPParamsBase): Input data structure of the OCP.
         """
         # Setting the robot model
@@ -90,14 +89,16 @@ class OCPCrocoBase(OCPBase):
         ocp.max_qp_iters = OCPParamsCrocoBase.qp_iters
         ocp.eps_abs = OCPParamsCrocoBase.eps_abs
         ocp.eps_rel = OCPParamsCrocoBase.eps_rel
-
         ocp.with_callbacks = OCPParamsCrocoBase.callbacks
 
+        # Creating the warmstart lists for the solver
         x_init = [x0] + x_warmstart
         u_init = u_warmstart
 
-        result = ocp.solve(x_init, u_init, OCPParamsCrocoBase.solver_iters)
+        # Solve the OCP
+        ocp.solve(x_init, u_init, OCPParamsCrocoBase.solver_iters)
 
+        # Store the results
         self.ocp_results = OCPResults(
             states=ocp.xs,
             ricatti_gains=ocp.K,
