@@ -16,7 +16,6 @@ class OCPResults:
 
 @dataclass
 class OCPDebugData:
-
     # Debug data
     result: list[TrajectoryPoint]
     references: list[TrajectoryPoint]

@@ -3,6 +3,7 @@ import numpy as np
 
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 
+
 class TestOCPParamsCrocoBase(unittest.TestCase):
     """
     TestOCPParamsCrocoBase is a unit test class for testing the OCPParamsBaseCroco class.
@@ -11,6 +12,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         __init__(methodName="runTest"): Initializes the test case instance.
         test_initialization(): Tests the initialization of the OCPParamsBaseCroco class with various parameters.
     """
+
     """Test the OCPParamsBaseCroco class."""
 
     def __init__(self, methodName="runTest"):
@@ -56,10 +58,10 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             T=T,
             solver_iters=solver_iters,
             qp_iters=qp_iters,
-            termination_tolerance= termination_tolerance,
-            eps_abs = eps_abs,
-            eps_rel = eps_rel,
-            callbacks = callbacks
+            termination_tolerance=termination_tolerance,
+            eps_abs=eps_abs,
+            eps_rel=eps_rel,
+            callbacks=callbacks,
         )
         self.assertEqual(params.dt, dt)
         self.assertEqual(params.T, T)

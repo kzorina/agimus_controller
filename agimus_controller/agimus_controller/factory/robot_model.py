@@ -17,7 +17,9 @@ class RobotModelParameters:
     srdf: Path | str = ""
     collision_as_capsule: bool = False
     self_collision: bool = False
-    armature: npt.NDArray[np.float64] = field(default_factory=lambda: np.array([]))  # Default empty NumPy array
+    armature: npt.NDArray[np.float64] = field(
+        default_factory=lambda: np.array([])
+    )  # Default empty NumPy array
 
 
 class RobotModelFactory:
