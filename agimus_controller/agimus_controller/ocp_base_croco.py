@@ -16,14 +16,14 @@ class OCPCrocoBase(OCPBase):
     def __init__(
         self,
         robot_model: RobotModelFactory,
-        OCPParams: OCPParamsCrocoBase,
+        ocp_params: OCPParamsCrocoBase,
     ) -> None:
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
             rmodel (pin.Model): Robot model.
             cmodel (pin.GeometryModel): Collision Model of the robot.
-            OCPParams (OCPParamsBase): Input data structure of the OCP.
+            ocp_params (OCPParamsBase): Input data structure of the OCP.
         """
         # Setting the robot model
         self._robot_model = robot_model
@@ -36,17 +36,17 @@ class OCPCrocoBase(OCPBase):
         self._actuation = crocoddyl.ActuationModelFull(self._state)
 
         # Setting the OCP parameters
-        self._OCPParams = OCPParams
+        self._ocp_params = ocp_params
 
     @property
     def horizon_size(self) -> int:
         """Number of time steps in the horizon."""
-        return self._OCPParams.T
+        return self._ocp_params.T
 
     @property
     def dt(self) -> np.float64:
         """Integration step of the OCP."""
-        return self._OCPParams.dt
+        return self._ocp_params.dt
 
     @abstractmethod
     @property
@@ -83,7 +83,7 @@ class OCPCrocoBase(OCPBase):
         ocp = mim_solvers.SolverCSQP(problem)
 
         # Merit function
-        ocp.use_filter_line_search = self._OCPParams.use_filter_line_search
+        ocp.use_filter_line_search = self._ocp_params.use_filter_line_search
 
         # Parameters of the solver
         ocp.termination_tolerance = OCPParamsCrocoBase.termination_tolerance
