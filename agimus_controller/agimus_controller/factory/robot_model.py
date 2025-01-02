@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from copy import deepcopy
 from pathlib import Path
 from typing import Union
@@ -10,14 +10,14 @@ import pinocchio as pin
 
 @dataclass
 class RobotModelParameters:
-    q0_name = str()
-    free_flyer = False
-    locked_joint_names = []
-    urdf = Path() | str
-    srdf = Path() | str
-    collision_as_capsule = False
-    self_collision = False
-    armature = npt.NDArray[np.float64]
+    q0_name: str = ""
+    free_flyer: bool = False
+    locked_joint_names: list[str] = field(default_factory=list)  # Default empty list
+    urdf: Path | str = ""
+    srdf: Path | str = ""
+    collision_as_capsule: bool = False
+    self_collision: bool = False
+    armature: npt.NDArray[np.float64] = field(default_factory=lambda: np.array([]))  # Default empty NumPy array
 
 
 class RobotModelFactory:
