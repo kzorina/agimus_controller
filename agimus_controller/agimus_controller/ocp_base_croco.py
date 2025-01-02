@@ -47,14 +47,14 @@ class OCPBaseCroco(OCPBase):
         """Integration step of the OCP."""
         return self._ocp_params.dt
 
-    @abstractmethod
     @property
+    @abstractmethod
     def runningModelList(self) -> list[crocoddyl.ActionModelAbstract]:
         """List of running models."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def terminalModel(self) -> crocoddyl.ActionModelAbstract:
         """Terminal model."""
         pass
