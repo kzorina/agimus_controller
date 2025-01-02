@@ -1,75 +1,113 @@
 import unittest
+from unittest.mock import MagicMock, patch
 
-import numpy as np
 import example_robot_data as robex
+import numpy as np
 
-from agimus_controller.ocp_base_croco import OCPCrocoBase
-from agimus_controller.ocp_param_base import OCPParamsCrocoBase
+from agimus_controller.ocp_base_croco import OCPBaseCroco
+from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+from agimus_controller.factory.robot_model import RobotModelFactory
 
-
-class TestOCPCrocoBase(unittest.TestCase):
-
-    def __init__(self, *args, **kwargs):
-        pass
-
+class TestOCPBaseCroco(unittest.TestCase):
     def setUp(self):
-        """Set up the test environment."""
-        # Load the robot
-        self.robot = robex.load('example_robot_description')
-        self.rmodel = self.robot.model
-        self.cmodel = self.robot.collision_model
+        
+        # Mock the RobotModelFactory and OCPParamsCrocoBase
+        self.mock_robot_model_factory = RobotModelFactory()
+        
+        mock_robot = robex.load('panda')
+        mock_robot_model = mock_robot.model
+        mock_collision_model = mock_robot.collision_model
+        mock_armature = np.array([])
+        
+        self.mock_robot_model_factory._rmodel = mock_robot_model
+        self.mock_robot_model_factory._complete_collision_model = mock_collision_model
+        self.mock_robot_model_factory._armature = mock_armature
+        
+        self.mock_ocp_params = MagicMock(spec=OCPParamsBaseCroco)
+        
+        # Set mock parameters
+        self.mock_ocp_params.T = 10
+        self.mock_ocp_params.dt = 0.1
+        self.mock_ocp_params.use_filter_line_search = True
+        self.mock_ocp_params.termination_tolerance = 1e-6
+        self.mock_ocp_params.qp_iters = 10
+        self.mock_ocp_params.eps_abs = 1e-8
+        self.mock_ocp_params.eps_rel = 1e-6
+        self.mock_ocp_params.callbacks = True
+        self.mock_ocp_params.solver_iters = 100
 
-        # Set some fixed params for unit testing
-        self.dt = 0.01
-        self.T = 100
-        self.qp_iters = 200
-        self.solve_iters = 200
-        self.callbacks = True
-        self.x0 = np.zeros(self.rmodel.nq + self.rmodel.nv)
-        self.OCPParams = OCPParamsCrocoBase(
-            dt = self.dt,
-            T = self.T,
-            qp_iters=self.qp_iters,
-            solver_iters=self.solve_iters,
-            callbacks=self.callbacks,
-            ...,
-        )
-        return super().setUp()
+        # Create a concrete implementation of OCPBaseCroco
+        class TestOCPCroco(OCPBaseCroco):
+            @property
+            def runningModelList(self):
+                return None
 
-    def test_abstract_class_instantiation(self):
-        """Test the instantiation of the OCPCrocoBase class."""
-        with self.assertRaises(TypeError):
-            OCPCrocoBase(self.rmodel, self.cmodel, self.OCPParams)
+            @property
+            def terminalModel(self):
+                return None
+            
+            def set_reference_horizon(self, horizon_size):
+                return None
 
+        
+        self.ocp = TestOCPCroco(self.mock_robot_model_factory, self.mock_ocp_params)
+    
     def test_horizon_size(self):
-        """Test the horizon_size property of the OCPCrocoBase class."""
-        ocp = OCPCrocoBase(self.rmodel, self.cmodel, self.OCPParams)
-        self.assertEqual(ocp.horizon_size, self.T)
+        """Test the horizon_size property."""
+        self.assertEqual(self.ocp.horizon_size, self.mock_ocp_params.T)
 
     def test_dt(self):
-        """Test the dt property of the OCPCrocoBase class."""
-        ocp = OCPCrocoBase(self.rmodel, self.cmodel, self.OCPParams)
-        self.assertEqual(ocp.dt, self.dt)
+        """Test the dt property."""
+        self.assertAlmostEqual(self.ocp.dt, self.mock_ocp_params.dt)
 
-    def test_x0(self):
-        """Test the x0 property of the OCPCrocoBase class."""
-        ocp = OCPCrocoBase(self.rmodel, self.cmodel, self.OCPParams)
-        self.assertTrue(np.array_equal(ocp.x0, self.x0))
 
-    def test_x_init(self):
-        """Test the x_init method of the OCPCrocoBase class."""
-        ocp = OCPCrocoBase(self.rmodel, self.cmodel, self.OCPParams)
-        x_init = ocp.x_init()
-        self.assertEqual(len(x_init), self.T)
-        self.assertTrue(np.array_equal(x_init[0], self.x0))
+class TestSimpleOCPCroco(unittest.TestCase):
+    def setUp(self):
+        
+        # Mock the RobotModelFactory and OCPParamsCrocoBase
+        self.robot_model_factory = RobotModelFactory()
+        
+        robot = robex.load('panda')
+        robot_model = robot.model
+        collision_model = robot.collision_model
+        armature = np.array([])
+        
+        self.robot_model_factory._rmodel = robot_model
+        self.robot_model_factory._complete_collision_model = collision_model
+        self.robot_model_factory.armature = armature
+        
+        self.ocp_params = OCPParamsBaseCroco()
+        
+        # Set mock parameters
+        self.ocp_params.T = 10
+        self.ocp_params.dt = 0.1
+        self.ocp_params.use_filter_line_search = True
+        self.ocp_params.termination_tolerance = 1e-6
+        self.ocp_params.qp_iters = 10
+        self.ocp_params.eps_abs = 1e-8
+        self.ocp_params.eps_rel = 1e-6
+        self.ocp_params.callbacks = True
+        self.ocp_params.solver_iters = 100
 
-    def test_u_init(self):
-        """Test the u_init method of the OCPCrocoBase class."""
-        ocp = OCPCrocoBase(self.rmodel, self.cmodel, self.OCPParams)
-        u_init = ocp.u_init()
-        self.assertEqual(len(u_init), self.T - 1)
 
-    # def test_solve(self):
+        # Create a concrete implementation of OCPBaseCroco
+        class TestOCPCroco(OCPBaseCroco):
+            @property
+            def runningModelList(self):
+                return None
+
+            @property
+            def terminalModel(self):
+                return None
+            
+            def set_reference_horizon(self, horizon_size):
+                ### Not implemented in this OCP example.
+                return None
+
+        
+        self.ocp = TestOCPCroco(self.robot_model_factory, self.ocp_params)
+
+
 
 if __name__ == '__main__':
     unittest.main()

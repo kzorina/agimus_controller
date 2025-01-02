@@ -4,7 +4,6 @@ import crocoddyl
 import mim_solvers
 import numpy as np
 import numpy.typing as npt
-import pinocchio as pin
 
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.ocp_base import OCPBase
