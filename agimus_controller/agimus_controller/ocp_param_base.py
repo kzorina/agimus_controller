@@ -4,7 +4,7 @@ import numpy as np
 
 
 @dataclass
-class OCPParamsCrocoBase:
+class OCPParamsBaseCroco:
     """Input data structure of the OCP."""
 
     # Data relevant to solve the OCP

@@ -8,21 +8,21 @@ import pinocchio as pin
 
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.ocp_base import OCPBase
-from agimus_controller.ocp_param_base import OCPParamsCrocoBase
+from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 from agimus_controller.factory.robot_model import RobotModelFactory
 
 
-class OCPCrocoBase(OCPBase):
+class OCPBaseCroco(OCPBase):
     def __init__(
         self,
         robot_model: RobotModelFactory,
-        ocp_params: OCPParamsCrocoBase,
+        ocp_params: OCPParamsBaseCroco,
     ) -> None:
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
             robot_model (RobotModelFactory): All models of the robot.
-            ocp_params (OCPParamsBase): Input data structure of the OCP.
+            ocp_params (OCPParamsBaseCroco): Input data structure of the OCP.
         """
         # Setting the robot model
         self._robot_model = robot_model
@@ -85,18 +85,18 @@ class OCPCrocoBase(OCPBase):
         ocp.use_filter_line_search = self._ocp_params.use_filter_line_search
 
         # Parameters of the solver
-        ocp.termination_tolerance = OCPParamsCrocoBase.termination_tolerance
-        ocp.max_qp_iters = OCPParamsCrocoBase.qp_iters
-        ocp.eps_abs = OCPParamsCrocoBase.eps_abs
-        ocp.eps_rel = OCPParamsCrocoBase.eps_rel
-        ocp.with_callbacks = OCPParamsCrocoBase.callbacks
+        ocp.termination_tolerance = self._ocp_params.termination_tolerance
+        ocp.max_qp_iters = self._ocp_params.qp_iters
+        ocp.eps_abs = self._ocp_params.eps_abs
+        ocp.eps_rel = self._ocp_params.eps_rel
+        ocp.with_callbacks = self._ocp_params.callbacks
 
         # Creating the warmstart lists for the solver
         x_init = [x0] + x_warmstart
         u_init = u_warmstart
 
         # Solve the OCP
-        ocp.solve(x_init, u_init, OCPParamsCrocoBase.solver_iters)
+        ocp.solve(x_init, u_init, self._ocp_params.solver_iters)
 
         # Store the results
         self.ocp_results = OCPResults(
