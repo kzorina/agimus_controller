@@ -21,27 +21,27 @@ class OCPBase(ABC):
         self, reference_trajectory: list[WeightedTrajectoryPoint]
     ) -> None:
         """Set the reference trajectory and the weights of the costs for the OCP solver. This method should be implemented by the derived class."""
-        ...
+        pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def horizon_size() -> int:
         """Returns the horizon size of the OCP.
 
         Returns:
             int: size of the horizon.
         """
-        ...
+        pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def dt() -> int:
         """Returns the time step of the OCP.
 
         Returns:
             int: time step of the OCP.
         """
-        ...
+        pass
 
     @abstractmethod
     def solve(
@@ -58,10 +58,10 @@ class OCPBase(ABC):
             x_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the state. This doesn't include the current state.
             u_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the control inputs.
         """
-        ...
+        pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def ocp_results(self) -> OCPResults:
         """Returns the results of the OCP solver.
         The solve method should be called before calling this method.
@@ -69,14 +69,14 @@ class OCPBase(ABC):
         Returns:
             OCPResults: Class containing the results of the OCP solver.
         """
-        ...
+        pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def debug_data(self) -> OCPDebugData:
         """Returns the debug data of the OCP solver.
 
         Returns:
             OCPDebugData: Class containing the debug data of the OCP solver.
         """
-        ...
+        pass

@@ -51,13 +51,13 @@ class OCPBaseCroco(OCPBase):
     @property
     def runningModelList(self) -> list[crocoddyl.ActionModelAbstract]:
         """List of running models."""
-        ...
+        pass
 
     @abstractmethod
     @property
     def terminalModel(self) -> crocoddyl.ActionModelAbstract:
         """Terminal model."""
-        ...
+        pass
 
     def solve(
         self,
@@ -116,4 +116,4 @@ class OCPBaseCroco(OCPBase):
 
     @property
     def debug_data(self) -> OCPDebugData:
-        ...
+        pass
