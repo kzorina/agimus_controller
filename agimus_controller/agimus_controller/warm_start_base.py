@@ -60,8 +60,7 @@ class WarmStartBase(ABC):
         ...
 
     @abstractmethod
-    def setup(self, *args, **kwargs
-    ) -> None:
+    def setup(self, *args, **kwargs) -> None:
         """Sets up the variables needed for the warmstart computation
 
         Args:
