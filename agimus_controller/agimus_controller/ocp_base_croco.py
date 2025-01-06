@@ -38,13 +38,11 @@ class OCPBaseCroco(OCPBase):
 
         self._ocp_results = None
 
-    @override
     @property
     def horizon_size(self) -> int:
         """Number of time steps in the horizon."""
         return self._ocp_params.T
 
-    @override
     @property
     def dt(self) -> float:
         """Integration step of the OCP."""
@@ -52,25 +50,29 @@ class OCPBaseCroco(OCPBase):
 
     @property
     @abstractmethod
-    def runningModelList(self) -> list[crocoddyl.ActionModelAbstract]:
+    def running_model_list(self) -> list[crocoddyl.ActionModelAbstract]:
         """List of running models."""
         pass
 
     @property
     @abstractmethod
-    def terminalModel(self) -> crocoddyl.ActionModelAbstract:
+    def terminal_model(self) -> crocoddyl.ActionModelAbstract:
         """Terminal model."""
         pass
 
-    @override
     def solve(
         self,
         x0: npt.NDArray[np.float64],
         x_warmstart: list[npt.NDArray[np.float64]],
         u_warmstart: list[npt.NDArray[np.float64]],
     ) -> None:
-        """Solves the OCP. Returns True if the OCP was solved successfully, False otherwise.
+        """ Solves the OCP.
         The results can be accessed through the ocp_results property.
+
+        Args:
+            x0 (npt.NDArray[np.float64]): Current state of the robot.
+            x_warmstart (list[npt.NDArray[np.float64]]): Predicted states for the OCP.
+            u_warmstart (list[npt.NDArray[np.float64]]): Predicted control inputs for the OCP.
         """
         ### Creation of the state and actuation models
 
@@ -101,7 +103,6 @@ class OCPBaseCroco(OCPBase):
             feed_forward_terms=ocp.us,
         )
 
-    @override
     @property
     def ocp_results(self) -> OCPResults:
         """Output data structure of the OCP.
@@ -120,7 +121,10 @@ class OCPBaseCroco(OCPBase):
         """
         self._ocp_results = value
 
-    @override
     @property
     def debug_data(self) -> OCPDebugData:
+        pass
+    
+    @debug_data.setter
+    def debug_data(self, value: OCPDebugData) -> None:
         pass
