@@ -77,7 +77,7 @@ class OCPBaseCroco(OCPBase):
         self.running_model_list = self.create_running_model_list()
         # Create the terminal model
         self.terminal_model = self.create_terminal_model()
-        
+
         # Create the shooting problem
         problem = crocoddyl.ShootingProblem(
             x0, self.running_model_list, self.terminal_model
