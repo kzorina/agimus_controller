@@ -114,7 +114,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             terminal_cost_model = crocoddyl.CostModelSum(self._state)
 
             ### Creation of cost terms
-           ### Creation of cost terms
+            ### Creation of cost terms
             # State Regularization cost
             x_residual = crocoddyl.ResidualModelState(
                 self._state,
@@ -174,7 +174,9 @@ class TestSimpleOCPCroco(unittest.TestCase):
         self.state_warmstart = [np.zeros(robot_model.nq + robot_model.nv)] * (
             self.ocp_params.horizon_size - 1
         )  # The first state is the current state
-        self.control_warmstart = [np.zeros(robot_model.nq)] * (self.ocp_params.horizon_size - 1)
+        self.control_warmstart = [np.zeros(robot_model.nq)] * (
+            self.ocp_params.horizon_size - 1
+        )
         # Create a concrete implementation of OCPBaseCroco
         self.ocp = self.TestOCPCroco(self.robot_model_factory, self.ocp_params)
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)
@@ -199,19 +201,25 @@ class TestSimpleOCPCroco(unittest.TestCase):
         # Checking the states
         for iter, state in enumerate(results[0]):
             np.testing.assert_array_almost_equal(
-                state, self.ocp.ocp_results.states.tolist()[iter], err_msg="States are not equal"
+                state,
+                self.ocp.ocp_results.states.tolist()[iter],
+                err_msg="States are not equal",
             )
 
         # Checking the ricatti gains
         for iter, gain in enumerate(results[1]):
             np.testing.assert_array_almost_equal(
-                gain, self.ocp.ocp_results.ricatti_gains.tolist()[iter], err_msg="Ricatti gains are not equal"
+                gain,
+                self.ocp.ocp_results.ricatti_gains.tolist()[iter],
+                err_msg="Ricatti gains are not equal",
             )
 
         # Checking the feed forward terms
         for iter, term in enumerate(results[2]):
             np.testing.assert_array_almost_equal(
-                term, self.ocp.ocp_results.feed_forward_terms.tolist()[iter], err_msg="Feed forward term are not equal"
+                term,
+                self.ocp.ocp_results.feed_forward_terms.tolist()[iter],
+                err_msg="Feed forward term are not equal",
             )
 
 
