@@ -44,7 +44,7 @@ class OCPBaseCroco(OCPBase):
         return self._ocp_params.T
 
     @property
-    def dt(self) -> np.float64:
+    def dt(self) -> float:
         """Integration step of the OCP."""
         return self._ocp_params.dt
 
