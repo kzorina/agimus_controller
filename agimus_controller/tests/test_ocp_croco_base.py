@@ -63,7 +63,6 @@ class TestOCPBaseCroco(unittest.TestCase):
 
 
 class TestSimpleOCPCroco(unittest.TestCase):
-    
     class TestOCPCroco(OCPBaseCroco):
         @property
         def runningModelList(self):
@@ -73,7 +72,8 @@ class TestSimpleOCPCroco(unittest.TestCase):
             ### Creation of cost terms
             # State Regularization cost
             xResidual = crocoddyl.ResidualModelState(
-                self._state, np.concatenate((pin.neutral( self._rmodel), np.zeros( self._rmodel.nv))) 
+                self._state,
+                np.concatenate((pin.neutral(self._rmodel), np.zeros(self._rmodel.nv))),
             )
             xRegCost = crocoddyl.CostModelResidual(self._state, xResidual)
 
@@ -84,10 +84,8 @@ class TestSimpleOCPCroco(unittest.TestCase):
             # End effector frame cost
             framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
-                self._rmodel.getFrameId(
-                    "panda_hand_tcp"
-                ),
-                pin.SE3(np.eye(3),np.array([1.0, 1.0, 1.0])),
+                self._rmodel.getFrameId("panda_hand_tcp"),
+                pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
             goalTrackingCost = crocoddyl.CostModelResidual(
@@ -105,33 +103,29 @@ class TestSimpleOCPCroco(unittest.TestCase):
             runningModel = crocoddyl.IntegratedActionModelEuler(
                 running_DAM,
             )
-            runningModel.differential.armature = (
-                self._robot_model.armature
-            )
+            runningModel.differential.armature = self._robot_model.armature
 
-            runningModelList = [runningModel] * (self._ocp_params.T-1)
+            runningModelList = [runningModel] * (self._ocp_params.T - 1)
             return runningModelList
 
         @property
         def terminalModel(self):
-
             # Terminal cost models
             terminalCostModel = crocoddyl.CostModelSum(self._state)
 
             ### Creation of cost terms
             # State Regularization cost
             xResidual = crocoddyl.ResidualModelState(
-                self._state, np.concatenate((pin.neutral( self._rmodel), np.zeros( self._rmodel.nv))) 
+                self._state,
+                np.concatenate((pin.neutral(self._rmodel), np.zeros(self._rmodel.nv))),
             )
             xRegCost = crocoddyl.CostModelResidual(self._state, xResidual)
 
             # End effector frame cost
             framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
-                self._rmodel.getFrameId(
-                    "panda_hand_tcp"
-                ),
-                pin.SE3(np.eye(3),np.array([1.0, 1.0, 1.0])),
+                self._rmodel.getFrameId("panda_hand_tcp"),
+                pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
             goalTrackingCost = crocoddyl.CostModelResidual(
@@ -149,9 +143,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             )
 
             terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.0)
-            terminalModel.differential.armature = (
-                self._robot_model.armature
-            )
+            terminalModel.differential.armature = self._robot_model.armature
 
             return terminalModel
 
@@ -159,7 +151,6 @@ class TestSimpleOCPCroco(unittest.TestCase):
             ### Not implemented in this OCP example.
             return None
 
-    
     def setUp(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
         self.robot_model_factory = RobotModelFactory()
@@ -174,15 +165,21 @@ class TestSimpleOCPCroco(unittest.TestCase):
         self.robot_model_factory.armature = armature
 
         # Set mock parameters
-        self.ocp_params = OCPParamsBaseCroco(dt=0.1, T=10, solver_iters=100, callbacks=True)
-        self.state_reg = np.concatenate((pin.neutral(robot_model), np.zeros(robot_model.nv))) 
-        self.state_warmstart = [np.zeros(robot_model.nq + robot_model.nv)] * (self.ocp_params.T - 1) # The first state is the current state
-        self.control_warmstart = [np.zeros(robot_model.nq)] * (self.ocp_params.T-1)
+        self.ocp_params = OCPParamsBaseCroco(
+            dt=0.1, T=10, solver_iters=100, callbacks=True
+        )
+        self.state_reg = np.concatenate(
+            (pin.neutral(robot_model), np.zeros(robot_model.nv))
+        )
+        self.state_warmstart = [np.zeros(robot_model.nq + robot_model.nv)] * (
+            self.ocp_params.T - 1
+        )  # The first state is the current state
+        self.control_warmstart = [np.zeros(robot_model.nq)] * (self.ocp_params.T - 1)
         # Create a concrete implementation of OCPBaseCroco
         self.ocp = self.TestOCPCroco(self.robot_model_factory, self.ocp_params)
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)
         # self.save_results()
-        
+
     def save_results(self):
         results = np.array(
             [
@@ -190,23 +187,33 @@ class TestSimpleOCPCroco(unittest.TestCase):
                 self.ocp.ocp_results.ricatti_gains.tolist(),
                 self.ocp.ocp_results.feed_forward_terms.tolist(),
             ],
-        dtype=object,  # Ensure the array is dtype=object before saving
-    )        
-        np.save("ressources/simple_ocp_croco_results.npy", results,)
+            dtype=object,  # Ensure the array is dtype=object before saving
+        )
+        np.save(
+            "ressources/simple_ocp_croco_results.npy",
+            results,
+        )
 
     def test_check_results(self):
         results = np.load("ressources/simple_ocp_croco_results.npy", allow_pickle=True)
         # Checking the states
         for iter, state in enumerate(results[0]):
-            np.testing.assert_array_almost_equal(state, self.ocp.ocp_results.states.tolist()[iter])
-        
+            np.testing.assert_array_almost_equal(
+                state, self.ocp.ocp_results.states.tolist()[iter]
+            )
+
         # Checking the ricatti gains
         for iter, gain in enumerate(results[1]):
-            np.testing.assert_array_almost_equal(gain, self.ocp.ocp_results.ricatti_gains.tolist()[iter])
+            np.testing.assert_array_almost_equal(
+                gain, self.ocp.ocp_results.ricatti_gains.tolist()[iter]
+            )
 
         # Checking the feed forward terms
         for iter, term in enumerate(results[2]):
-            np.testing.assert_array_almost_equal(term, self.ocp.ocp_results.feed_forward_terms.tolist()[iter])
-            
+            np.testing.assert_array_almost_equal(
+                term, self.ocp.ocp_results.feed_forward_terms.tolist()[iter]
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
