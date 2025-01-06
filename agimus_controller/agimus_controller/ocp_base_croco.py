@@ -65,7 +65,7 @@ class OCPBaseCroco(OCPBase):
         x0: npt.NDArray[np.float64],
         x_warmstart: list[npt.NDArray[np.float64]],
         u_warmstart: list[npt.NDArray[np.float64]],
-    ) -> bool:
+    ) -> None:
         """Solves the OCP. Returns True if the OCP was solved successfully, False otherwise.
         The results can be accessed through the ocp_results property.
 
