@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+"""WarmStartBase Module.
+
+This module defines the WarmStartBase class, a template for generating warm-starts
+for optimal control problems. It includes methods to initialize state and control
+trajectories based on an initial robot state and a reference trajectory.
+
+Example:
+    Subclass the WarmStartBase class and implement the `generate` method to create
+    a warm-start for a specific optimization problem.
+"""
+
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -7,27 +19,17 @@ from agimus_controller.trajectory import TrajectoryPoint
 
 
 class WarmStartBase(ABC):
-    """
-    A template class for implementing methods that generate a warmstart for an optimal control problem.
-    The warmstart is expected to generate the initial values for state and control trajectories,
-    based on the initial robot state and a reference trajectory.
+    """Base class for generating warm-starts for optimal control problems.
 
-    Attributes:
-        _previous_solution (list[TrajectoryPoint]): Stores the previous solution of the optimization problem.
-
-    Methods:
-        generate(initial_state: TrajectoryPoint, reference_trajectory: list[TrajectoryPoint]) -> tuple:
-            Generates warm-start values for the optimization problem. This must be
-            implemented by subclasses.
-
-        update_previous_solution(previous_solution: list[TrajectoryPoint]) -> None:
-            Updates the internally stored previous solution for later use.
+    This class provides a template for generating initial values for state and
+    control trajectories based on the initial robot state and a reference trajectory.
     """
 
     def __init__(self) -> None:
+        """Initialize the WarmStartBase class."""
         super().__init__()
         # Stores the previous solution of the optimization problem.
-        self._previous_solution: list[TrajectoryPoint] = list()
+        self._previous_solution: list[TrajectoryPoint] = []
 
     @abstractmethod
     def generate(
@@ -50,20 +52,20 @@ class WarmStartBase(ABC):
 
         Returns:
             tuple:
-                - x0 (npt.NDArray[np.float64]): The initial state vector.
-                - init_xs (list[npt.NDArray[np.float64]]): List of state vectors
+                - npt.NDArray[np.float64]: The initial state vector.
+                - list[npt.NDArray[np.float64]]: List of state vectors
                 for each point in the reference trajectory.
-                - init_us (list[npt.NDArray[np.float64]]): List of control inputs.
+                - list[npt.NDArray[np.float64]]: List of control inputs.
         """
         ...
 
     def update_previous_solution(
         self, previous_solution: list[TrajectoryPoint]
     ) -> None:
-        """
-        Store the solution from a previous optimization cycle.
-        It can be used as a reference or initialization of warmstart.
+        """Update the stored previous solution.
 
+        Stores the solution from a previous optimization cycle to be used as a reference
+        or initialization for warm-start generation.
         Args:
             previous_solution (list[TrajectoryPoint]): The solution of the optimization problem.
         """
