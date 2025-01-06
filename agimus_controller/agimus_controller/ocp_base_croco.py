@@ -77,7 +77,7 @@ class OCPBaseCroco(OCPBase):
         ### Creation of the state and actuation models
 
         problem = crocoddyl.ShootingProblem(
-            x0, self.runningModelList, self.terminalModel
+            x0, self.running_model_list, self.terminal_model
         )
         # Create solver + callbacks
         ocp = mim_solvers.SolverCSQP(problem)

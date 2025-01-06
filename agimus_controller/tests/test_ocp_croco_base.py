@@ -109,7 +109,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             return running_model_list
 
         @property
-        def terminalModel(self):
+        def terminal_model(self):
             # Terminal cost models
             terminal_cost_model = crocoddyl.CostModelSum(self._state)
 
