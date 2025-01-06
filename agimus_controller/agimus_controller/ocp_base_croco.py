@@ -36,6 +36,8 @@ class OCPBaseCroco(OCPBase):
         # Setting the OCP parameters
         self._ocp_params = ocp_params
 
+        self._ocp_results = None
+
     @property
     def horizon_size(self) -> int:
         """Number of time steps in the horizon."""
@@ -109,9 +111,18 @@ class OCPBaseCroco(OCPBase):
         """Output data structure of the OCP.
 
         Returns:
-            OCPResults: Output data structure of the OCP. It contains the states, Ricatti gains and feed-forward terms.
+            OCPResults: Output data structure of the OCP. It contains the states, Ricatti gains, and feed-forward terms.
         """
-        return self.ocp_results
+        return self._ocp_results
+
+    @ocp_results.setter
+    def ocp_results(self, value: OCPResults) -> None:
+        """Set the output data structure of the OCP.
+
+        Args:
+            value (OCPResults): New output data structure of the OCP.
+        """
+        self._ocp_results = value
 
     @property
     def debug_data(self) -> OCPDebugData:

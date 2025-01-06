@@ -108,3 +108,13 @@ class RobotModelFactory:
             npt.NDArray[np.float64]: Armature of the robot.
         """
         return self._params.armature
+
+
+    @armature.setter
+    def armature(self, value: npt.NDArray[np.float64]) -> None:
+        """Set the armature of the robot.
+
+        Args:
+            value (npt.NDArray[np.float64]): New armature values to set.
+        """
+        self._params.armature = value
