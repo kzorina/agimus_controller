@@ -69,11 +69,6 @@ class OCPBaseCroco(OCPBase):
     ) -> None:
         """Solves the OCP. Returns True if the OCP was solved successfully, False otherwise.
         The results can be accessed through the ocp_results property.
-
-        Args:
-            x0 (npt.NDArray[np.float64]): Current state of the robot.
-            x_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the state. This doesn't include the current state.
-            u_warmstart (list[npt.NDArray[np.float64]]): Warmstart values for the control inputs.
         """
         ### Creation of the state and actuation models
 
