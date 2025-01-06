@@ -43,6 +43,7 @@ class OCPBaseCroco(OCPBase):
         """Number of time steps in the horizon."""
         return self._ocp_params.T
 
+    @override
     @property
     def dt(self) -> float:
         """Integration step of the OCP."""
