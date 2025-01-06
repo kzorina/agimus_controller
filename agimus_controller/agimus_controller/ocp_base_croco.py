@@ -60,6 +60,7 @@ class OCPBaseCroco(OCPBase):
         """Terminal model."""
         pass
 
+    @override
     def solve(
         self,
         x0: npt.NDArray[np.float64],
