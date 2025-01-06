@@ -38,6 +38,7 @@ class OCPBaseCroco(OCPBase):
 
         self._ocp_results = None
 
+    @override
     @property
     def horizon_size(self) -> int:
         """Number of time steps in the horizon."""
@@ -100,6 +101,7 @@ class OCPBaseCroco(OCPBase):
             feed_forward_terms=ocp.us,
         )
 
+    @override
     @property
     def ocp_results(self) -> OCPResults:
         """Output data structure of the OCP.
@@ -118,6 +120,7 @@ class OCPBaseCroco(OCPBase):
         """
         self._ocp_results = value
 
+    @override
     @property
     def debug_data(self) -> OCPDebugData:
         pass
