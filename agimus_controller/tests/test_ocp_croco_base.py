@@ -41,11 +41,11 @@ class TestOCPBaseCroco(unittest.TestCase):
         # Create a concrete implementation of OCPBaseCroco
         class TestOCPCroco(OCPBaseCroco):
             @property
-            def runningModelList(self):
+            def running_model_list(self):
                 return None
 
             @property
-            def terminalModel(self):
+            def terminal_model(self):
                 return None
 
             def set_reference_horizon(self, horizon_size):
@@ -65,87 +65,87 @@ class TestOCPBaseCroco(unittest.TestCase):
 class TestSimpleOCPCroco(unittest.TestCase):
     class TestOCPCroco(OCPBaseCroco):
         @property
-        def runningModelList(self):
+        def running_model_list(self):
             # Running cost model
-            runningCostModel = crocoddyl.CostModelSum(self._state)
+            running_cost_model = crocoddyl.CostModelSum(self._state)
 
             ### Creation of cost terms
             # State Regularization cost
-            xResidual = crocoddyl.ResidualModelState(
+            x_residual = crocoddyl.ResidualModelState(
                 self._state,
                 np.concatenate((pin.neutral(self._rmodel), np.zeros(self._rmodel.nv))),
             )
-            xRegCost = crocoddyl.CostModelResidual(self._state, xResidual)
+            x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
 
             # Control Regularization cost
-            uResidual = crocoddyl.ResidualModelControl(self._state)
-            uRegCost = crocoddyl.CostModelResidual(self._state, uResidual)
+            u_residual = crocoddyl.ResidualModelControl(self._state)
+            u_reg_cost = crocoddyl.CostModelResidual(self._state, u_residual)
 
             # End effector frame cost
-            framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
+            frame_placement_residual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
                 self._rmodel.getFrameId("panda_hand_tcp"),
                 pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
-            goalTrackingCost = crocoddyl.CostModelResidual(
-                self._state, framePlacementResidual
+            goal_tracking_cost = crocoddyl.CostModelResidual(
+                self._state, frame_placement_residual
             )
-            runningCostModel.addCost("stateReg", xRegCost, 0.1)
-            runningCostModel.addCost("ctrlRegGrav", uRegCost, 0.0001)
-            runningCostModel.addCost("gripperPoseRM", goalTrackingCost, 1.0)
+            running_cost_model.addCost("stateReg", x_reg_cost, 0.1)
+            running_cost_model.addCost("ctrlRegGrav", u_reg_cost, 0.0001)
+            running_cost_model.addCost("gripperPoseRM", goal_tracking_cost, 1.0)
             # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
             running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self._state,
                 self._actuation,
-                runningCostModel,
+                running_cost_model,
             )
-            runningModel = crocoddyl.IntegratedActionModelEuler(
+            running_model = crocoddyl.IntegratedActionModelEuler(
                 running_DAM,
             )
-            runningModel.differential.armature = self._robot_model.armature
+            running_model.differential.armature = self._robot_model.armature
 
-            runningModelList = [runningModel] * (self._ocp_params.T - 1)
-            return runningModelList
+            running_model_list = [running_model] * (self._ocp_params.T - 1)
+            return running_model_list
 
         @property
         def terminalModel(self):
             # Terminal cost models
-            terminalCostModel = crocoddyl.CostModelSum(self._state)
+            terminal_cost_model = crocoddyl.CostModelSum(self._state)
 
             ### Creation of cost terms
+           ### Creation of cost terms
             # State Regularization cost
-            xResidual = crocoddyl.ResidualModelState(
+            x_residual = crocoddyl.ResidualModelState(
                 self._state,
                 np.concatenate((pin.neutral(self._rmodel), np.zeros(self._rmodel.nv))),
             )
-            xRegCost = crocoddyl.CostModelResidual(self._state, xResidual)
+            x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
 
             # End effector frame cost
-            framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
+            frame_placement_residual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
                 self._rmodel.getFrameId("panda_hand_tcp"),
                 pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
-            goalTrackingCost = crocoddyl.CostModelResidual(
-                self._state, framePlacementResidual
+            goal_tracking_cost = crocoddyl.CostModelResidual(
+                self._state, frame_placement_residual
             )
-
-            terminalCostModel.addCost("stateReg", xRegCost, 0.1)
-            terminalCostModel.addCost("gripperPose", goalTrackingCost, 50)
+            terminal_cost_model.addCost("stateReg", x_reg_cost, 0.1)
+            terminal_cost_model.addCost("gripperPose", goal_tracking_cost, 50)
 
             # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
             terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self._state,
                 self._actuation,
-                terminalCostModel,
+                terminal_cost_model,
             )
 
-            terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.0)
-            terminalModel.differential.armature = self._robot_model.armature
+            terminal_model = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.0)
+            terminal_model.differential.armature = self._robot_model.armature
 
-            return terminalModel
+            return terminal_model
 
         def set_reference_horizon(self, horizon_size):
             ### Not implemented in this OCP example.
@@ -199,19 +199,19 @@ class TestSimpleOCPCroco(unittest.TestCase):
         # Checking the states
         for iter, state in enumerate(results[0]):
             np.testing.assert_array_almost_equal(
-                state, self.ocp.ocp_results.states.tolist()[iter]
+                state, self.ocp.ocp_results.states.tolist()[iter], err_msg="States are not equal"
             )
 
         # Checking the ricatti gains
         for iter, gain in enumerate(results[1]):
             np.testing.assert_array_almost_equal(
-                gain, self.ocp.ocp_results.ricatti_gains.tolist()[iter]
+                gain, self.ocp.ocp_results.ricatti_gains.tolist()[iter], err_msg="Ricatti gains are not equal"
             )
 
         # Checking the feed forward terms
         for iter, term in enumerate(results[2]):
             np.testing.assert_array_almost_equal(
-                term, self.ocp.ocp_results.feed_forward_terms.tolist()[iter]
+                term, self.ocp.ocp_results.feed_forward_terms.tolist()[iter], err_msg="Feed forward term are not equal"
             )
 
 
