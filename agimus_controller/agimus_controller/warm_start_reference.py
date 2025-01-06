@@ -57,8 +57,8 @@ class WarmStartReference(WarmStartBase):
         x0 = np.concatenate(
             [initial_state.robot_configuration, initial_state.robot_velocity]
         )
-        assert x0.shape[0] == (self._nx), (f"Expected x0 shape {(self._nx)},"
-            f"from provided reference got {x0.shape}"
+        assert x0.shape[0] == (self._nx), (
+            f"Expected x0 shape {(self._nx)}," f"from provided reference got {x0.shape}"
         )
 
         x_init = np.array(
@@ -67,7 +67,10 @@ class WarmStartReference(WarmStartBase):
                 for point in reference_trajectory
             ]
         )
-        assert x_init.shape == (len(reference_trajectory), self._nx, ), (
+        assert x_init.shape == (
+            len(reference_trajectory),
+            self._nx,
+        ), (
             f"Expected x_init shape {(len(reference_trajectory), self._nx)}, "
             f"from provided reference got {x_init.shape}"
         )
