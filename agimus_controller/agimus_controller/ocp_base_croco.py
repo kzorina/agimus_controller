@@ -66,7 +66,7 @@ class OCPBaseCroco(OCPBase):
         x_warmstart: list[npt.NDArray[np.float64]],
         u_warmstart: list[npt.NDArray[np.float64]],
     ) -> None:
-        """ Solves the OCP.
+        """Solves the OCP.
         The results can be accessed through the ocp_results property.
 
         Args:
@@ -124,7 +124,7 @@ class OCPBaseCroco(OCPBase):
     @property
     def debug_data(self) -> OCPDebugData:
         pass
-    
+
     @debug_data.setter
     def debug_data(self, value: OCPDebugData) -> None:
         pass
