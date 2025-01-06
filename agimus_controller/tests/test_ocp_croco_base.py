@@ -40,12 +40,10 @@ class TestOCPBaseCroco(unittest.TestCase):
 
         # Create a concrete implementation of OCPBaseCroco
         class TestOCPCroco(OCPBaseCroco):
-            @property
-            def running_model_list(self):
+            def create_running_model_list(self):
                 return None
 
-            @property
-            def terminal_model(self):
+            def create_terminal_model(self):
                 return None
 
             def set_reference_horizon(self, horizon_size):
@@ -64,8 +62,7 @@ class TestOCPBaseCroco(unittest.TestCase):
 
 class TestSimpleOCPCroco(unittest.TestCase):
     class TestOCPCroco(OCPBaseCroco):
-        @property
-        def running_model_list(self):
+        def create_running_model_list(self):
             # Running cost model
             running_cost_model = crocoddyl.CostModelSum(self._state)
 
@@ -108,8 +105,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             running_model_list = [running_model] * (self._ocp_params.horizon_size - 1)
             return running_model_list
 
-        @property
-        def terminal_model(self):
+        def create_terminal_model(self):
             # Terminal cost models
             terminal_cost_model = crocoddyl.CostModelSum(self._state)
 

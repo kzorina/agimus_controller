@@ -48,16 +48,14 @@ class OCPBaseCroco(OCPBase):
         """Integration step of the OCP."""
         return self._ocp_params.dt
 
-    @property
     @abstractmethod
-    def running_model_list(self) -> list[crocoddyl.ActionModelAbstract]:
-        """List of running models."""
+    def create_running_model_list(self) -> list[crocoddyl.ActionModelAbstract]:
+        """Create the list of running models."""
         pass
 
-    @property
     @abstractmethod
-    def terminal_model(self) -> crocoddyl.ActionModelAbstract:
-        """Terminal model."""
+    def create_terminal_model(self) -> crocoddyl.ActionModelAbstract:
+        """Create the terminal model."""
         pass
 
     def solve(
@@ -75,7 +73,12 @@ class OCPBaseCroco(OCPBase):
             u_warmstart (list[npt.NDArray[np.float64]]): Predicted control inputs for the OCP.
         """
         ### Creation of the state and actuation models
-
+        # Create the running models
+        self.running_model_list = self.create_running_model_list()
+        # Create the terminal model
+        self.terminal_model = self.create_terminal_model()
+        
+        # Create the shooting problem
         problem = crocoddyl.ShootingProblem(
             x0, self.running_model_list, self.terminal_model
         )
