@@ -36,7 +36,7 @@ class OCPBase(ABC):
     @property
     @abstractmethod
     def dt() -> float:
-        """Returns the time step of the OCP.
+        """Returns the time step of the OCP in seconds.
 
         Returns:
             int: time step of the OCP.
