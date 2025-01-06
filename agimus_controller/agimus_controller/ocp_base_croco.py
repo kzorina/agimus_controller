@@ -93,11 +93,8 @@ class OCPBaseCroco(OCPBase):
         ocp.with_callbacks = self._ocp_params.callbacks
 
         # Creating the warmstart lists for the solver
-        x_init = [x0] + x_warmstart
-        u_init = u_warmstart
-
         # Solve the OCP
-        ocp.solve(x_init, u_init, self._ocp_params.solver_iters)
+        ocp.solve([x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters)
 
         # Store the results
         self.ocp_results = OCPResults(
