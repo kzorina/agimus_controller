@@ -70,7 +70,7 @@ class OCPBase(ABC):
             OCPResults: Class containing the results of the OCP solver.
         """
         pass
-    
+
     @ocp_results.setter
     def ocp_results(self, value: OCPResults) -> None:
         """Set the output data structure of the OCP.
