@@ -27,7 +27,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
 
         Test Parameters:
         - dt (float): Time step for the OCP solver.
-        - T (int): Total number of time steps.
+        - horizon_size (int): Total number of time steps.
         - solver_iters (int): Number of solver iterations.
         - qp_iters (int): Number of QP iterations.
         - termination_tolerance (float): Tolerance for termination criteria.
@@ -37,7 +37,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
 
         Assertions:
         - Asserts that the instance attribute `dt` is equal to the input `dt`.
-        - Asserts that the instance attribute `T` is equal to the input `T`.
+        - Asserts that the instance attribute `horizon_size` is equal to the input `horizon_size`.
         - Asserts that the instance attribute `qp_iters` is equal to the input `qp_iters`.
         - Asserts that the instance attribute `solver_iters` is equal to the input `solver_iters`.
         - Asserts that the instance attribute `termination_tolerance` is equal to the input `termination_tolerance`.
@@ -46,7 +46,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         - Asserts that the instance attribute `callbacks` is False.
         """
         dt = np.float64(0.01)
-        T = 100
+        horizon_size = 100
         solver_iters = 50
         qp_iters = 200
         termination_tolerance = 1e-3
@@ -55,7 +55,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         callbacks = False
         params = OCPParamsBaseCroco(
             dt=dt,
-            T=T,
+            horizon_size=horizon_size,
             solver_iters=solver_iters,
             qp_iters=qp_iters,
             termination_tolerance=termination_tolerance,
@@ -64,7 +64,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             callbacks=callbacks,
         )
         self.assertEqual(params.dt, dt)
-        self.assertEqual(params.T, T)
+        self.assertEqual(params.horizon_size, horizon_size)
         self.assertEqual(params.qp_iters, qp_iters)
         self.assertEqual(params.solver_iters, solver_iters)
         self.assertEqual(params.termination_tolerance, termination_tolerance)

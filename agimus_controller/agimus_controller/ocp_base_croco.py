@@ -41,7 +41,7 @@ class OCPBaseCroco(OCPBase):
     @property
     def horizon_size(self) -> int:
         """Number of time steps in the horizon."""
-        return self._ocp_params.T
+        return self._ocp_params.horizon_size
 
     @property
     def dt(self) -> float:

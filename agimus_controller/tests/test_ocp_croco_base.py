@@ -28,7 +28,7 @@ class TestOCPBaseCroco(unittest.TestCase):
         self.mock_ocp_params = MagicMock(spec=OCPParamsBaseCroco)
 
         # Set mock parameters
-        self.mock_ocp_params.T = 10
+        self.mock_ocp_params.horizon_size = 10
         self.mock_ocp_params.dt = 0.1
         self.mock_ocp_params.use_filter_line_search = True
         self.mock_ocp_params.termination_tolerance = 1e-6
@@ -55,7 +55,7 @@ class TestOCPBaseCroco(unittest.TestCase):
 
     def test_horizon_size(self):
         """Test the horizon_size property."""
-        self.assertEqual(self.ocp.horizon_size, self.mock_ocp_params.T)
+        self.assertEqual(self.ocp.horizon_size, self.mock_ocp_params.horizon_size)
 
     def test_dt(self):
         """Test the dt property."""
@@ -105,7 +105,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             )
             running_model.differential.armature = self._robot_model.armature
 
-            running_model_list = [running_model] * (self._ocp_params.T - 1)
+            running_model_list = [running_model] * (self._ocp_params.horizon_size - 1)
             return running_model_list
 
         @property
@@ -166,15 +166,15 @@ class TestSimpleOCPCroco(unittest.TestCase):
 
         # Set mock parameters
         self.ocp_params = OCPParamsBaseCroco(
-            dt=0.1, T=10, solver_iters=100, callbacks=True
+            dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
         )
         self.state_reg = np.concatenate(
             (pin.neutral(robot_model), np.zeros(robot_model.nv))
         )
         self.state_warmstart = [np.zeros(robot_model.nq + robot_model.nv)] * (
-            self.ocp_params.T - 1
+            self.ocp_params.horizon_size - 1
         )  # The first state is the current state
-        self.control_warmstart = [np.zeros(robot_model.nq)] * (self.ocp_params.T - 1)
+        self.control_warmstart = [np.zeros(robot_model.nq)] * (self.ocp_params.horizon_size - 1)
         # Create a concrete implementation of OCPBaseCroco
         self.ocp = self.TestOCPCroco(self.robot_model_factory, self.ocp_params)
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)

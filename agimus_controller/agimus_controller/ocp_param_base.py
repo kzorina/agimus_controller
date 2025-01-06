@@ -9,7 +9,7 @@ class OCPParamsBaseCroco:
 
     # Data relevant to solve the OCP
     dt: np.float64  # Integration step of the OCP
-    T: int  # Number of time steps in the horizon
+    horizon_size: int  # Number of time steps in the horizon
     solver_iters: int  # Number of solver iterations
     qp_iters: int = 200  # Number of QP iterations (must be a multiple of 25).
     termination_tolerance: np.float64 = (
