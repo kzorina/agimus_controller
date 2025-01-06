@@ -26,6 +26,7 @@ class WarmStartBase(ABC):
 
     def __init__(self) -> None:
         super().__init__()
+        # Stores the previous solution of the optimization problem.
         self._previous_solution: list[TrajectoryPoint] = list()
 
     @abstractmethod
