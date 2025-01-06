@@ -59,6 +59,27 @@ class WarmStartBase(ABC):
         """
         ...
 
+    @abstractmethod
+    def setup(self, *args, **kwargs
+    ) -> None:
+        """Sets up the variables needed for the warmstart computation
+
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+            Example:
+            >>> class WarmStartReference(WarmStartBase):
+            ...     def setup(self, rmodel):
+            ...         self._rmodel = rmodel
+            ...         self._rdata = self._rmodel.createData()
+            ...         self._nx = self._rmodel.nq + self._rmodel.nv
+            >>> rmodel = pin.Model()
+            >>> warmstart = WarmStartReference()
+            >>> warmstart.setup(rmodel)
+        """
+        ...
+
     def update_previous_solution(
         self, previous_solution: list[TrajectoryPoint]
     ) -> None:
