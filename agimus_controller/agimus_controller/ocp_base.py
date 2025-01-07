@@ -9,8 +9,6 @@ from agimus_controller.trajectory import WeightedTrajectoryPoint
 
 class OCPBase(ABC):
     """Base class for the Optimal Control Problem (OCP) solver. This class defines the interface for the OCP solver.
-    If you want to implement a new OCP solver, you should derive from this class and implement the abstract methods.
-    If you want to use Crocoddyl, you should inherit from the OCPCrocoBase class instead.
     """
 
     def __init__(self) -> None:
