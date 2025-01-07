@@ -61,3 +61,6 @@ class TestWarmStart(unittest.TestCase):
         np.testing.assert_array_equal(x0, expected_x0)
         np.testing.assert_array_equal(x_init, expected_x_init)
         np.testing.assert_array_equal(u_init, expected_u_init)
+
+if __name__ == "__main__": 
+    unittest.main()
