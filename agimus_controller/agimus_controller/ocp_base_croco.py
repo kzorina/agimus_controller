@@ -85,10 +85,10 @@ class OCPBaseCroco(OCPBase):
             )
             # Create solver + callbacks
             self._ocp = mim_solvers.SolverCSQP(self._problem)
-    
+
             # Merit function
             self._ocp.use_filter_line_search = self._ocp_params.use_filter_line_search
-    
+
             # Parameters of the solver
             self._ocp.termination_tolerance = self._ocp_params.termination_tolerance
             self._ocp.max_qp_iters = self._ocp_params.qp_iters
