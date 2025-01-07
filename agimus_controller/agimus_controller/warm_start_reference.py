@@ -30,7 +30,6 @@ class WarmStartReference(WarmStartBase):
         self._rdata = self._rmodel.createData()
         self._nx = self._rmodel.nq + self._rmodel.nv
 
-    @override
     def generate(
         self,
         initial_state: TrajectoryPoint,
