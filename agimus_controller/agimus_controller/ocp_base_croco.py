@@ -5,10 +5,11 @@ import mim_solvers
 import numpy as np
 import numpy.typing as npt
 
+from agimus_controller.factory.robot_model import RobotModelFactory
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.ocp_base import OCPBase
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
-from agimus_controller.factory.robot_model import RobotModelFactory
+from agimus_controller.trajectory import TrajectoryPointWeights
 
 
 class OCPBaseCroco(OCPBase):
@@ -62,7 +63,7 @@ class OCPBaseCroco(OCPBase):
     def update_crocoddyl_problem(
         self,
         x0: npt.NDArray[np.float64],
-        trajectory_points_list: list[npt.NDArray[np.float64]],
+        weighted_trajectory_points: list[TrajectoryPointWeights],
     ) -> None:
         """Update the Crocoddyl problem's references, weights and x0."""
         pass

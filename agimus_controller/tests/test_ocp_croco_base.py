@@ -26,18 +26,9 @@ class TestOCPBaseCroco(unittest.TestCase):
         self.mock_robot_model_factory._complete_collision_model = mock_collision_model
         self.mock_robot_model_factory._armature = mock_armature
 
-        self.mock_ocp_params = MagicMock(spec=OCPParamsBaseCroco)
-
-        # Set mock parameters
-        self.mock_ocp_params.horizon_size = 10
-        self.mock_ocp_params.dt = 0.1
-        self.mock_ocp_params.use_filter_line_search = True
-        self.mock_ocp_params.termination_tolerance = 1e-6
-        self.mock_ocp_params.qp_iters = 10
-        self.mock_ocp_params.eps_abs = 1e-8
-        self.mock_ocp_params.eps_rel = 1e-6
-        self.mock_ocp_params.callbacks = True
-        self.mock_ocp_params.solver_iters = 100
+        self.ocp_params = OCPParamsBaseCroco(
+            dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
+        )
 
         # Create a concrete implementation of OCPBaseCroco
         class TestOCPCroco(OCPBaseCroco):
@@ -47,18 +38,21 @@ class TestOCPBaseCroco(unittest.TestCase):
             def create_terminal_model(self):
                 return None
 
+            def update_crocoddyl_problem(self, x0, trajectory_points_list):
+                return None
+
             def set_reference_horizon(self, horizon_size):
                 return None
 
-        self.ocp = TestOCPCroco(self.mock_robot_model_factory, self.mock_ocp_params)
+        self.ocp = TestOCPCroco(self.mock_robot_model_factory, self.ocp_params)
 
     def test_horizon_size(self):
         """Test the horizon_size property."""
-        self.assertEqual(self.ocp.horizon_size, self.mock_ocp_params.horizon_size)
+        self.assertEqual(self.ocp.horizon_size, self.ocp_params.horizon_size)
 
     def test_dt(self):
         """Test the dt property."""
-        self.assertAlmostEqual(self.ocp.dt, self.mock_ocp_params.dt)
+        self.assertAlmostEqual(self.ocp.dt, self.ocp_params.dt)
 
 
 class TestSimpleOCPCroco(unittest.TestCase):
@@ -111,7 +105,6 @@ class TestSimpleOCPCroco(unittest.TestCase):
             terminal_cost_model = crocoddyl.CostModelSum(self._state)
 
             ### Creation of cost terms
-            ### Creation of cost terms
             # State Regularization cost
             x_residual = crocoddyl.ResidualModelState(
                 self._state,
@@ -145,6 +138,10 @@ class TestSimpleOCPCroco(unittest.TestCase):
             return terminal_model
 
         def set_reference_horizon(self, horizon_size):
+            ### Not implemented in this OCP example.
+            return None
+
+        def update_crocoddyl_problem(self, x0, trajectory_points_list):
             ### Not implemented in this OCP example.
             return None
 
