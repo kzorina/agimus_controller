@@ -10,7 +10,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 from std_msgs.msg import String
 from agimus_msgs.msg import MpcInput
-from builtin_interfaces.msg import Duration
+from rclpy.duration import Duration
 
 import linear_feedback_controller_msgs_py.lfc_py_types as lfc_py_types
 from linear_feedback_controller_msgs_py.numpy_conversions import (
@@ -19,18 +19,12 @@ from linear_feedback_controller_msgs_py.numpy_conversions import (
 )
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
-from agimus_controller_ros.sim_utils import (
-    convert_float_to_ros_duration_msg,
-    mpc_msg_to_weighted_traj_point,
-)
-from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
+from agimus_controller_ros.sim_utils import mpc_msg_to_weighted_traj_point
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
 from agimus_controller.trajectory import TrajectoryBuffer
-from agimus_controller_ros.agimus_controller_parameters import (
-    agimus_controller_ros_params,
-)
+from agimus_controller_ros.agimus_controller_parameters import agimus_controller_params
 
 
 class AgimusController(Node):
@@ -39,8 +33,8 @@ class AgimusController(Node):
     def __init__(self, node_name: str = "agimus_controller_node") -> None:
         """Get ROS parameters, initialize trajectory buffer and ros attributes."""
         super().__init__(node_name)
-        self._param_listener = agimus_controller_ros_params.ParamListener(self)
-        self.params = self._param_listener.get_params()
+        self.param_listener = agimus_controller_params.ParamListener(self)
+        self.params = self.param_listener.get_params()
         self.params.ocp.armature = np.array(self.params.ocp.armature)
         self.traj_buffer = TrajectoryBuffer()
         self.last_point = None
@@ -88,7 +82,7 @@ class AgimusController(Node):
         )
         self.ocp_solve_time_pub = self.create_publisher(Duration, "ocp_solve_time", 10)
         self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
-        self.create_timer(self.params.ocp.dt, self.run_callback)
+        self.create_timer(1.0 / self.params.rate, self.run_callback)
 
     def sensor_callback(self, sensor_msg: Sensor) -> None:
         """Update the sensor_msg attribute of the class."""
@@ -112,7 +106,11 @@ class AgimusController(Node):
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
         self.nx = self.nq + self.nv
-        self.initialize_weighted_traj_attributes()
+        self.x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
+        self.a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
+        self.weight_q = np.zeros([self.params.ocp.horizon_size, self.nq])
+        self.weight_qdot = np.zeros([self.params.ocp.horizon_size, self.nv])
+        self.weight_pose = np.zeros([self.params.ocp.horizon_size, 6])
 
         # Build reduced models
         locked_joint_names = [
@@ -129,14 +127,6 @@ class AgimusController(Node):
         )
         self.cmodel = geometric_models_reduced[0]
         self.get_logger().info("Robot Models initialized")
-
-    def initialize_weighted_traj_attributes(self) -> None:
-        """Initialize attributes to setup OCP from the weighted trajectory buffer."""
-        self.x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
-        self.a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
-        self.weight_q = np.zeros([self.params.ocp.horizon_size, self.nq])
-        self.weight_qdot = np.zeros([self.params.ocp.horizon_size, self.nv])
-        self.weight_pose = np.zeros([self.params.ocp.horizon_size, 6])
 
     def set_weighted_traj_attributes(self) -> None:
         """Set attributes to setup OCP from the weighted trajectory buffer."""
@@ -190,12 +180,6 @@ class AgimusController(Node):
         )
         self.control_publisher.publish(control_numpy_to_msg(ctrl_msg))
 
-    def get_x0_from_sensor_msg(self, sensor_msg: Sensor) -> npt.NDArray[np.float64]:
-        """Create x0 array from robot sensor message."""
-        return np.concatenate(
-            [sensor_msg.joint_state.position, sensor_msg.joint_state.velocity]
-        )
-
     def run_callback(self, *args) -> None:
         """
         Timer callback that checks we can start solve before doing it,
@@ -209,6 +193,9 @@ class AgimusController(Node):
             return
         start_compute_time = time.time()
         np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
+        x0 = np.concatenate(
+            [np_sensor_msg.joint_state.position, np_sensor_msg.joint_state.velocity]
+        )
         if not self.first_run_done:
             if not self.buffer_has_twice_horizon_points():
                 self.get_logger().warn(
@@ -216,13 +203,13 @@ class AgimusController(Node):
                     throttle_duration_sec=5.0,
                 )
                 return
-            self.first_solve(self.get_x0_from_sensor_msg(np_sensor_msg))
+            self.first_solve(x0)
             self.first_run_done = True
         else:
-            self.solve(self.get_x0_from_sensor_msg(np_sensor_msg))
+            self.solve(x0)
         self.send_control_msg(np_sensor_msg)
         compute_time = time.time() - start_compute_time
-        self.ocp_solve_time_pub.publish(convert_float_to_ros_duration_msg(compute_time))
+        self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
         self.ocp_x0_pub.publish(self.sensor_msg)
 
 

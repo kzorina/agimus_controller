@@ -29,14 +29,6 @@ def ros_pose_to_array(pose: Pose) -> npt.NDArray[np.float64]:
     )
 
 
-def convert_float_to_ros_duration_msg(time: float) -> Duration:
-    """Convert float duration to ROS duration msg."""
-    ros_duration = Duration()
-    ros_duration.sec = int(time)
-    ros_duration.nanosec = int((time % 1) * 1e9)
-    return ros_duration
-
-
 def mpc_msg_to_weighted_traj_point(msg: MpcInput) -> WeightedTrajectoryPoint:
     """Build WeightedTrajectoryPoint object from MPCInput msg."""
     xyz_quat_pose = ros_pose_to_array(msg.pose)
