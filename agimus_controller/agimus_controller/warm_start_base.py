@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """WarmStartBase Module.
 
 This module defines the WarmStartBase class, a template for generating warm-starts
