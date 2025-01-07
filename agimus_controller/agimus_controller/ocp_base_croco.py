@@ -73,13 +73,13 @@ class OCPBaseCroco(OCPBase):
             u_warmstart (list[npt.NDArray[np.float64]]): Predicted control inputs for the OCP.
         """
         ### Creation of the state and actuation models
-        # Create the running models
-        self.running_model_list = self.create_running_model_list()
-        # Create the terminal model
-        self.terminal_model = self.create_terminal_model()
 
-        # Create the shooting problem
         if self._ocp is None:
+            # Create the running models
+            self.running_model_list = self.create_running_model_list()
+            # Create the terminal model
+            self.terminal_model = self.create_terminal_model()
+            # Create the shooting problem
             self._problem = crocoddyl.ShootingProblem(
                 x0, self.running_model_list, self.terminal_model
             )
@@ -102,9 +102,9 @@ class OCPBaseCroco(OCPBase):
 
         # Store the results
         self.ocp_results = OCPResults(
-            states=ocp.xs,
-            ricatti_gains=ocp.K,
-            feed_forward_terms=ocp.us,
+            states=self._ocp.xs,
+            ricatti_gains=self._ocp.K,
+            feed_forward_terms=self._ocp.us,
         )
 
     @property
