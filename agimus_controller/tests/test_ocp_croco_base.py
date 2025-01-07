@@ -12,7 +12,8 @@ from agimus_controller.factory.robot_model import RobotModelFactory
 
 
 class TestOCPBaseCroco(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
         self.mock_robot_model_factory = RobotModelFactory()
 
@@ -146,7 +147,8 @@ class TestSimpleOCPCroco(unittest.TestCase):
         def set_reference_horizon(self, horizon_size):
             ### Not implemented in this OCP example.
             return None
-
+    
+    @classmethod
     def setUpClass(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
         self.robot_model_factory = RobotModelFactory()

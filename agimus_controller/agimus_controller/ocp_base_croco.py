@@ -35,7 +35,7 @@ class OCPBaseCroco(OCPBase):
 
         # Setting the OCP parameters
         self._ocp_params = ocp_params
-
+        self._ocp = None
         self._ocp_results = None
 
     @property
