@@ -8,7 +8,9 @@ from agimus_controller.trajectory import WeightedTrajectoryPoint
 
 
 class OCPBase(ABC):
-    """Base class for the Optimal Control Problem (OCP) solver. This class defines the interface for the OCP solver."""
+    """Base class for the Optimal Control Problem (OCP) solver.
+    
+    This class defines the interface for the OCP solver."""
 
     def __init__(self) -> None:
         pass
