@@ -59,9 +59,10 @@ class OCPBaseCroco(OCPBase):
         pass
 
     @abstractmethod
-    def update_crocoddyl_problem(self,x0: npt.NDArray[np.float64]) -> None:
+    def update_crocoddyl_problem(self, x0: npt.NDArray[np.float64]) -> None:
         """Update the Crocoddyl problem's references, weights and x0."""
         pass
+
     def solve(
         self,
         x0: npt.NDArray[np.float64],
