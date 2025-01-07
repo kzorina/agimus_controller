@@ -8,5 +8,6 @@ class TestWarmStartBase(unittest.TestCase):
         with self.assertRaises(TypeError):
             WarmStartBase()
 
-if __name__ == "__main__": 
+
+if __name__ == "__main__":
     unittest.main()
