@@ -6,7 +6,7 @@ from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 
 class TestOCPParamsCrocoBase(unittest.TestCase):
     """
-    TestOCPParamsCrocoBase is a unit test class for testing the OCPParamsBaseCroco class.
+    TestOCPParamsCrocoBase unittests parameters settters and getters of OCPParamsBaseCroco class.
 
     Methods:
         __init__(methodName="runTest"): Initializes the test case instance.
