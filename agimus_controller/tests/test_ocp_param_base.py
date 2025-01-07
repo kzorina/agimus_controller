@@ -21,29 +21,6 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
     def test_initialization(self):
         """
         Test the initialization of the OCPParamsBaseCroco class.
-
-        This test verifies that the parameters passed to the OCPParamsBaseCroco
-        constructor are correctly assigned to the instance attributes.
-
-        Test Parameters:
-        - dt (float): Time step for the OCP solver.
-        - horizon_size (int): Total number of time steps.
-        - solver_iters (int): Number of solver iterations.
-        - qp_iters (int): Number of QP iterations.
-        - termination_tolerance (float): Tolerance for termination criteria.
-        - eps_abs (float): Absolute tolerance for the solver.
-        - eps_rel (float): Relative tolerance for the solver.
-        - callbacks (bool): Flag to enable or disable callbacks.
-
-        Assertions:
-        - Asserts that the instance attribute `dt` is equal to the input `dt`.
-        - Asserts that the instance attribute `horizon_size` is equal to the input `horizon_size`.
-        - Asserts that the instance attribute `qp_iters` is equal to the input `qp_iters`.
-        - Asserts that the instance attribute `solver_iters` is equal to the input `solver_iters`.
-        - Asserts that the instance attribute `termination_tolerance` is equal to the input `termination_tolerance`.
-        - Asserts that the instance attribute `eps_abs` is equal to the input `eps_abs`.
-        - Asserts that the instance attribute `eps_rel` is equal to the input `eps_rel`.
-        - Asserts that the instance attribute `callbacks` is False.
         """
         params = {
             "dt": np.float64(0.01),
