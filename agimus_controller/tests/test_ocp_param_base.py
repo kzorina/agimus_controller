@@ -45,32 +45,20 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         - Asserts that the instance attribute `eps_rel` is equal to the input `eps_rel`.
         - Asserts that the instance attribute `callbacks` is False.
         """
-        dt = np.float64(0.01)
-        horizon_size = 100
-        solver_iters = 50
-        qp_iters = 200
-        termination_tolerance = 1e-3
-        eps_abs = 1e-6
-        eps_rel = 0
-        callbacks = False
-        params = OCPParamsBaseCroco(
-            dt=dt,
-            horizon_size=horizon_size,
-            solver_iters=solver_iters,
-            qp_iters=qp_iters,
-            termination_tolerance=termination_tolerance,
-            eps_abs=eps_abs,
-            eps_rel=eps_rel,
-            callbacks=callbacks,
-        )
-        self.assertEqual(params.dt, dt)
-        self.assertEqual(params.horizon_size, horizon_size)
-        self.assertEqual(params.qp_iters, qp_iters)
-        self.assertEqual(params.solver_iters, solver_iters)
-        self.assertEqual(params.termination_tolerance, termination_tolerance)
-        self.assertEqual(params.eps_abs, eps_abs)
-        self.assertEqual(params.eps_rel, eps_rel)
-        self.assertFalse(params.callbacks)
+        params = {
+            "dt": np.float64(0.01),
+            "horizon_size": 100,
+            "solver_iters": 50,
+            "qp_iters": 200,
+            "termination_tolerance": 1e-3,
+            "eps_abs": 1e-6,
+            "eps_rel": 0,
+            "callbacks": False,
+        }
+        params = OCPParamsBaseCroco(**params)
+        for key, val in params:
+            res = getattr(params, key)
+            self.assertEqual(res, val, f"Value missmatch for parameter '{key}'. Expected: '{val}', got: '{res}'")
 
 
 if __name__ == "__main__":
