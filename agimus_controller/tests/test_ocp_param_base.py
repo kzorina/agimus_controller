@@ -58,7 +58,11 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         params = OCPParamsBaseCroco(**params)
         for key, val in params:
             res = getattr(params, key)
-            self.assertEqual(res, val, f"Value missmatch for parameter '{key}'. Expected: '{val}', got: '{res}'")
+            self.assertEqual(
+                res,
+                val,
+                f"Value missmatch for parameter '{key}'. Expected: '{val}', got: '{res}'",
+            )
 
 
 if __name__ == "__main__":
