@@ -7,13 +7,7 @@ from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 class TestOCPParamsCrocoBase(unittest.TestCase):
     """
     TestOCPParamsCrocoBase unittests parameters settters and getters of OCPParamsBaseCroco class.
-
-    Methods:
-        __init__(methodName="runTest"): Initializes the test case instance.
-        test_initialization(): Tests the initialization of the OCPParamsBaseCroco class with various parameters.
     """
-
-    """Test the OCPParamsBaseCroco class."""
 
     def __init__(self, methodName="runTest"):
         super().__init__(methodName)
@@ -23,7 +17,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         Test the initialization of the OCPParamsBaseCroco class.
         """
         params = {
-            "dt": np.float64(0.01),
+            "dt": 0.01,
             "horizon_size": 100,
             "solver_iters": 50,
             "qp_iters": 200,
