@@ -147,7 +147,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
         def set_reference_horizon(self, horizon_size):
             ### Not implemented in this OCP example.
             return None
-    
+
     @classmethod
     def setUpClass(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
