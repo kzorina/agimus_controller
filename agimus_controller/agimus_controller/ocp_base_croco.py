@@ -79,25 +79,26 @@ class OCPBaseCroco(OCPBase):
         self.terminal_model = self.create_terminal_model()
 
         # Create the shooting problem
-        problem = crocoddyl.ShootingProblem(
-            x0, self.running_model_list, self.terminal_model
-        )
-        # Create solver + callbacks
-        ocp = mim_solvers.SolverCSQP(problem)
-
-        # Merit function
-        ocp.use_filter_line_search = self._ocp_params.use_filter_line_search
-
-        # Parameters of the solver
-        ocp.termination_tolerance = self._ocp_params.termination_tolerance
-        ocp.max_qp_iters = self._ocp_params.qp_iters
-        ocp.eps_abs = self._ocp_params.eps_abs
-        ocp.eps_rel = self._ocp_params.eps_rel
-        ocp.with_callbacks = self._ocp_params.callbacks
+        if self._ocp is None:
+            self._problem = crocoddyl.ShootingProblem(
+                x0, self.running_model_list, self.terminal_model
+            )
+            # Create solver + callbacks
+            self._ocp = mim_solvers.SolverCSQP(self._problem)
+    
+            # Merit function
+            self._ocp.use_filter_line_search = self._ocp_params.use_filter_line_search
+    
+            # Parameters of the solver
+            self._ocp.termination_tolerance = self._ocp_params.termination_tolerance
+            self._ocp.max_qp_iters = self._ocp_params.qp_iters
+            self._ocp.eps_abs = self._ocp_params.eps_abs
+            self._ocp.eps_rel = self._ocp_params.eps_rel
+            self._ocp.with_callbacks = self._ocp_params.callbacks
 
         # Creating the warmstart lists for the solver
         # Solve the OCP
-        ocp.solve([x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters)
+        self._ocp.solve([x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters)
 
         # Store the results
         self.ocp_results = OCPResults(
