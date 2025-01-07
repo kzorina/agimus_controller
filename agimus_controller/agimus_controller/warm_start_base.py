@@ -61,20 +61,21 @@ class WarmStartBase(ABC):
 
     @abstractmethod
     def setup(self, *args, **kwargs) -> None:
-        """Sets up the variables needed for the warmstart computation
+        """Sets up the variables needed for the warmstart computation. Allows to pass additional variables after the class is initialised, that are only know at the runtime.
 
         Args:
             *args: Variable length argument list.
             **kwargs: Arbitrary keyword arguments.
 
             Example:
-            >>> class WarmStartReference(WarmStartBase):
-            ...     def setup(self, rmodel):
+            >>> class MyPinocchioWarmstart(WarmStartBase):
+            ...     def setup(self, rmodel: pin.Model) -> None:
             ...         self._rmodel = rmodel
             ...         self._rdata = self._rmodel.createData()
             ...         self._nx = self._rmodel.nq + self._rmodel.nv
-            >>> rmodel = pin.Model()
-            >>> warmstart = WarmStartReference()
+            >>> warmstart = MyPinocchioWarmstart()
+            >>> # ...
+            >>> rmodel: pin.Model() = await_urdf_model()
             >>> warmstart.setup(rmodel)
         """
         ...
