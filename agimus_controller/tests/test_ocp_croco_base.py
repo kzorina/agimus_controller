@@ -147,7 +147,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             ### Not implemented in this OCP example.
             return None
 
-    def setUp(self):
+    def setUpClass(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
         self.robot_model_factory = RobotModelFactory()
 
