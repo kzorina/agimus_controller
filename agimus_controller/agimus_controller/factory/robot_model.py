@@ -1,5 +1,5 @@
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import coal
@@ -12,17 +12,43 @@ import pinocchio as pin
 class RobotModelParameters:
     q0: npt.NDArray[np.float64]  # Initial configuration of the robot
     free_flyer = False  # True if the robot has a free flyer
-    locked_joint_names = []  # List of joint names to lock
-    urdf_path = Path() | str  # Path to the URDF file
-    srdf_path = Path() | str  # Path to the SRDF file
+    locked_joint_names: list[str] = field(default_factory=list)
+    urdf_path = Path()  # Path to the URDF file
+    srdf_path = Path()  # Path to the SRDF file
     urdf_meshes_dir = (
-        Path() | str
+        Path()
     )  # Path to the directory containing the meshes and the URDF file.
     collision_as_capsule = (
         False  # True if the collision model should be reduced to capsules.
     )
-    # By default, the collision model when convexified is a sum of spheres and cylinders, often representing capsules. Here, all the couples sphere cylinder sphere are replaced by  HPPFCL capsules.
+    # By default, the collision model when convexified is a sum of spheres and cylinders, often representing capsules. Here, all the couples sphere cylinder sphere are replaced by hppfcl capsules.
     self_collision = False  # If True, the collision model takes into account collisions pairs written in the srdf file.
+    armature: npt.NDArray[np.float64] = field(
+        default_factory=lambda: np.array([])
+    )  # Default empty NumPy array
+
+    def __post_init__(self):
+        # Check q0 is not empty
+        if len(self.q0) == 0:
+            raise ValueError("q0 cannot be empty.")
+
+        # Handle armature:
+        if self.armature.size == 0:
+            # Use a default armature filled with 0s, based on the size of q0
+            self.armature = np.zeros(len(self.q0), dtype=np.float64)
+
+        # Ensure armature has the same shape as q0
+        if self.armature.shape != self.q0.shape:
+            raise ValueError(
+                f"Armature must have the same shape as q0. Got {self.armature.shape} and {self.q0.shape}."
+            )
+
+        # Ensure paths are valid strings
+        if not isinstance(self.urdf_path, str) or not self.urdf_path:
+            raise ValueError("urdf_path must be a non-empty string.")
+
+        if not isinstance(self.srdf_path, str):
+            raise ValueError("srdf_path must be a string.")
 
 
 class RobotModelFactory:
@@ -35,34 +61,58 @@ class RobotModelFactory:
             param (RobotModelParameters): Parameters to load the robot models.
         """
         self._params = param
-        self.load_models()
+        self._full_robot_model = None
+        self._robot_model = None
+        self._collision_model = None
+        self._visual_model = None
+        self.load_models()  # Populate models
 
     @property
     def full_robot_model(self) -> pin.Model:
-        return self.full_robot_model
+        """Full robot model."""
+        if self._full_robot_model is None:
+            raise AttributeError("Robot model has not been initialized yet.")
+        return self._full_robot_model
 
     @property
     def robot_model(self) -> pin.Model:
-        return self.robot_model
+        """Robot model, reduced if specified in the parameters."""
+        if self._robot_model is None:
+            raise AttributeError("Robot model has not been computed yet.")
+        return self._robot_model
 
     @property
     def visual_model(self) -> pin.GeometryModel:
-        return self.visual_model
+        """Visual model of the robot."""
+        if self._visual_model is None:
+            raise AttributeError("Visual model has not been computed yet.")
+        return self._visual_model
 
     @property
     def collision_model(self) -> pin.GeometryModel:
-        return self.collision_model
+        """Collision model of the robot."""
+        if self._collision_model is None:
+            raise AttributeError("Visual model has not been computed yet.")
+        return self._collision_model
 
     @property
     def q0(self) -> np.array:
+        """Initial configuration of the robot."""
         return self.q0
 
     def load_models(self) -> None:
+        """Load and prepare robot models based on parameters."""
         self._load_full_pinocchio_models()
-        if self._params.locked_joint_names is not None:
+        self._apply_locked_joints()
+        self._apply_collision_model_updates()
+
+    def _apply_locked_joints(self) -> None:
+        """Apply locked joints if specified."""
+        if self._params.locked_joint_names:
             self._load_reduced_model()
-        else:
-            self.robot_model = deepcopy(self.full_robot_model)
+
+    def _apply_collision_model_updates(self) -> None:
+        """Update collision model with specified parameters."""
         if self._params.collision_as_capsule:
             self._update_collision_model_to_capsules()
         if self._params.self_collision:
@@ -79,34 +129,39 @@ class RobotModelFactory:
         """
         joints_to_lock = []
         for jn in self._params.locked_joint_names:
-            if self.full_robot_model.existJointName(jn):
-                joints_to_lock.append(self.full_robot_model.getJointId(jn))
+            if self._full_robot_model.existJointName(jn):
+                joints_to_lock.append(self._full_robot_model.getJointId(jn))
             else:
                 raise ValueError(f"Joint {jn} not found in the robot model.")
         return joints_to_lock
 
     def _load_full_pinocchio_models(self) -> None:
         """Load the full robot model, the visual model and the collision model."""
-        (
-            self.full_robot_model,
-            self.collision_model,
-            self.visual_model,
-        ) = pin.buildModelsFromUrdf(
-            self._params.urdf_path,
-            self._params.urdf_meshes_dir,
-            self._params.free_flyer,
-        )
+        try:
+            (
+                self._full_robot_model,
+                self.collision_model,
+                self.visual_model,
+            ) = pin.buildModelsFromUrdf(
+                self._params.urdf_path,
+                self._params.urdf_meshes_dir,
+                self._params.free_flyer,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Failed to load URDF models from {self._params.urdf_path}: {e}"
+            )
 
     def _load_reduced_model(self) -> None:
         """Load the reduced robot model."""
         joints_to_lock = self._get_joints_to_lock()
-        self.robot_model = pin.buildReducedModel(
-            self.full_robot_model, joints_to_lock, self.q0
+        self._robot_model = pin.buildReducedModel(
+            self._full_robot_model, joints_to_lock, self.q0
         )
 
     def _update_collision_model_to_capsules(self) -> None:
         """Update the collision model to capsules."""
-        cmodel = self.collision_model.copy()
+        cmodel = self._collision_model.copy()
         list_names_capsules = []
         # Iterate through geometry objects in the collision model
         for geom_object in cmodel.geometryObjects:
@@ -127,21 +182,21 @@ class RobotModelFactory:
                     placement=geom_object.placement,
                 )
                 capsule.meshColor = np.array([249, 136, 126, 125]) / 255  # Red color
-                self.collision_model.addGeometryObject(capsule)
-                self.collision_model.removeGeometryObject(geom_object.name)
+                self._collision_model.addGeometryObject(capsule)
+                self._collision_model.removeGeometryObject(geom_object.name)
 
             # Remove spheres associated with links
             elif isinstance(geometry, coal.Sphere) and "link" in geom_object.name:
-                self.collision_model.removeGeometryObject(geom_object.name)
+                self._collision_model.removeGeometryObject(geom_object.name)
 
     def _update_collision_model_to_self_collision(self) -> None:
         """Update the collision model to self collision."""
-        pin.addAllCollisionPairs(self.collision_model)
+        pin.addAllCollisionPairs(self._collision_model)
         pin.removeCollisionPairs(
-            self.robot_model, self.collision_model, self._params.srdf_path
+            self._robot_model, self._collision_model, self._params.srdf_path
         )
 
-    def _generate_capsule_name(self, base_name: str, existing_names: list) -> str:
+    def _generate_capsule_name(self, base_name: str, existing_names: list[str]) -> str:
         """Generates a unique capsule name for a geometry object.
         Args:
             base_name (str): The base name of the geometry object.
@@ -153,3 +208,11 @@ class RobotModelFactory:
         while f"{base_name}_capsule_{i}" in existing_names:
             i += 1
         return f"{base_name}_capsule_{i}"
+
+    @property
+    def armature(self) -> npt.NDArray[np.float64]:
+        """Armature of the robot.
+        Returns:
+            npt.NDArray[np.float64]: Armature of the robot.
+        """
+        return self._params.armature
