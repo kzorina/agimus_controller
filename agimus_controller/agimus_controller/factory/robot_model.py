@@ -65,6 +65,7 @@ class RobotModelFactory:
         self._robot_model = None
         self._collision_model = None
         self._visual_model = None
+        self._q0 = deepcopy(self._params.q0)
         self.load_models()  # Populate models
 
     @property
@@ -98,7 +99,7 @@ class RobotModelFactory:
     @property
     def q0(self) -> np.array:
         """Initial configuration of the robot."""
-        return self.q0
+        return self._q0
 
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
@@ -140,8 +141,8 @@ class RobotModelFactory:
         try:
             (
                 self._full_robot_model,
-                self.collision_model,
-                self.visual_model,
+                self._collision_model,
+                self._visual_model,
             ) = pin.buildModelsFromUrdf(
                 self._params.urdf_path,
                 self._params.urdf_meshes_dir,
@@ -156,7 +157,7 @@ class RobotModelFactory:
         """Load the reduced robot model."""
         joints_to_lock = self._get_joints_to_lock()
         self._robot_model = pin.buildReducedModel(
-            self._full_robot_model, joints_to_lock, self.q0
+            self._full_robot_model, joints_to_lock, self._q0
         )
 
     def _update_collision_model_to_capsules(self) -> None:
