@@ -10,7 +10,8 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 from std_msgs.msg import String
 from agimus_msgs.msg import MpcInput
-from rclpy.duration import Duration
+from builtin_interfaces.msg import Duration
+import rclpy.duration
 
 import linear_feedback_controller_msgs_py.lfc_py_types as lfc_py_types
 from linear_feedback_controller_msgs_py.numpy_conversions import (
@@ -209,7 +210,9 @@ class AgimusController(Node):
             self.solve(x0)
         self.send_control_msg(np_sensor_msg)
         compute_time = time.time() - start_compute_time
-        self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
+        self.ocp_solve_time_pub.publish(
+            rclpy.duration.Duration(seconds=compute_time).to_msg()
+        )
         self.ocp_x0_pub.publish(self.sensor_msg)
 
 
