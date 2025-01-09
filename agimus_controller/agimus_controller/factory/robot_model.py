@@ -10,21 +10,25 @@ import pinocchio as pin
 
 @dataclass
 class RobotModelParameters:
-    q0: npt.NDArray[np.float64]  # Initial configuration of the robot
-    free_flyer = False  # True if the robot has a free flyer
+    q0: npt.NDArray[np.float64] = np.array(
+        [], dtype=np.float64
+    )  # Initial configuration of the robot
+    free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
-    urdf_path = Path()  # Path to the URDF file
-    srdf_path = Path()  # Path to the SRDF file
-    urdf_meshes_dir = (
+    urdf_path: Path = Path()  # Path to the URDF file
+    srdf_path: Path = Path()  # Path to the SRDF file
+    urdf_meshes_dir: Path = (
         Path()
     )  # Path to the directory containing the meshes and the URDF file.
-    collision_as_capsule = (
+    collision_as_capsule: bool = (
         False  # True if the collision model should be reduced to capsules.
     )
     # By default, the collision model when convexified is a sum of spheres and cylinders, often representing capsules. Here, all the couples sphere cylinder sphere are replaced by hppfcl capsules.
-    self_collision = False  # If True, the collision model takes into account collisions pairs written in the srdf file.
+    self_collision: bool = (
+        False  # If True, the collision model takes into account collisions pairs written in the srdf file.
+    )
     armature: npt.NDArray[np.float64] = field(
-        default_factory=lambda: np.array([])
+        default_factory=lambda: np.array([], dtype=np.float64)
     )  # Default empty NumPy array
 
     def __post_init__(self):
