@@ -119,7 +119,7 @@ class RobotModelFactory:
                 joints_to_lock.append(self._full_robot_model.getJointId(jn))
             else:
                 raise ValueError(f"Joint {jn} not found in the robot model.")
-            
+
         self._robot_model = pin.buildReducedModel(
             self._full_robot_model, joints_to_lock, self._q0
         )
