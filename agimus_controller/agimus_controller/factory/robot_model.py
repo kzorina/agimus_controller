@@ -51,7 +51,7 @@ class RobotModelParameters:
             raise ValueError("srdf_path must be a string.")
 
 
-class RobotModelFactory:
+class RobotModels:
     """Parse the robot model, reduce it and filter the collision model."""
 
     def __init__(self, param: RobotModelParameters):
@@ -111,6 +111,23 @@ class RobotModelFactory:
         if self._params.self_collision:
             self._update_collision_model_to_self_collision()
 
+    def _load_full_pinocchio_models(self) -> None:
+        """Load the full robot model, the visual model and the collision model."""
+        try:
+            (
+                self._full_robot_model,
+                self._collision_model,
+                self._visual_model,
+            ) = pin.buildModelsFromUrdf(
+                self._params.urdf_path,
+                self._params.urdf_meshes_dir,
+                self._params.free_flyer,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Failed to load URDF models from {self._params.urdf_path}: {e}"
+            )
+
     def _apply_locked_joints(self) -> None:
         """Apply locked joints."""
         joints_to_lock = []
@@ -123,13 +140,6 @@ class RobotModelFactory:
         self._robot_model = pin.buildReducedModel(
             self._full_robot_model, joints_to_lock, self._q0
         )
-
-    def _apply_collision_model_updates(self) -> None:
-        """Update collision model with specified parameters."""
-        if self._params.collision_as_capsule:
-            self._update_collision_model_to_capsules()
-        if self._params.self_collision:
-            self._update_collision_model_to_self_collision()
 
     def _get_joints_to_lock(self) -> list[int]:
         """Get the joints ID to lock.
@@ -147,23 +157,6 @@ class RobotModelFactory:
             else:
                 raise ValueError(f"Joint {jn} not found in the robot model.")
         return joints_to_lock
-
-    def _load_full_pinocchio_models(self) -> None:
-        """Load the full robot model, the visual model and the collision model."""
-        try:
-            (
-                self._full_robot_model,
-                self._collision_model,
-                self._visual_model,
-            ) = pin.buildModelsFromUrdf(
-                self._params.urdf_path,
-                self._params.urdf_meshes_dir,
-                self._params.free_flyer,
-            )
-        except Exception as e:
-            raise ValueError(
-                f"Failed to load URDF models from {self._params.urdf_path}: {e}"
-            )
 
     def _load_reduced_model(self) -> None:
         """Load the reduced robot model."""
