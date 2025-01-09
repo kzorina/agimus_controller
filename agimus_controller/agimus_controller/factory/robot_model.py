@@ -15,11 +15,11 @@ class RobotModelParameters:
     )  # Initial configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
-    urdf_path: Path = Path()  # Path to the URDF file
-    srdf_path: Path | None = None  # Path to the SRDF file
-    urdf_meshes_dir: Path = (
-        Path()
-    )  # Path to the directory containing the meshes and the URDF file.
+    urdf_path: str = "path/to/urdf"  # Path to the URDF file
+    srdf_path: str | None = None  # Path to the SRDF file
+    urdf_meshes_dir: str | None = (
+        None  # Path to the directory containing the meshes and the URDF file.
+    )
     collision_as_capsule: bool = (
         False  # True if the collision model should be reduced to capsules.
     )
@@ -49,10 +49,10 @@ class RobotModelParameters:
             )
 
         # Ensure paths are valid strings
-        if not isinstance(self.urdf_path, Path) or not self.urdf_path:
+        if not isinstance(self.urdf_path, str) or not self.urdf_path:
             raise ValueError("urdf_path must be a non-empty string.")
 
-        if self.srdf_path is not None and not isinstance(self.srdf_path, Path):
+        if self.srdf_path is not None and not isinstance(self.srdf_path, str):
             raise ValueError("srdf_path must be a Path or None.")
 
 
@@ -125,6 +125,7 @@ class RobotModels:
                 self._visual_model,
             ) = pin.buildModelsFromUrdf(
                 self._params.urdf_path,
+                self._robot_model,
                 self._params.urdf_meshes_dir,
                 self._params.free_flyer,
             )

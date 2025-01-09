@@ -1,10 +1,11 @@
-import unittest
-import numpy as np
-from pathlib import Path
 from os.path import dirname
-import example_robot_data as robex
+from pathlib import Path
+import unittest
 
-from agimus_controller.factory.robot_model import RobotModelParameters
+import example_robot_data as robex
+import numpy as np
+
+from agimus_controller.factory.robot_model import RobotModelParameters, RobotModels
 
 
 class TestRobotModelParameters(unittest.TestCase):
@@ -12,10 +13,10 @@ class TestRobotModelParameters(unittest.TestCase):
         """Test that the dataclass initializes correctly with valid input."""
 
         robot = robex.load("panda")
-        urdf_path = Path(robot.urdf)
-        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
-        urdf_meshes_dir = Path(dirname(dirname(robot.urdf)))
-        q0 = np.array([0.0, 1.0, 2.0])
+        urdf_path = robot.urdf
+        srdf_path = robot.urdf.replace("urdf", "srdf")
+        urdf_meshes_dir = dirname(dirname(robot.urdf))
+        q0 = np.zeros(robot.model.nq)
         params = RobotModelParameters(
             q0=q0,
             free_flyer=True,
@@ -25,7 +26,7 @@ class TestRobotModelParameters(unittest.TestCase):
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
-            armature=np.array([0.1, 0.2, 0.3]),
+            armature=np.linspace(0.1, 0.9, 9),
         )
 
         self.assertTrue(np.array_equal(params.q0, q0))
@@ -36,7 +37,7 @@ class TestRobotModelParameters(unittest.TestCase):
         self.assertEqual(params.urdf_meshes_dir, urdf_meshes_dir)
         self.assertTrue(params.collision_as_capsule)
         self.assertTrue(params.self_collision)
-        self.assertTrue(np.array_equal(params.armature, np.array([0.1, 0.2, 0.3])))
+        self.assertTrue(np.array_equal(params.armature, np.linspace(0.1, 0.9, 9)))
 
     def test_empty_q0_raises_error(self):
         """Test that an empty q0 raises a ValueError."""
@@ -77,7 +78,3 @@ class TestRobotModelParameters(unittest.TestCase):
                 params.collision_color, np.array([249.0, 136.0, 126.0, 125.0]) / 255.0
             )
         )
-
-
-if __name__ == "__main__":
-    unittest.main()
