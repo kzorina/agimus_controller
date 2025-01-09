@@ -28,6 +28,9 @@ class RobotModelParameters:
     armature: npt.NDArray[np.float64] = field(
         default_factory=lambda: np.array([], dtype=np.float64)
     )  # Default empty NumPy array
+    collision_color: npt.NDArray[np.float64] = (
+        np.array([249.0, 136.0, 126.0, 125.0]) / 255.0
+    )  # Red color for the collision model
 
     def __post_init__(self):
         # Check q0 is not empty
