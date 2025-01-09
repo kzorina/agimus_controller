@@ -16,7 +16,7 @@ class RobotModelParameters:
     free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
     urdf_path: Path = Path()  # Path to the URDF file
-    srdf_path: Path = Path()  # Path to the SRDF file
+    srdf_path: Path | None = None  # Path to the SRDF file
     urdf_meshes_dir: Path = (
         Path()
     )  # Path to the directory containing the meshes and the URDF file.
@@ -49,11 +49,11 @@ class RobotModelParameters:
             )
 
         # Ensure paths are valid strings
-        if not isinstance(self.urdf_path, str) or not self.urdf_path:
+        if not isinstance(self.urdf_path, Path) or not self.urdf_path:
             raise ValueError("urdf_path must be a non-empty string.")
 
-        if not isinstance(self.srdf_path, str):
-            raise ValueError("srdf_path must be a string.")
+        if self.srdf_path is not None and not isinstance(self.srdf_path, Path):
+            raise ValueError("srdf_path must be a Path or None.")
 
 
 class RobotModels:
