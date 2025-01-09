@@ -104,13 +104,25 @@ class RobotModelFactory:
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
         self._load_full_pinocchio_models()
-        self._apply_locked_joints()
-        self._apply_collision_model_updates()
+        if self._params.locked_joint_names:
+            self._apply_locked_joints()
+        if self._params.collision_as_capsule:
+            self._update_collision_model_to_capsules()
+        if self._params.self_collision:
+            self._update_collision_model_to_self_collision()
 
     def _apply_locked_joints(self) -> None:
-        """Apply locked joints if specified."""
-        if self._params.locked_joint_names:
-            self._load_reduced_model()
+        """Apply locked joints."""
+        joints_to_lock = []
+        for jn in self._params.locked_joint_names:
+            if self._full_robot_model.existJointName(jn):
+                joints_to_lock.append(self._full_robot_model.getJointId(jn))
+            else:
+                raise ValueError(f"Joint {jn} not found in the robot model.")
+            
+        self._robot_model = pin.buildReducedModel(
+            self._full_robot_model, joints_to_lock, self._q0
+        )
 
     def _apply_collision_model_updates(self) -> None:
         """Update collision model with specified parameters."""
