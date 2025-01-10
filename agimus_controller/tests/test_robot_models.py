@@ -19,10 +19,11 @@ class TestRobotModelParameters(unittest.TestCase):
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
         q0 = np.zeros(robot.model.nq)
+        locked_joint_names = ["panda_joint1", "panda_joint2"]
         params = RobotModelParameters(
             q0=q0,
             free_flyer=free_flyer,
-            locked_joint_names=["panda_joint1", "panda_joint2"],
+            locked_joint_names=locked_joint_names,
             urdf_path=urdf_path,
             srdf_path=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
@@ -52,13 +53,13 @@ class TestRobotModelParameters(unittest.TestCase):
         urdf_path = Path(robot.urdf)
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
-        print(urdf_meshes_dir)
+        locked_joint_names = ["panda_joint1", "panda_joint2"]
         free_flyer = False
         q0 = np.zeros(robot.model.nq)
         params = RobotModelParameters(
             q0=q0,
             free_flyer=free_flyer,
-            locked_joint_names=["panda_joint1", "panda_joint2"],
+            locked_joint_names=locked_joint_names,
             urdf_path=urdf_path,
             srdf_path=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
@@ -100,12 +101,12 @@ class TestRobotModels(unittest.TestCase):
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
         q0 = np.zeros(robot.model.nq)
-
+        locked_joint_names = ["panda_joint1", "panda_joint2"]
         # Store shared initial parameters
         cls.shared_params = RobotModelParameters(
             q0=q0,
             free_flyer=free_flyer,
-            locked_joint_names=["panda_joint1", "panda_joint2"],
+            locked_joint_names=locked_joint_names,
             urdf_path=urdf_path,
             srdf_path=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
