@@ -77,7 +77,7 @@ class RobotModels:
     def full_robot_model(self) -> pin.Model:
         """Full robot model."""
         if self._full_robot_model is None:
-            raise AttributeError("Robot model has not been initialized yet.")
+            raise AttributeError("Full robot model has not been initialized yet.")
         return self._full_robot_model
 
     @property
@@ -125,9 +125,8 @@ class RobotModels:
                 self._visual_model,
             ) = pin.buildModelsFromUrdf(
                 self._params.urdf_path,
-                self._robot_model,
                 self._params.urdf_meshes_dir,
-                self._params.free_flyer,
+                pin.JointModelFreeFlyer() if self._params.free_flyer else None,
             )
         except Exception as e:
             raise ValueError(
@@ -203,7 +202,7 @@ class RobotModels:
 
     def _update_collision_model_to_self_collision(self) -> None:
         """Update the collision model to self collision."""
-        pin.addAllCollisionPairs(self._collision_model)
+        self._collision_model.addAllCollisionPairs()
         pin.removeCollisionPairs(
             self._robot_model, self._collision_model, self._params.srdf_path
         )
