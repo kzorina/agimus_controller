@@ -15,10 +15,10 @@ class RobotModelParameters:
     )  # Initial configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
-    urdf_path: str = "path/to/urdf"  # Path to the URDF file
-    srdf_path: str | None = None  # Path to the SRDF file
-    urdf_meshes_dir: str | None = (
-        None  # Path to the directory containing the meshes and the URDF file.
+    urdf_path: str | Path = Path()  # Path to the URDF file
+    srdf_path: str | Path | None = None  # Path to the SRDF file
+    urdf_meshes_dir: str | Path | None = (
+        Path()  # Path to the directory containing the meshes and the URDF file.
     )
     collision_as_capsule: bool = (
         False  # True if the collision model should be reduced to capsules.
@@ -51,11 +51,11 @@ class RobotModelParameters:
             )
 
         # Ensure paths are valid strings
-        if not isinstance(self.urdf_path, str) or not self.urdf_path:
-            raise ValueError("urdf_path must be a non-empty string.")
+        if not Path(self.urdf_path).is_file():
+            raise ValueError("urdf_path must be a valid file path.")
 
-        if self.srdf_path is not None and not isinstance(self.srdf_path, str):
-            raise ValueError("srdf_path must be a Path or None.")
+        if self.srdf_path is not None and not Path(self.srdf_path).is_file():
+            raise ValueError("srdf_path must be a valid file path.")
 
 
 class RobotModels:
@@ -126,8 +126,8 @@ class RobotModels:
                 self._collision_model,
                 self._visual_model,
             ) = pin.buildModelsFromUrdf(
-                self._params.urdf_path,
-                self._params.urdf_meshes_dir,
+                str(self._params.urdf_path),
+                str(self._params.urdf_meshes_dir),
                 pin.JointModelFreeFlyer() if self._params.free_flyer else None,
             )
         except Exception as e:
@@ -206,7 +206,7 @@ class RobotModels:
         """Update the collision model to self collision."""
         self._collision_model.addAllCollisionPairs()
         pin.removeCollisionPairs(
-            self._robot_model, self._collision_model, self._params.srdf_path
+            self._robot_model, self._collision_model, str(self._params.srdf_path)
         )
 
     def _generate_capsule_name(self, base_name: str, existing_names: list[str]) -> str:

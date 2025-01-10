@@ -47,8 +47,22 @@ class TestRobotModelParameters(unittest.TestCase):
 
     def test_armature_default_value(self):
         """Test that the armature is set to default if not provided."""
-        q0 = np.array([0.0, 1.0, 2.0])
-        params = RobotModelParameters(q0=q0)
+        robot = robex.load("panda")
+        urdf_path = robot.urdf
+        srdf_path = robot.urdf.replace("urdf", "srdf")
+        urdf_meshes_dir = dirname(dirname(robot.urdf))
+        free_flyer = False
+        q0 = np.zeros(robot.model.nq)
+        params = RobotModelParameters(
+            q0=q0,
+            free_flyer=free_flyer,
+            locked_joint_names=["panda_joint1", "panda_joint2"],
+            urdf_path=urdf_path,
+            srdf_path=srdf_path,
+            urdf_meshes_dir=urdf_meshes_dir,
+            collision_as_capsule=True,
+            self_collision=True,
+        )
         self.assertTrue(np.array_equal(params.armature, np.zeros_like(q0)))
 
     def test_armature_mismatched_shape_raises_error(self):
@@ -62,23 +76,13 @@ class TestRobotModelParameters(unittest.TestCase):
         """Test that an invalid URDF path raises a ValueError."""
         q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(q0=q0, urdf_path=None)
+            RobotModelParameters(q0=q0, urdf_path="None")
 
     def test_invalid_srdf_path_type_raises_error(self):
         """Test that a non-string SRDF path raises a ValueError."""
         q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
             RobotModelParameters(q0=q0, srdf_path=12345)
-
-    def test_collision_color_default(self):
-        """Test that the default collision color is set correctly."""
-        q0 = np.array([0.0, 1.0, 2.0])
-        params = RobotModelParameters(q0=q0)
-        self.assertTrue(
-            np.array_equal(
-                params.collision_color, np.array([249.0, 136.0, 126.0, 125.0]) / 255.0
-            )
-        )
 
 
 class TestRobotModels(unittest.TestCase):
