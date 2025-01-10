@@ -3,7 +3,6 @@ import numpy as np
 import numpy.typing as npt
 
 
-from builtin_interfaces.msg import Duration
 from geometry_msgs.msg import Pose
 from agimus_msgs.msg import MpcInput
 
