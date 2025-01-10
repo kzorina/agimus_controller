@@ -148,29 +148,6 @@ class RobotModels:
             self._full_robot_model, joints_to_lock, self._q0
         )
 
-    def _get_joints_to_lock(self) -> list[int]:
-        """Get the joints ID to lock.
-
-        Raises:
-            ValueError: Joint name not found in the robot model.
-
-        Returns:
-            list[int]: List of joint IDs to lock.
-        """
-        joints_to_lock = []
-        for jn in self._params.locked_joint_names:
-            if self._full_robot_model.existJointName(jn):
-                joints_to_lock.append(self._full_robot_model.getJointId(jn))
-            else:
-                raise ValueError(f"Joint {jn} not found in the robot model.")
-        return joints_to_lock
-
-    def _load_reduced_model(self) -> None:
-        """Load the reduced robot model."""
-        joints_to_lock = self._get_joints_to_lock()
-        self._robot_model = pin.buildReducedModel(
-            self._full_robot_model, joints_to_lock, self._q0
-        )
 
     def _update_collision_model_to_capsules(self) -> None:
         """Update the collision model to capsules."""
