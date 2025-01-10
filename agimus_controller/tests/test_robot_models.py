@@ -1,9 +1,10 @@
-from os.path import dirname
-from pathlib import Path
-import unittest
 from copy import deepcopy
+from os.path import dirname
+import unittest
+
 import example_robot_data as robex
 import numpy as np
+import pinocchio as pin
 
 from agimus_controller.factory.robot_model import RobotModelParameters, RobotModels
 
@@ -149,6 +150,14 @@ class TestRobotModels(unittest.TestCase):
     def test_collision_pairs(self):
         """Checking that the collision model has collision pairs."""
         self.assertTrue(len(self.robot_models.collision_model.collisionPairs) > 0)
+
+    def test_rnea(self):
+        """Checking that the RNEA method works."""
+        q = np.zeros(self.robot_models.robot_model.nq)
+        v = np.zeros(self.robot_models.robot_model.nv)
+        a = np.zeros(self.robot_models.robot_model.nv)
+        robot_data = self.robot_models.robot_model.createData()
+        pin.rnea(self.robot_models.robot_model, robot_data, q, v, a)
 
 
 if __name__ == "__main__":
