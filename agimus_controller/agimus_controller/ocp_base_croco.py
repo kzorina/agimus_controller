@@ -5,7 +5,7 @@ import mim_solvers
 import numpy as np
 import numpy.typing as npt
 
-from agimus_controller.factory.robot_model import RobotModelFactory
+from agimus_controller.factory.robot_model import RobotModels
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.ocp_base import OCPBase
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
@@ -15,7 +15,7 @@ from agimus_controller.trajectory import TrajectoryPointWeights
 class OCPBaseCroco(OCPBase):
     def __init__(
         self,
-        robot_model: RobotModelFactory,
+        robot_model: RobotModels,
         ocp_params: OCPParamsBaseCroco,
     ) -> None:
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
