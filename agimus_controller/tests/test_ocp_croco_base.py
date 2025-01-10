@@ -1,6 +1,7 @@
+from os.path import dirname
 import unittest
 from unittest.mock import MagicMock
-
+from pathlib import Path
 import crocoddyl
 import example_robot_data as robex
 import numpy as np
@@ -8,23 +9,37 @@ import pinocchio as pin
 
 from agimus_controller.ocp_base_croco import OCPBaseCroco
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
-from agimus_controller.factory.robot_model import RobotModelFactory
+from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
 
 
 class TestOCPBaseCroco(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
-        self.mock_robot_model_factory = RobotModelFactory()
+        robot = robex.load("panda")
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
+        free_flyer = False
+        q0 = np.zeros(robot.model.nq)
+        armature = np.full(robot.model.nq, 0.1)
 
-        mock_robot = robex.load("panda")
-        mock_robot_model = mock_robot.model
-        mock_collision_model = mock_robot.collision_model
-        mock_armature = np.array([])
+        # Store shared initial parameters
+        self.params = RobotModelParameters(
+            q0=q0,
+            free_flyer=free_flyer,
+            locked_joint_names=["panda_joint1", "panda_joint2"],
+            urdf_path=urdf_path,
+            srdf_path=srdf_path,
+            urdf_meshes_dir=urdf_meshes_dir,
+            collision_as_capsule=True,
+            self_collision=True,
+            armature=armature,
+        )
 
-        self.mock_robot_model_factory._rmodel = mock_robot_model
-        self.mock_robot_model_factory._complete_collision_model = mock_collision_model
-        self.mock_robot_model_factory._armature = mock_armature
+        self.robot_models = RobotModels(self.params)
+        self.robot_model = self.robot_models.robot_model
+        self.collision_model = self.robot_models.collision_model
 
         self.ocp_params = OCPParamsBaseCroco(
             dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
@@ -44,7 +59,7 @@ class TestOCPBaseCroco(unittest.TestCase):
             def set_reference_horizon(self, horizon_size):
                 return None
 
-        self.ocp = TestOCPCroco(self.mock_robot_model_factory, self.ocp_params)
+        self.ocp = TestOCPCroco(self.robot_models, self.ocp_params)
 
     def test_horizon_size(self):
         """Test the horizon_size property."""
@@ -148,32 +163,45 @@ class TestSimpleOCPCroco(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
-        self.robot_model_factory = RobotModelFactory()
-
         robot = robex.load("panda")
-        robot_model = robot.model
-        collision_model = robot.collision_model
-        armature = np.full(robot_model.nq, 0.1)
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
+        free_flyer = False
+        q0 = np.zeros(robot.model.nq)
 
-        self.robot_model_factory._rmodel = robot_model
-        self.robot_model_factory._complete_collision_model = collision_model
-        self.robot_model_factory.armature = armature
+        # Store shared initial parameters
+        self.params = RobotModelParameters(
+            q0=q0,
+            free_flyer=free_flyer,
+            locked_joint_names=["panda_joint1", "panda_joint2"],
+            urdf_path=urdf_path,
+            srdf_path=srdf_path,
+            urdf_meshes_dir=urdf_meshes_dir,
+            collision_as_capsule=True,
+            self_collision=True,
+            armature=np.linspace(0.1, 0.9, robot.model.nq),
+        )
+
+        self.robot_models = RobotModels(self.params)
+        self.robot_model = self.robot_models.robot_model
+        self.collision_model = self.robot_models.collision_model
 
         # Set mock parameters
         self.ocp_params = OCPParamsBaseCroco(
             dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
         )
         self.state_reg = np.concatenate(
-            (pin.neutral(robot_model), np.zeros(robot_model.nv))
+            (pin.neutral(self.robot_model), np.zeros(self.robot_model.nv))
         )
-        self.state_warmstart = [np.zeros(robot_model.nq + robot_model.nv)] * (
+        self.state_warmstart = [np.zeros(self.robot_model.nq + self.robot_model.nv)] * (
             self.ocp_params.horizon_size - 1
         )  # The first state is the current state
-        self.control_warmstart = [np.zeros(robot_model.nq)] * (
+        self.control_warmstart = [np.zeros(self.robot_model.nq)] * (
             self.ocp_params.horizon_size - 1
         )
         # Create a concrete implementation of OCPBaseCroco
-        self.ocp = self.TestOCPCroco(self.robot_model_factory, self.ocp_params)
+        self.ocp = self.TestOCPCroco(self.robot_models, self.ocp_params)
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)
         # self.save_results()
 

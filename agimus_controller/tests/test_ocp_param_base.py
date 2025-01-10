@@ -1,5 +1,4 @@
 import unittest
-import numpy as np
 
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 
