@@ -148,7 +148,6 @@ class RobotModels:
             self._full_robot_model, joints_to_lock, self._q0
         )
 
-
     def _update_collision_model_to_capsules(self) -> None:
         """Update the collision model to capsules."""
         cmodel = self._collision_model.copy()
