@@ -23,8 +23,8 @@ class RobotModelParameters:
     collision_as_capsule: bool = (
         False  # True if the collision model should be reduced to capsules.
     )
-    # By default, the collision model when convexified is a sum of spheres and cylinders, often representing capsules. Here, all the couples sphere cylinder sphere are replaced by hppfcl capsules.
-    self_collision: bool = False  # If True, the collision model takes into account collision pairs written in the srdf file.
+    # By default, the collision model when convexified is a sum of spheres and cylinders, often representing capsules. Here, all the couples sphere cylinder sphere are replaced by coal capsules.
+    self_collision: bool = False  # If True, the collision model takes into account collisions pairs written in the srdf file.
     armature: npt.NDArray[np.float64] = field(
         default_factory=lambda: np.array([], dtype=np.float64)
     )  # Default empty NumPy array
@@ -43,7 +43,9 @@ class RobotModelParameters:
             self.armature = np.zeros(len(self.q0), dtype=np.float64)
 
         # Ensure armature has the same shape as q0
-        if self.armature.shape != self.q0.shape:
+        if (
+            self.armature.shape != self.q0.shape and not self.free_flyer
+        ):  #! TODO: Do the same for free flyer
             raise ValueError(
                 f"Armature must have the same shape as q0. Got {self.armature.shape} and {self.q0.shape}."
             )
