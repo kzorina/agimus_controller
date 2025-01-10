@@ -145,7 +145,9 @@ class TestRobotModels(unittest.TestCase):
 
     def test_collision_pairs(self):
         """Checking that the collision model has collision pairs."""
-        self.assertTrue(len(self.robot_models.collision_model.collisionPairs) > 0)
+        self.assertTrue(
+            len(self.robot_models.collision_model.collisionPairs) == 44
+        )  # Number of collision pairs in the panda model
 
     def test_rnea(self):
         """Checking that the RNEA method works."""
