@@ -20,7 +20,9 @@ from linear_feedback_controller_msgs_py.numpy_conversions import (
 )
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
-from agimus_controller_ros.sim_utils import mpc_msg_to_weighted_traj_point
+from agimus_controller.agimus_controller_ros.agimus_controller_ros.ros_utils import (
+    mpc_msg_to_weighted_traj_point,
+)
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
@@ -192,7 +194,7 @@ class AgimusController(Node):
                 throttle_duration_sec=5.0,
             )
             return
-        start_compute_time = time.time()
+        start_compute_time = time.perf_counter()
         np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
         x0 = np.concatenate(
             [np_sensor_msg.joint_state.position, np_sensor_msg.joint_state.velocity]
@@ -209,7 +211,7 @@ class AgimusController(Node):
         else:
             self.solve(x0)
         self.send_control_msg(np_sensor_msg)
-        compute_time = time.time() - start_compute_time
+        compute_time = time.perf_counter() - start_compute_time
         self.ocp_solve_time_pub.publish(
             rclpy.duration.Duration(seconds=compute_time).to_msg()
         )

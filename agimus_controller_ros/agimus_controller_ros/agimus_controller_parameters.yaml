@@ -44,10 +44,10 @@ agimus_controller_params:
   moving_joint_names:
     type: string_array
     description: "The name of the joints we use"
-  publish_debug_datas:
+  publish_debug_data:
     type: bool
     default_value: True
-    description: "Wether we publish debug datas or not"
+    description: "Wether we publish debug data or not"
   rate:
     type: double
     default_value: 100.0
