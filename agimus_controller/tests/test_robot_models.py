@@ -90,7 +90,7 @@ class TestRobotModelParameters(unittest.TestCase):
 
 class TestRobotModels(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(self):
         """
         This method sets up the shared environment for all test cases in the class.
         """
@@ -103,7 +103,7 @@ class TestRobotModels(unittest.TestCase):
         q0 = np.zeros(robot.model.nq)
         locked_joint_names = ["panda_joint1", "panda_joint2"]
         # Store shared initial parameters
-        cls.shared_params = RobotModelParameters(
+        self.shared_params = RobotModelParameters(
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
@@ -131,6 +131,14 @@ class TestRobotModels(unittest.TestCase):
         self.assertIsNotNone(self.robot_models.full_robot_model)
         self.assertIsNotNone(self.robot_models.visual_model)
         self.assertIsNotNone(self.robot_models.collision_model)
+
+    def test_reduced_robot_model(self):
+        self.robot_models.load_models()
+        self.assertTrue(
+            self.robot_models.robot_model.nq
+            == self.robot_models.full_robot_model.nq
+            - len(self.params.locked_joint_names)
+        )
 
     def test_invalid_joint_name_raises_value_error(self):
         # Modify a fresh instance of parameters for this test
