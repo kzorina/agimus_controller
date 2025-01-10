@@ -15,9 +15,9 @@ class RobotModelParameters:
     )  # Initial configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
-    urdf_path: str | Path = Path()  # Path to the URDF file
-    srdf_path: str | Path | None = None  # Path to the SRDF file
-    urdf_meshes_dir: str | Path | None = (
+    urdf_path: Path = Path()  # Path to the URDF file
+    srdf_path: Path | None = None  # Path to the SRDF file
+    urdf_meshes_dir: Path | None = (
         Path()  # Path to the directory containing the meshes and the URDF file.
     )
     collision_as_capsule: bool = (
@@ -51,10 +51,10 @@ class RobotModelParameters:
             )
 
         # Ensure paths are valid strings
-        if not Path(self.urdf_path).is_file():
+        if not self.urdf_path.is_file():
             raise ValueError("urdf_path must be a valid file path.")
 
-        if self.srdf_path is not None and not Path(self.srdf_path).is_file():
+        if self.srdf_path is not None and not self.srdf_path.is_file():
             raise ValueError("srdf_path must be a valid file path.")
 
 
@@ -170,7 +170,7 @@ class RobotModels:
                     ),
                     placement=geom_object.placement,
                 )
-                capsule.meshColor = np.array([249, 136, 126, 125]) / 255  # Red color
+                capsule.meshColor = self._params.collision_color
                 self._collision_model.addGeometryObject(capsule)
                 self._collision_model.removeGeometryObject(geom_object.name)
 
