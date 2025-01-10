@@ -26,9 +26,9 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             "eps_rel": 0,
             "callbacks": False,
         }
-        params = OCPParamsBaseCroco(**params)
-        for key, val in params:
-            res = getattr(params, key)
+        ocp_param_base_croco = OCPParamsBaseCroco(**params)
+        for key, val in params.items():
+            res = getattr(ocp_param_base_croco, key)
             self.assertEqual(
                 res,
                 val,
