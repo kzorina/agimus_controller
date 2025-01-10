@@ -20,7 +20,7 @@ from linear_feedback_controller_msgs_py.numpy_conversions import (
 )
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
-from agimus_controller.agimus_controller_ros.agimus_controller_ros.ros_utils import (
+from agimus_controller_ros.ros_utils import (
     mpc_msg_to_weighted_traj_point,
 )
 from agimus_controller.mpc import MPC

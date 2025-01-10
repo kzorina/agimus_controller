@@ -6,13 +6,10 @@ import mim_solvers
 from colmpc import ResidualDistanceCollision
 
 from agimus_controller.utils.pin_utils import get_ee_pose_from_configuration
-from agimus_controller_ros.parameters import OCPParameters
 
 
 class OCPCrocoHPP:
-    def __init__(
-        self, rmodel: pin.Model, cmodel: pin.GeometryModel, params: OCPParameters
-    ) -> None:
+    def __init__(self, rmodel: pin.Model, cmodel: pin.GeometryModel, params) -> None:
         """Class to define the OCP linked witha HPP generated trajectory.
 
         Args:
