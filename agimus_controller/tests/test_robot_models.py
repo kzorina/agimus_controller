@@ -14,9 +14,9 @@ class TestRobotModelParameters(unittest.TestCase):
         """Test that the dataclass initializes correctly with valid input."""
 
         robot = robex.load("panda")
-        urdf_path = robot.urdf
-        srdf_path = robot.urdf.replace("urdf", "srdf")
-        urdf_meshes_dir = dirname(dirname(robot.urdf))
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        urdf_meshes_dir = robot.urdf.parent.parent
         free_flyer = False
         q0 = np.zeros(robot.model.nq)
         params = RobotModelParameters(
