@@ -185,8 +185,8 @@ class RobotModels:
                 list_names_capsules.append(name)
                 capsule = pin.GeometryObject(
                     name=name,
-                    parent_frame=int(geom_object.parentFrame),
-                    parent_joint=int(geom_object.parentJoint),
+                    parent_frame=geom_object.parentFrame,
+                    parent_joint=geom_object.parentJoint,
                     collision_geometry=coal.Capsule(
                         geometry.radius, geometry.halfLength
                     ),
