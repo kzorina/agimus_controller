@@ -23,7 +23,7 @@ class RobotModelParameters:
     collision_as_capsule: bool = (
         False  # True if the collision model should be reduced to capsules.
     )
-    # By default, the collision model when convexified is a sum of spheres and cylinders, often representing capsules. Here, all the couples sphere cylinder sphere are replaced by hppfcl capsules.
+    # By default, the collision model when convexified is a sum of spheres and cylinders, often representing capsules. Here, all the couples sphere cylinder sphere are replaced by coal capsules.
     self_collision: bool = False  # If True, the collision model takes into account collisions pairs written in the srdf file.
     armature: npt.NDArray[np.float64] = field(
         default_factory=lambda: np.array([], dtype=np.float64)
