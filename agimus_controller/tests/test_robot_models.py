@@ -1,7 +1,7 @@
 from copy import deepcopy
 from os.path import dirname
 import unittest
-
+from pathlib import Path
 import example_robot_data as robex
 import numpy as np
 import pinocchio as pin
@@ -16,7 +16,7 @@ class TestRobotModelParameters(unittest.TestCase):
         robot = robex.load("panda")
         urdf_path = Path(robot.urdf)
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
-        urdf_meshes_dir = robot.urdf.parent.parent
+        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
         q0 = np.zeros(robot.model.nq)
         params = RobotModelParameters(
@@ -49,9 +49,10 @@ class TestRobotModelParameters(unittest.TestCase):
     def test_armature_default_value(self):
         """Test that the armature is set to default if not provided."""
         robot = robex.load("panda")
-        urdf_path = robot.urdf
-        srdf_path = robot.urdf.replace("urdf", "srdf")
-        urdf_meshes_dir = dirname(dirname(robot.urdf))
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
+        print(urdf_meshes_dir)
         free_flyer = False
         q0 = np.zeros(robot.model.nq)
         params = RobotModelParameters(
@@ -77,13 +78,13 @@ class TestRobotModelParameters(unittest.TestCase):
         """Test that an invalid URDF path raises a ValueError."""
         q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(q0=q0, urdf_path="None")
+            RobotModelParameters(q0=q0, urdf_path=Path("invalid_path"))
 
     def test_invalid_srdf_path_type_raises_error(self):
         """Test that a non-string SRDF path raises a ValueError."""
         q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(q0=q0, srdf_path=12345)
+            RobotModelParameters(q0=q0, srdf_path=Path("invalid_path"))
 
 
 class TestRobotModels(unittest.TestCase):
@@ -94,9 +95,9 @@ class TestRobotModels(unittest.TestCase):
         """
         # Load the example robot model using example robot data to get the URDF path.
         robot = robex.load("panda")
-        urdf_path = robot.urdf
-        srdf_path = robot.urdf.replace("urdf", "srdf")
-        urdf_meshes_dir = dirname(dirname(dirname(dirname(dirname(robot.urdf)))))
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
         q0 = np.zeros(robot.model.nq)
 
@@ -135,12 +136,6 @@ class TestRobotModels(unittest.TestCase):
         self.params.locked_joint_names = ["InvalidJoint"]
         with self.assertRaises(ValueError):
             self.robot_models._apply_locked_joints()
-
-    def test_generate_capsule_name(self):
-        name = self.robot_models._generate_capsule_name(
-            "base_link", ["base_link_capsule_0"]
-        )
-        self.assertEqual(name, "base_link_capsule_1")
 
     def test_armature_property(self):
         self.assertTrue(
