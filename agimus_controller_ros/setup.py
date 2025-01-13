@@ -39,7 +39,7 @@ setup(
     license="BSD",
     entry_points={
         "console_scripts": [
-            "mpc_input_dummy_publisher = agimus_controller_ros.mpc_input_dummy_publisher:main",
+            "simple_trajectory_publisher = agimus_controller_ros.simple_trajectory_publisher:main",
             "agimus_controller_node = agimus_controller_ros.agimus_controller:main",
         ],
     },
