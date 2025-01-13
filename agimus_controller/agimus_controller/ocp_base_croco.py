@@ -38,7 +38,7 @@ class OCPBaseCroco(OCPBase):
         self._ocp = None
         self._ocp_results = None
         self._running_model_list = []
-        self._terminal_model = None
+        self._terminal_model = []
 
     @property
     def horizon_size(self) -> int:
