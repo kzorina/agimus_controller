@@ -21,7 +21,7 @@ class OCPBaseCroco(OCPBase):
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
-            robot_models (RobotModelFactory): All models of the robot.
+            robot_models (RobotModels): All models of the robot.
             ocp_params (OCPParamsBaseCroco): Input data structure of the OCP.
         """
         # Setting the robot model
@@ -113,7 +113,7 @@ class OCPBaseCroco(OCPBase):
         self._ocp.solve([x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters)
 
         # Store the results
-        self.ocp_results = OCPResults(
+        self._ocp_results = OCPResults(
             states=self._ocp.xs,
             ricatti_gains=self._ocp.K,
             feed_forward_terms=self._ocp.us,
