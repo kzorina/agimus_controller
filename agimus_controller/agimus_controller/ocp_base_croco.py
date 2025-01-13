@@ -26,20 +26,19 @@ class OCPBaseCroco(OCPBase):
         """
         # Setting the robot model
         self._robot_models = robot_models
-        self._robot_model = self._robot_models.robot_model
         self._collision_model = self._robot_models.collision_model
         self._armature = self._robot_models._params.armature
 
         # Stat and actuation model
-        self._state = crocoddyl.StateMultibody(self._robot_model)
+        self._state = crocoddyl.StateMultibody(self._robot_models.robot_model)
         self._actuation = crocoddyl.ActuationModelFull(self._state)
 
         # Setting the OCP parameters
         self._ocp_params = ocp_params
         self._ocp = None
         self._ocp_results = None
-        self.running_model_list = None
-        self.terminal_model = None
+        self._running_model_list = None
+        self._terminal_model = None
 
     @property
     def horizon_size(self) -> int:
@@ -88,12 +87,12 @@ class OCPBaseCroco(OCPBase):
 
         if self._ocp is None:
             # Create the running models
-            self.running_model_list = self.create_running_model_list()
+            self._running_model_list = self.create_running_model_list()
             # Create the terminal model
-            self.terminal_model = self.create_terminal_model()
+            self._terminal_model = self.create_terminal_model()
             # Create the shooting problem
             self._problem = crocoddyl.ShootingProblem(
-                x0, self.running_model_list, self.terminal_model
+                x0, self._running_model_list, self._terminal_model
             )
             # Create solver + callbacks
             self._ocp = mim_solvers.SolverCSQP(self._problem)

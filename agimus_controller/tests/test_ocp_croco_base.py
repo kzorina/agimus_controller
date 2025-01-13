@@ -1,6 +1,5 @@
 from os.path import dirname
 import unittest
-from unittest.mock import MagicMock
 from pathlib import Path
 import crocoddyl
 import example_robot_data as robex
@@ -41,8 +40,6 @@ class TestOCPBaseCroco(unittest.TestCase):
         )
 
         self.robot_models = RobotModels(self.params)
-        self.robot_model = self.robot_models.robot_model
-        self.collision_model = self.robot_models.collision_model
 
         self.ocp_params = OCPParamsBaseCroco(
             dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
@@ -84,7 +81,10 @@ class TestSimpleOCPCroco(unittest.TestCase):
             x_residual = crocoddyl.ResidualModelState(
                 self._state,
                 np.concatenate(
-                    (pin.neutral(self._robot_model), np.zeros(self._robot_model.nv))
+                    (
+                        pin.neutral(self._robot_models.robot_model),
+                        np.zeros(self._robot_models.robot_model.nv),
+                    )
                 ),
             )
             x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
@@ -95,7 +95,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             # End effector frame cost
             frame_placement_residual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
-                self._robot_model.getFrameId("panda_hand_tcp"),
+                self._robot_models.robot_model.getFrameId("panda_hand_tcp"),
                 pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
@@ -127,7 +127,10 @@ class TestSimpleOCPCroco(unittest.TestCase):
             x_residual = crocoddyl.ResidualModelState(
                 self._state,
                 np.concatenate(
-                    (pin.neutral(self._robot_model), np.zeros(self._robot_model.nv))
+                    (
+                        pin.neutral(self._robot_models.robot_model),
+                        np.zeros(self._robot_models.robot_model.nv),
+                    )
                 ),
             )
             x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
@@ -135,7 +138,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             # End effector frame cost
             frame_placement_residual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
-                self._robot_model.getFrameId("panda_hand_tcp"),
+                self._robot_models.robot_model.getFrameId("panda_hand_tcp"),
                 pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
