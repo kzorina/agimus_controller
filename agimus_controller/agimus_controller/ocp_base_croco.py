@@ -111,7 +111,7 @@ class OCPBaseCroco(OCPBase):
         self._ocp.solve([x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters)
 
         # Store the results
-        self.ocp_results = OCPResults(
+        self._ocp_results = OCPResults(
             states=self._ocp.xs,
             ricatti_gains=self._ocp.K,
             feed_forward_terms=self._ocp.us,
