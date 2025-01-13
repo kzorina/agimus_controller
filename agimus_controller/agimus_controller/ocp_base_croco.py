@@ -26,8 +26,8 @@ class OCPBaseCroco(OCPBase):
         """
         # Setting the robot model
         self._robot_models = robot_models
-        self._robot_model = self._robot_model.robot_model
-        self._collision_model = self._robot_model.collision_model
+        self._robot_model = self._robot_models.robot_model
+        self._collision_model = self._robot_models.collision_model
         self._armature = self._robot_models._params.armature
 
         # Stat and actuation model

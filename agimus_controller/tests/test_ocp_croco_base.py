@@ -214,14 +214,18 @@ class TestSimpleOCPCroco(unittest.TestCase):
         # self.save_results()
 
     def get_results_as_numpy(self):
-         return np.array([
+        return np.array(
+            [
                 self.ocp.ocp_results.states.tolist(),
                 self.ocp.ocp_results.ricatti_gains.tolist(),
                 self.ocp.ocp_results.feed_forward_terms.tolist(),
-            ], dtype=object,  # Ensure the array is dtype=object before saving)
+            ],
+            dtype=object,  # Ensure the array is dtype=object before saving)
+        )
 
-    def save_results(self, destination=pathlib.Path("ressources/simple_ocp_croco_results.npy")):
-            np.save(str(destination), self.get_results_as_numpy())
+    def save_results(self, destination=Path("ressources/simple_ocp_croco_results.npy")):
+        np.save(str(destination), self.get_results_as_numpy())
+
     def save_results(self):
         results = np.array(
             [
