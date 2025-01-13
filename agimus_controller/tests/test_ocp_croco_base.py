@@ -21,14 +21,17 @@ class TestOCPBaseCroco(unittest.TestCase):
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
-        q0 = np.zeros(robot.model.nq)
-        armature = np.full(robot.model.nq, 0.1)
-
+        locked_joint_names = ["panda_joint1", "panda_joint2"]
+        reduced_nq = robot.model.nq - len(locked_joint_names)
+        full_q0 = np.zeros(robot.model.nq)
+        armature = np.full(reduced_nq, 0.1)
+        q0 = np.zeros(robot.model.nq - len(locked_joint_names))
         # Store shared initial parameters
         self.params = RobotModelParameters(
+            full_q0=full_q0,
             q0=q0,
             free_flyer=free_flyer,
-            locked_joint_names=["panda_joint1", "panda_joint2"],
+            locked_joint_names=locked_joint_names,
             urdf_path=urdf_path,
             srdf_path=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
@@ -80,10 +83,11 @@ class TestSimpleOCPCroco(unittest.TestCase):
             # State Regularization cost
             x_residual = crocoddyl.ResidualModelState(
                 self._state,
-                np.concatenate((pin.neutral(self._rmodel), np.zeros(self._rmodel.nv))),
+                np.concatenate(
+                    (pin.neutral(self._robot_model), np.zeros(self._robot_model.nv))
+                ),
             )
             x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
-
             # Control Regularization cost
             u_residual = crocoddyl.ResidualModelControl(self._state)
             u_reg_cost = crocoddyl.CostModelResidual(self._state, u_residual)
@@ -91,7 +95,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             # End effector frame cost
             frame_placement_residual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
-                self._rmodel.getFrameId("panda_hand_tcp"),
+                self._robot_model.getFrameId("panda_hand_tcp"),
                 pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
@@ -110,8 +114,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             running_model = crocoddyl.IntegratedActionModelEuler(
                 running_DAM,
             )
-            running_model.differential.armature = self._robot_model.armature
-
+            running_model.differential.armature = self._robot_models.armature
             running_model_list = [running_model] * (self._ocp_params.horizon_size - 1)
             return running_model_list
 
@@ -123,14 +126,16 @@ class TestSimpleOCPCroco(unittest.TestCase):
             # State Regularization cost
             x_residual = crocoddyl.ResidualModelState(
                 self._state,
-                np.concatenate((pin.neutral(self._rmodel), np.zeros(self._rmodel.nv))),
+                np.concatenate(
+                    (pin.neutral(self._robot_model), np.zeros(self._robot_model.nv))
+                ),
             )
             x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
 
             # End effector frame cost
             frame_placement_residual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
-                self._rmodel.getFrameId("panda_hand_tcp"),
+                self._robot_model.getFrameId("panda_hand_tcp"),
                 pin.SE3(np.eye(3), np.array([1.0, 1.0, 1.0])),
             )
 
@@ -148,8 +153,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             )
 
             terminal_model = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.0)
-            terminal_model.differential.armature = self._robot_model.armature
-
+            terminal_model.differential.armature = self._robot_models.armature
             return terminal_model
 
         def set_reference_horizon(self, horizon_size):
@@ -168,19 +172,23 @@ class TestSimpleOCPCroco(unittest.TestCase):
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
-        q0 = np.zeros(robot.model.nq)
-
+        locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
+        reduced_nq = robot.model.nq - len(locked_joint_names)
+        full_q0 = np.zeros(robot.model.nq)
+        q0 = np.zeros(reduced_nq)
+        armature = np.full(reduced_nq, 0.1)
         # Store shared initial parameters
         self.params = RobotModelParameters(
             q0=q0,
+            full_q0=full_q0,
             free_flyer=free_flyer,
-            locked_joint_names=["panda_joint1", "panda_joint2"],
+            locked_joint_names=locked_joint_names,
             urdf_path=urdf_path,
             srdf_path=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
-            armature=np.linspace(0.1, 0.9, robot.model.nq),
+            armature=armature,
         )
 
         self.robot_models = RobotModels(self.params)
@@ -205,6 +213,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)
         # self.save_results()
 
+    @classmethod
     def save_results(self):
         results = np.array(
             [

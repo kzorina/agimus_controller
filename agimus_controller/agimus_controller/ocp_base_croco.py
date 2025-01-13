@@ -15,23 +15,23 @@ from agimus_controller.trajectory import TrajectoryPointWeights
 class OCPBaseCroco(OCPBase):
     def __init__(
         self,
-        robot_model: RobotModels,
+        robot_models: RobotModels,
         ocp_params: OCPParamsBaseCroco,
     ) -> None:
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
-            robot_model (RobotModelFactory): All models of the robot.
+            robot_models (RobotModelFactory): All models of the robot.
             ocp_params (OCPParamsBaseCroco): Input data structure of the OCP.
         """
         # Setting the robot model
-        self._robot_model = robot_model
-        self._rmodel = self._robot_model.robot_model
-        self._cmodel = self._robot_model.collision_model
-        self._armature = self._robot_model._params.armature
+        self._robot_models = robot_models
+        self._robot_model = self._robot_model.robot_model
+        self._collision_model = self._robot_model.collision_model
+        self._armature = self._robot_models._params.armature
 
         # Stat and actuation model
-        self._state = crocoddyl.StateMultibody(self._rmodel)
+        self._state = crocoddyl.StateMultibody(self._robot_model)
         self._actuation = crocoddyl.ActuationModelFull(self._state)
 
         # Setting the OCP parameters

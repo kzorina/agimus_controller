@@ -11,9 +11,12 @@ import pinocchio as pin
 
 @dataclass
 class RobotModelParameters:
+    full_q0: npt.NDArray[np.float64] = np.array(
+        [], dtype=np.float64
+    )  # Initial full configuration of the robot
     q0: npt.NDArray[np.float64] = np.array(
         [], dtype=np.float64
-    )  # Initial configuration of the robot
+    )  # Initial reduced configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
     urdf_path: Path = Path()  # Path to the URDF file
@@ -34,10 +37,15 @@ class RobotModelParameters:
     )  # Red color for the collision model
 
     def __post_init__(self):
-        # Check q0 is not empty
-        if len(self.q0) == 0:
-            raise ValueError("q0 cannot be empty.")
+        # Check full_q0 is not empty
+        if len(self.full_q0) == 0:
+            raise ValueError("full_q0 cannot be empty.")
 
+        # Check q0 is not empty or if there is no reduced model, q0 is the full configuration
+        if len(self.q0) == 0 and not len(self.locked_joint_names) == 0:
+            raise ValueError("q0 cannot be empty while reducing the model.")
+        elif len(self.q0) == 0:
+            self.q0 = self.full_q0
         # Handle armature:
         if self.armature.size == 0:
             # Use a default armature filled with 0s, based on the size of q0
@@ -74,6 +82,7 @@ class RobotModels:
         self._collision_model = None
         self._visual_model = None
         self._q0 = deepcopy(self._params.q0)
+        self._full_q0 = deepcopy(self._params.full_q0)
         self.load_models()  # Populate models
 
     @property
@@ -108,6 +117,11 @@ class RobotModels:
     def q0(self) -> np.array:
         """Initial configuration of the robot."""
         return self._q0
+
+    @property
+    def full_q0(self) -> np.array:
+        """Initial full configuration of the robot."""
+        return self._full_q0
 
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
@@ -146,7 +160,7 @@ class RobotModels:
                 raise ValueError(f"Joint {jn} not found in the robot model.")
 
         self._robot_model = pin.buildReducedModel(
-            self._full_robot_model, joints_to_lock, self._q0
+            self._full_robot_model, joints_to_lock, self._full_q0
         )
 
     def _update_collision_model_to_capsules(self) -> None:
