@@ -39,6 +39,7 @@ class OCPBaseCroco(OCPBase):
         self._ocp_results = None
         self._running_model_list = []
         self._terminal_model = []
+        self._problem = None
 
     @property
     def horizon_size(self) -> int:
