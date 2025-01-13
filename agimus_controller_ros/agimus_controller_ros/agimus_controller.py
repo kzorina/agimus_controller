@@ -7,11 +7,11 @@ import pinocchio as pin
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.duration import Duration
 
 from std_msgs.msg import String
 from agimus_msgs.msg import MpcInput
-from builtin_interfaces.msg import Duration
-import rclpy.duration
+import builtin_interfaces
 
 import linear_feedback_controller_msgs_py.lfc_py_types as lfc_py_types
 from linear_feedback_controller_msgs_py.numpy_conversions import (
@@ -20,9 +20,7 @@ from linear_feedback_controller_msgs_py.numpy_conversions import (
 )
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
-from agimus_controller_ros.ros_utils import (
-    mpc_msg_to_weighted_traj_point,
-)
+from agimus_controller_ros.ros_utils import mpc_msg_to_weighted_traj_point
 from agimus_controller.mpc import MPC
 from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
@@ -83,8 +81,11 @@ class AgimusController(Node):
                 reliability=ReliabilityPolicy.BEST_EFFORT,
             ),
         )
-        self.ocp_solve_time_pub = self.create_publisher(Duration, "ocp_solve_time", 10)
-        self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
+        if self.params.publish_debug_data:
+            self.ocp_solve_time_pub = self.create_publisher(
+                builtin_interfaces.msg.Duration, "ocp_solve_time", 10
+            )
+            self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
         self.create_timer(1.0 / self.params.rate, self.run_callback)
 
     def sensor_callback(self, sensor_msg: Sensor) -> None:
@@ -212,10 +213,9 @@ class AgimusController(Node):
             self.solve(x0)
         self.send_control_msg(np_sensor_msg)
         compute_time = time.perf_counter() - start_compute_time
-        self.ocp_solve_time_pub.publish(
-            rclpy.duration.Duration(seconds=compute_time).to_msg()
-        )
-        self.ocp_x0_pub.publish(self.sensor_msg)
+        if self.params.publish_debug_data:
+            self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
+            self.ocp_x0_pub.publish(self.sensor_msg)
 
 
 def main(args=None) -> None:
