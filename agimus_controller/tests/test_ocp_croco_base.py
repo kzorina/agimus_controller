@@ -6,7 +6,7 @@ import crocoddyl
 import example_robot_data as robex
 import numpy as np
 import pinocchio as pin
-
+import pickle
 from agimus_controller.ocp_base_croco import OCPBaseCroco
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
@@ -211,39 +211,26 @@ class TestSimpleOCPCroco(unittest.TestCase):
         # Create a concrete implementation of OCPBaseCroco
         self.ocp = self.TestOCPCroco(self.robot_models, self.ocp_params)
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)
-        # self.save_results()
+        self.save_results()
 
-    def get_results_as_numpy(self):
-        return np.array(
-            [
-                self.ocp.ocp_results.states.tolist(),
-                self.ocp.ocp_results.ricatti_gains.tolist(),
-                self.ocp.ocp_results.feed_forward_terms.tolist(),
-            ],
-            dtype=object,  # Ensure the array is dtype=object before saving)
-        )
-
-    def save_results(self, destination=Path("ressources/simple_ocp_croco_results.npy")):
-        np.save(str(destination), self.get_results_as_numpy())
-
+    @classmethod
     def save_results(self):
-        results = np.array(
-            [
-                self.ocp.ocp_results.states.tolist(),
-                self.ocp.ocp_results.ricatti_gains.tolist(),
-                self.ocp.ocp_results.feed_forward_terms.tolist(),
-            ],
-            dtype=object,  # Ensure the array is dtype=object before saving
-        )
-        np.save(
-            "ressources/simple_ocp_croco_results.npy",
-            results,
-        )
+        results = {
+            "states": self.ocp.ocp_results.states.tolist(),
+            "ricatti_gains": self.ocp.ocp_results.ricatti_gains.tolist(),
+            "feed_forward_terms": self.ocp.ocp_results.feed_forward_terms.tolist(),
+        }
+
+        with open("ressources/simple_ocp_croco_results.pkl", "wb") as handle:
+            pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def test_check_results(self):
-        results = np.load("ressources/simple_ocp_croco_results.npy", allow_pickle=True)
+        file_path = "ressources/simple_ocp_croco_results.pkl"
+        # Load the results
+        with open(file_path, "rb") as handle:
+            results = pickle.load(handle)
         # Checking the states
-        for iter, state in enumerate(results[0]):
+        for iter, state in enumerate(results["states"]):
             np.testing.assert_array_almost_equal(
                 state,
                 self.ocp.ocp_results.states.tolist()[iter],
@@ -251,7 +238,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             )
 
         # Checking the ricatti gains
-        for iter, gain in enumerate(results[1]):
+        for iter, gain in enumerate(results["ricatti_gains"]):
             np.testing.assert_array_almost_equal(
                 gain,
                 self.ocp.ocp_results.ricatti_gains.tolist()[iter],
@@ -259,7 +246,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             )
 
         # Checking the feed forward terms
-        for iter, term in enumerate(results[2]):
+        for iter, term in enumerate(results["feed_forward_terms"]):
             np.testing.assert_array_almost_equal(
                 term,
                 self.ocp.ocp_results.feed_forward_terms.tolist()[iter],
