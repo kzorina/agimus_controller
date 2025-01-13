@@ -21,7 +21,7 @@ class OCPBaseCroco(OCPBase):
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
-            robot_models (RobotModelFactory): All models of the robot.
+            robot_models (RobotModels): All models of the robot.
             ocp_params (OCPParamsBaseCroco): Input data structure of the OCP.
         """
         # Setting the robot model
