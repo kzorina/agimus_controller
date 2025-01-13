@@ -37,7 +37,7 @@ class OCPBaseCroco(OCPBase):
         self._ocp_params = ocp_params
         self._ocp = None
         self._ocp_results = None
-        self._running_model_list = None
+        self._running_model_list = []
         self._terminal_model = None
 
     @property
