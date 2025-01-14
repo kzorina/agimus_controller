@@ -18,9 +18,12 @@ class TestRobotModelParameters(unittest.TestCase):
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
-        q0 = np.zeros(robot.model.nq)
+        full_q0 = np.zeros(robot.model.nq)
         locked_joint_names = ["panda_joint1", "panda_joint2"]
+        reduced_nq = robot.model.nq - len(locked_joint_names)
+        q0 = np.zeros(reduced_nq)
         params = RobotModelParameters(
+            full_q0=full_q0,
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
@@ -29,9 +32,9 @@ class TestRobotModelParameters(unittest.TestCase):
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
-            armature=np.linspace(0.1, 0.9, 9),
+            armature=np.linspace(0.1, 0.9, reduced_nq),
         )
-
+        self.assertTrue(np.array_equal(params.full_q0, full_q0))
         self.assertTrue(np.array_equal(params.q0, q0))
         self.assertEqual(params.free_flyer, free_flyer)
         self.assertEqual(params.locked_joint_names, ["panda_joint1", "panda_joint2"])
@@ -40,7 +43,9 @@ class TestRobotModelParameters(unittest.TestCase):
         self.assertEqual(params.urdf_meshes_dir, urdf_meshes_dir)
         self.assertTrue(params.collision_as_capsule)
         self.assertTrue(params.self_collision)
-        self.assertTrue(np.array_equal(params.armature, np.linspace(0.1, 0.9, 9)))
+        self.assertTrue(
+            np.array_equal(params.armature, np.linspace(0.1, 0.9, reduced_nq))
+        )
 
     def test_empty_q0_raises_error(self):
         """Test that an empty q0 raises a ValueError."""
@@ -55,8 +60,11 @@ class TestRobotModelParameters(unittest.TestCase):
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         locked_joint_names = ["panda_joint1", "panda_joint2"]
         free_flyer = False
-        q0 = np.zeros(robot.model.nq)
+        full_q0 = np.zeros(robot.model.nq)
+        locked_joint_names = ["panda_joint1", "panda_joint2"]
+        q0 = np.zeros(robot.model.nq - len(locked_joint_names))
         params = RobotModelParameters(
+            full_q0=full_q0,
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
@@ -70,27 +78,27 @@ class TestRobotModelParameters(unittest.TestCase):
 
     def test_armature_mismatched_shape_raises_error(self):
         """Test that a mismatched armature raises a ValueError."""
-        q0 = np.array([0.0, 1.0, 2.0])
+        full_q0 = np.array([0.0, 1.0, 2.0])
         armature = np.array([0.1, 0.2])  # Wrong shape
         with self.assertRaises(ValueError):
-            RobotModelParameters(q0=q0, armature=armature)
+            RobotModelParameters(full_q0=full_q0, armature=armature)
 
     def test_invalid_urdf_path_raises_error(self):
         """Test that an invalid URDF path raises a ValueError."""
-        q0 = np.array([0.0, 1.0, 2.0])
+        full_q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(q0=q0, urdf_path=Path("invalid_path"))
+            RobotModelParameters(full_q0=full_q0, urdf_path=Path("invalid_path"))
 
     def test_invalid_srdf_path_type_raises_error(self):
         """Test that a non-string SRDF path raises a ValueError."""
-        q0 = np.array([0.0, 1.0, 2.0])
+        full_q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(q0=q0, srdf_path=Path("invalid_path"))
+            RobotModelParameters(full_q0=full_q0, srdf_path=Path("invalid_path"))
 
 
 class TestRobotModels(unittest.TestCase):
     @classmethod
-    def setUpClass(self):
+    def setUpClass(cls):
         """
         This method sets up the shared environment for all test cases in the class.
         """
@@ -100,10 +108,12 @@ class TestRobotModels(unittest.TestCase):
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
-        q0 = np.zeros(robot.model.nq)
+        full_q0 = np.zeros(robot.model.nq)
         locked_joint_names = ["panda_joint1", "panda_joint2"]
-        # Store shared initial parameters
-        self.shared_params = RobotModelParameters(
+        reduced_nq = robot.model.nq - len(locked_joint_names)
+        q0 = np.zeros(reduced_nq)
+        cls.params = RobotModelParameters(
+            full_q0=full_q0,
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
@@ -112,15 +122,15 @@ class TestRobotModels(unittest.TestCase):
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
-            armature=np.linspace(0.1, 0.9, robot.model.nq),
+            armature=np.linspace(0.1, 0.9, reduced_nq),
         )
 
     def setUp(self):
         """
         This method ensures that a fresh RobotModelParameters and RobotModels instance
-        are created for each test case while still benefiting from shared setup computations.
+        are created for each test case.
         """
-        self.params = deepcopy(self.shared_params)
+        self.params = deepcopy(self.params)
         self.robot_models = RobotModels(self.params)
 
     def test_initial_configuration(self):
