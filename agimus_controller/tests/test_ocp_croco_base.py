@@ -56,7 +56,7 @@ class TestOCPBaseCroco(unittest.TestCase):
             def update_crocoddyl_problem(self, x0, trajectory_points_list):
                 return None
 
-            def set_reference_horizon(self, horizon_size):
+            def set_reference_trajectory(self, horizon_size):
                 return None
 
         self.ocp = TestOCPCroco(self.robot_models, self.ocp_params)
@@ -159,7 +159,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             terminal_model.differential.armature = self._robot_models.armature
             return terminal_model
 
-        def set_reference_horizon(self, horizon_size):
+        def set_reference_trajectory(self, horizon_size):
             ### Not implemented in this OCP example.
             return None
 
