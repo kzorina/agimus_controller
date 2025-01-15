@@ -1,91 +1,12 @@
-from os.path import dirname
-import unittest
 from pathlib import Path
 import crocoddyl
 import example_robot_data as robex
 import numpy as np
 import pinocchio as pin
-import pickle
 from agimus_controller.ocp_base_croco import OCPBaseCroco
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
-
-
-class OCPCrocoExp3(OCPBaseCroco):
-    def create_running_model_list(self):
-        running_model_list = []
-        for t in range(self._ocp_params.horizon_size):
-            # Running cost model
-            running_cost_model = crocoddyl.CostModelSum(self._state)
-
-            ### Creation of cost terms
-            # State Regularization cost
-            x_residual = crocoddyl.ResidualModelState(
-                self._state,
-                np.concatenate(
-                    (
-                        pin.neutral(self._robot_models.robot_model),
-                        np.zeros(self._robot_models.robot_model.nv),
-                    )
-                ),
-            )
-            x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
-            # Control Regularization cost
-            u_residual = crocoddyl.ResidualModelControl(self._state)
-            u_reg_cost = crocoddyl.CostModelResidual(self._state, u_residual)
-            running_cost_model.addCost("stateReg", x_reg_cost, 0.1)
-            running_cost_model.addCost("ctrlRegGrav", u_reg_cost, 0.0001)
-            # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-            running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
-                self._state,
-                self._actuation,
-                running_cost_model,
-            )
-            running_model = crocoddyl.IntegratedActionModelEuler(
-                running_DAM,
-            )
-            running_model.differential.armature = self._robot_models.armature
-
-            running_model_list.append(running_model)
-        return running_model_list
-
-    def create_terminal_model(self):
-        # Terminal cost models
-        terminal_cost_model = crocoddyl.CostModelSum(self._state)
-
-        ### Creation of cost terms
-        # State Regularization cost
-        x_residual = crocoddyl.ResidualModelState(
-            self._state,
-            np.concatenate(
-                (
-                    pin.neutral(self._robot_models.robot_model),
-                    np.zeros(self._robot_models.robot_model.nv),
-                )
-            ),
-        )
-        x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
-        terminal_cost_model.addCost("stateReg", x_reg_cost, 0.1)
-
-        # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-        terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
-            self._state,
-            self._actuation,
-            terminal_cost_model,
-        )
-
-        terminal_model = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.0)
-        terminal_model.differential.armature = self._robot_models.armature
-        return terminal_model
-
-    def set_reference_trajectory(self, horizon_size):
-        ### Not implemented in this OCP example.
-        return None
-
-    def update_crocoddyl_problem(self, x0, trajectory_points_list):
-        ### Not implemented in this OCP example.
-        return None
-
+from agimus_controller.ocp.ocp_exp3_main import OCPCrocoExp3
 
 ### Loading the robot
 robot = robex.load("panda")
@@ -117,6 +38,4 @@ robot_model = robot_models.robot_model
 collision_model = robot_models.collision_model
 
 # Set mock parameters
-ocp_params = OCPParamsBaseCroco(
-    dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
-)
+ocp_params = OCPCrocoExp3(dt=0.1, horizon_size=10, solver_iters=100, callbacks=True)
