@@ -33,7 +33,7 @@ class MPC(object):
         timer1 = time.perf_counter_ns()
         self._buffer.clear_past(current_time_ns)
         reference_trajectory = self._extract_horizon_from_buffer()
-        self._ocp.set_reference_horizon(reference_trajectory)
+        self._ocp.set_reference_trajectory(reference_trajectory)
         timer2 = time.perf_counter_ns()
         x0, x_init, u_init = self._warm_start.generate(
             initial_state, reference_trajectory, self._ocp.debug_data.result
