@@ -7,7 +7,7 @@ from agimus_controller.ocp_base_croco import OCPBaseCroco
 class OCPCrocoJointState(OCPBaseCroco):
     def create_running_model_list(self):
         running_model_list = []
-        for t in range(self._ocp_params.horizon_size):
+        for _ in range(self._ocp_params.horizon_size - 1):
             # Running cost model
             running_cost_model = crocoddyl.CostModelSum(self._state)
 
@@ -27,7 +27,7 @@ class OCPCrocoJointState(OCPBaseCroco):
             u_residual = crocoddyl.ResidualModelControl(self._state)
             u_reg_cost = crocoddyl.CostModelResidual(self._state, u_residual)
             running_cost_model.addCost("stateReg", x_reg_cost, 0.1)
-            running_cost_model.addCost("ctrlRegGrav", u_reg_cost, 0.0001)
+            running_cost_model.addCost("ctrlRegGrav", u_reg_cost, 1e-10)
             # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
             running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self._state,
@@ -75,12 +75,14 @@ class OCPCrocoJointState(OCPBaseCroco):
         """Set the reference trajectory for the OCP."""
 
         # Modify running costs reference and weights
-        for t in self.horizon_size - 1:
-            xref = [
-                weighted_trajectory_points[t].point.robot_configuration,
-                weighted_trajectory_points[t].point.robot_velocity,
-            ]
-            state_reg = self.ocp._problem.runningModels[t].differential.costs.costs[
+        for t in range(self.horizon_size - 1):
+            xref = np.concatenate(
+                (
+                    weighted_trajectory_points[t].point.robot_configuration,
+                    weighted_trajectory_points[t].point.robot_velocity,
+                )
+            )
+            state_reg = self._solver.problem.runningModels[t].differential.costs.costs[
                 "stateReg"
             ]
             state_reg.cost.residual.reference = xref
@@ -90,11 +92,16 @@ class OCPCrocoJointState(OCPBaseCroco):
             ].weight.w_robot_configuration
 
         # Modify terminal costs reference and weights
-        xref = [
-            weighted_trajectory_points[-1].point.robot_configuration,
-            weighted_trajectory_points[-1].point.robot_velocity,
+        xref = np.concatenate(
+            (
+                weighted_trajectory_points[-1].point.robot_configuration,
+                weighted_trajectory_points[-1].point.robot_velocity,
+            )
+        )
+
+        state_reg = self._solver.problem.terminalModel.differential.costs.costs[
+            "stateReg"
         ]
-        state_reg = self.ocp._problem.terminalModel.differential.costs.costs["stateReg"]
         state_reg.cost.residual.reference = xref
         # Modify running cost weight
         state_reg.weight = weighted_trajectory_points[-1].weight.w_robot_configuration
