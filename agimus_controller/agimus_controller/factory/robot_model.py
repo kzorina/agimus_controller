@@ -195,7 +195,7 @@ class RobotModels:
         """Update the collision model to self collision."""
         self._collision_model.addAllCollisionPairs()
         pin.removeCollisionPairs(
-            self._full_robot_model if self._robot_model is None else self._robot_model,
+            self._robot_model,
             self._collision_model,
             str(self._params.srdf_path),
         )
