@@ -125,8 +125,7 @@ class RobotModels:
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
         self._load_full_pinocchio_models()
-        if self._params.locked_joint_names:
-            self._apply_locked_joints()
+        self._apply_locked_joints()
         if self._params.collision_as_capsule:
             self._update_collision_model_to_capsules()
         if self._params.self_collision:
@@ -196,7 +195,9 @@ class RobotModels:
         """Update the collision model to self collision."""
         self._collision_model.addAllCollisionPairs()
         pin.removeCollisionPairs(
-            self._robot_model, self._collision_model, str(self._params.srdf_path)
+            self._robot_model,
+            self._collision_model,
+            str(self._params.srdf_path),
         )
 
     def _generate_capsule_name(self, base_name: str, existing_names: list[str]) -> str:
