@@ -4,7 +4,7 @@ import pinocchio as pin
 from agimus_controller.ocp_base_croco import OCPBaseCroco
 
 
-class OCPCrocoExp3(OCPBaseCroco):
+class OCPCrocoJointState(OCPBaseCroco):
     def create_running_model_list(self):
         running_model_list = []
         for t in range(self._ocp_params.horizon_size):
@@ -76,27 +76,25 @@ class OCPCrocoExp3(OCPBaseCroco):
 
         # Modify running costs reference and weights
         for t in self.horizon_size - 1:
+            xref = [
+                weighted_trajectory_points[t].point.robot_configuration,
+                weighted_trajectory_points[t].point.robot_velocity,
+            ]
             state_reg = self.ocp._problem.runningModels[t].differential.costs.costs[
                 "stateReg"
             ]
-            state_reg.cost.residual.reference[
-                self._robot_models.robot_model.nq :
-            ] = weighted_trajectory_points[t].point.robot_configuration
-            state_reg.cost.residual.reference[
-                self._robot_models.robot_model.nq : self._robot_models.robot_model.nv
-            ] = weighted_trajectory_points[t].point.robot_velocity
-
+            state_reg.cost.residual.reference = xref
             # Modify running cost weight
             state_reg.weight = weighted_trajectory_points[
                 t
             ].weight.w_robot_configuration
 
         # Modify terminal costs reference and weights
+        xref = [
+            weighted_trajectory_points[-1].point.robot_configuration,
+            weighted_trajectory_points[-1].point.robot_velocity,
+        ]
         state_reg = self.ocp._problem.terminalModel.differential.costs.costs["stateReg"]
-        state_reg.cost.residual.reference[
-            self._robot_models.robot_model.nq :
-        ] = weighted_trajectory_points[-1].point.robot_configuration
-        state_reg.cost.residual.reference[
-            self._robot_models.robot_model.nq : self._robot_models.robot_model.nv
-        ] = weighted_trajectory_points[-1].point.robot_velocity
+        state_reg.cost.residual.reference = xref
+        # Modify running cost weight
         state_reg.weight = weighted_trajectory_points[-1].weight.w_robot_configuration
