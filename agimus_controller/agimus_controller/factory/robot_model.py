@@ -94,10 +94,8 @@ class RobotModels:
     @property
     def robot_model(self) -> pin.Model:
         """Robot model, reduced if specified in the parameters."""
-        if self._robot_model is None and self._full_robot_model is None:
+        if self._robot_model is None:
             raise AttributeError("Robot model has not been computed yet.")
-        elif len(self._params.locked_joint_names) == 0:
-            return self._full_robot_model
         return self._robot_model
 
     @property
@@ -127,8 +125,7 @@ class RobotModels:
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
         self._load_full_pinocchio_models()
-        if self._params.locked_joint_names:
-            self._apply_locked_joints()
+        self._apply_locked_joints()
         if self._params.collision_as_capsule:
             self._update_collision_model_to_capsules()
         if self._params.self_collision:
