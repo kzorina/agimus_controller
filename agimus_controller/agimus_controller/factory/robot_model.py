@@ -94,8 +94,10 @@ class RobotModels:
     @property
     def robot_model(self) -> pin.Model:
         """Robot model, reduced if specified in the parameters."""
-        if self._robot_model is None:
+        if self._robot_model is None and self._full_robot_model is None:
             raise AttributeError("Robot model has not been computed yet.")
+        elif len(self._params.locked_joint_names) == 0:
+            return self._full_robot_model
         return self._robot_model
 
     @property
@@ -196,7 +198,9 @@ class RobotModels:
         """Update the collision model to self collision."""
         self._collision_model.addAllCollisionPairs()
         pin.removeCollisionPairs(
-            self._robot_model, self._collision_model, str(self._params.srdf_path)
+            self._full_robot_model if self._robot_model is None else self._robot_model,
+            self._collision_model,
+            str(self._params.srdf_path),
         )
 
     def _generate_capsule_name(self, base_name: str, existing_names: list[str]) -> str:
