@@ -35,11 +35,13 @@ class OCPBaseCroco(OCPBase):
 
         # Setting the OCP parameters
         self._ocp_params = ocp_params
-        self._ocp = None
+        self._solver = None
         self._ocp_results = None
-        self._running_model_list = []
-        self._terminal_model = []
-        self._problem = None
+
+        # Create the running models
+        self._running_model_list = self.create_running_model_list()
+        # Create the terminal model
+        self._terminal_model = self.create_terminal_model()
 
     @property
     def horizon_size(self) -> int:
@@ -75,39 +77,37 @@ class OCPBaseCroco(OCPBase):
             x_warmstart (list[npt.NDArray[np.float64]]): Predicted states for the OCP.
             u_warmstart (list[npt.NDArray[np.float64]]): Predicted control inputs for the OCP.
         """
-        ### Creation of the state and actuation models
-
-        if self._ocp is None:
-            # Create the running models
-            self._running_model_list = self.create_running_model_list()
-            # Create the terminal model
-            self._terminal_model = self.create_terminal_model()
+        # Creating the warmstart lists for the solver
+        if self._solver is None:
             # Create the shooting problem
             self._problem = crocoddyl.ShootingProblem(
                 x0, self._running_model_list, self._terminal_model
             )
             # Create solver + callbacks
-            self._ocp = mim_solvers.SolverCSQP(self._problem)
+            self._solver = mim_solvers.SolverCSQP(self._problem)
 
             # Merit function
-            self._ocp.use_filter_line_search = self._ocp_params.use_filter_line_search
+            self._solver.use_filter_line_search = (
+                self._ocp_params.use_filter_line_search
+            )
 
             # Parameters of the solver
-            self._ocp.termination_tolerance = self._ocp_params.termination_tolerance
-            self._ocp.max_qp_iters = self._ocp_params.qp_iters
-            self._ocp.eps_abs = self._ocp_params.eps_abs
-            self._ocp.eps_rel = self._ocp_params.eps_rel
-            self._ocp.with_callbacks = self._ocp_params.callbacks
+            self._solver.termination_tolerance = self._ocp_params.termination_tolerance
+            self._solver.max_qp_iters = self._ocp_params.qp_iters
+            self._solver.eps_abs = self._ocp_params.eps_abs
+            self._solver.eps_rel = self._ocp_params.eps_rel
+            self._solver.with_callbacks = self._ocp_params.callbacks
 
-        # Creating the warmstart lists for the solver
         # Solve the OCP
-        self._ocp.solve([x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters)
+        self._solver.solve(
+            [x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters
+        )
 
         # Store the results
         self._ocp_results = OCPResults(
-            states=self._ocp.xs,
-            ricatti_gains=self._ocp.K,
-            feed_forward_terms=self._ocp.us,
+            states=self._solver.xs,
+            ricatti_gains=self._solver.K,
+            feed_forward_terms=self._solver.us,
         )
 
     @property
