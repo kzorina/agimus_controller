@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 import example_robot_data as robex
 import pinocchio as pin
+
 from agimus_controller.ocp.ocp_croco_joint_state import OCPCrocoJointState
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
