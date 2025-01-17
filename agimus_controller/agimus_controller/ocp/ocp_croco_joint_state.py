@@ -1,6 +1,7 @@
 import crocoddyl
 import numpy as np
 import pinocchio as pin
+
 from agimus_controller.ocp_base_croco import OCPBaseCroco
 
 
