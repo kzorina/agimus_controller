@@ -43,7 +43,7 @@ class OCPCrocoJointState(OCPBaseCroco):
             running_model_list.append(running_model)
         return running_model_list
 
-    def create_terminal_model(self):
+    def create_terminal_model(self) -> crocoddyl.ActionModelAbstract:
         # Terminal cost models
         terminal_cost_model = crocoddyl.CostModelSum(self._state)
 
