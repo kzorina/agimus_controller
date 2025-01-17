@@ -74,7 +74,7 @@ class TestOCPWarmstart(unittest.TestCase):
 
         for t in range(1, self._horizon_size):
             fraction = t / self._horizon_size
-            oscillation = amplitude * np.sin(2 * np.pi * frequency * fraction)
+            oscillation = amplitude * np.sin(2.0 * np.pi * frequency * fraction)
             q_t = q0.copy()
             q_t[3] += oscillation
             self._state_warmstart.append(
