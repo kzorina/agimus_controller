@@ -27,8 +27,8 @@ class OCPCrocoJointState(OCPBaseCroco):
             # Control Regularization cost
             u_residual = crocoddyl.ResidualModelControl(self._state)
             u_reg_cost = crocoddyl.CostModelResidual(self._state, u_residual)
-            running_cost_model.addCost("stateReg", x_reg_cost, 0.1)
-            running_cost_model.addCost("ctrlRegGrav", u_reg_cost, 1e-10)
+            running_cost_model.addCost("stateReg", x_reg_cost, 1.0)
+            running_cost_model.addCost("ctrlReg", u_reg_cost, 1.0)
             # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
             running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self._state,
@@ -59,7 +59,7 @@ class OCPCrocoJointState(OCPBaseCroco):
             ),
         )
         x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
-        terminal_cost_model.addCost("stateReg", x_reg_cost, 0.1)
+        terminal_cost_model.addCost("stateReg", x_reg_cost, 1.0)
 
         # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
         terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
