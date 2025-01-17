@@ -66,7 +66,7 @@ class TestOCPWarmstart(unittest.TestCase):
 
         # Generate warmstart trajectories
         amplitude = np.deg2rad(20)
-        frequency = 2
+        frequency = 2.0
         self._horizon_size = self._ocp_params.horizon_size
         self._state_warmstart = []
         control_warmstart = []
