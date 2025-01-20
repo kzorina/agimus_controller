@@ -157,8 +157,14 @@ class RobotModels:
             else:
                 raise ValueError(f"Joint {jn} not found in the robot model.")
 
-        self._robot_model = pin.buildReducedModel(
-            self._full_robot_model, joints_to_lock, self._full_q0
+        self._robot_model, [
+            self._collision_model,
+            self._visual_model,
+        ] = pin.buildReducedModel(
+            self._full_robot_model,
+            [self._collision_model, self._visual_model],
+            joints_to_lock,
+            self._full_q0,
         )
 
     def _update_collision_model_to_capsules(self) -> None:
