@@ -125,8 +125,7 @@ class RobotModels:
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
         self._load_full_pinocchio_models()
-        if self._params.locked_joint_names:
-            self._apply_locked_joints()
+        self._apply_locked_joints()
         if self._params.collision_as_capsule:
             self._update_collision_model_to_capsules()
         if self._params.self_collision:
