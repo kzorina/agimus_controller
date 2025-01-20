@@ -27,8 +27,21 @@ class OCPCrocoJointState(OCPBaseCroco):
             # Control Regularization cost
             u_residual = crocoddyl.ResidualModelControl(self._state)
             u_reg_cost = crocoddyl.CostModelResidual(self._state, u_residual)
+
+            # End effector frame cost
+            framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
+                self._state,
+                self._robot_models.robot_model.getFrameId("panda_hand_tcp"),
+                pin.SE3.Identity(),
+            )
+
+            goalTrackingCost = crocoddyl.CostModelResidual(
+                self._state, framePlacementResidual
+            )
+
             running_cost_model.addCost("stateReg", x_reg_cost, 1.0)
             running_cost_model.addCost("ctrlReg", u_reg_cost, 1.0)
+            running_cost_model.addCost("goalTracking", goalTrackingCost, 1.0)
             # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
             running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self._state,
@@ -59,8 +72,20 @@ class OCPCrocoJointState(OCPBaseCroco):
             ),
         )
         x_reg_cost = crocoddyl.CostModelResidual(self._state, x_residual)
-        terminal_cost_model.addCost("stateReg", x_reg_cost, 1.0)
 
+        # End effector frame cost
+        framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
+            self._state,
+            self._robot_models.robot_model.getFrameId("panda_hand_tcp"),
+            pin.SE3.Identity(),
+        )
+
+        goalTrackingCost = crocoddyl.CostModelResidual(
+            self._state, framePlacementResidual
+        )
+
+        terminal_cost_model.addCost("stateReg", x_reg_cost, 1.0)
+        terminal_cost_model.addCost("goalTracking", goalTrackingCost, 1.0)
         # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
         terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
             self._state,
@@ -77,6 +102,7 @@ class OCPCrocoJointState(OCPBaseCroco):
 
         # Modify running costs reference and weights
         for t in range(self.horizon_size - 1):
+            # Modifying the state regularization cost
             xref = np.concatenate(
                 (
                     weighted_trajectory_points[t].point.robot_configuration,
@@ -91,6 +117,25 @@ class OCPCrocoJointState(OCPBaseCroco):
             state_reg.weight = weighted_trajectory_points[
                 t
             ].weight.w_robot_configuration
+            # Modify control regularization cost
+            u_ref = weighted_trajectory_points[t].point.robot_effort
+            ctrl_reg = self._solver.problem.runningModels[t].differential.costs.costs[
+                "ctrlReg"
+            ]
+            ctrl_reg.cost.residual.reference = u_ref
+            # Modify running cost weight
+            ctrl_reg.weight = weighted_trajectory_points[t].weight.w_robot_effort
+
+            # Modify end effector frame cost
+            ee_cost = self._solver.problem.runningModels[t].differential.costs.costs[
+                "goalTracking"
+            ]
+            ee_cost.weight = weighted_trajectory_points[t].weight.w_end_effector_poses[
+                "panda_hand_tcp"
+            ]
+            ee_cost.cost.residual.reference = weighted_trajectory_points[
+                t
+            ].point.end_effector_poses["panda_hand_tcp"]
 
         # Modify terminal costs reference and weights
         xref = np.concatenate(
@@ -104,5 +149,15 @@ class OCPCrocoJointState(OCPBaseCroco):
             "stateReg"
         ]
         state_reg.cost.residual.reference = xref
-        # Modify running cost weight
         state_reg.weight = weighted_trajectory_points[-1].weight.w_robot_configuration
+
+        # Modify end effector frame cost
+        ee_cost = self._solver.problem.runningModels[-1].differential.costs.costs[
+            "goalTracking"
+        ]
+        ee_cost.weight = weighted_trajectory_points[-1].weight.w_end_effector_poses[
+            "panda_hand_tcp"
+        ]
+        ee_cost.cost.residual.reference = weighted_trajectory_points[
+            -1
+        ].point.end_effector_poses["panda_hand_tcp"]
