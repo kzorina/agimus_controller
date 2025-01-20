@@ -65,7 +65,7 @@ class TestOCPWarmstart(unittest.TestCase):
         trajectory_points = []
 
         ee_pose = pin.SE3(np.eye(3), np.array([0.5, 0.2, 0.5]))
-        for t in range(1, self._ocp_params.horizon_size):
+        for i in range(1, self._ocp_params.horizon_size):
             u_ref = np.zeros(self.robot_models.robot_model.nv)
             q_t = q0.copy()
             trajectory_points.append(
@@ -85,7 +85,7 @@ class TestOCPWarmstart(unittest.TestCase):
                         * np.ones(self.robot_models.robot_model.nv),
                         w_end_effector_poses={
                             "panda_hand_tcp": 1e3 * np.ones(6)
-                            if t < self._ocp_params.horizon_size - 1
+                            if i < self._ocp_params.horizon_size - 1
                             else 1e3 * np.ones(6)
                         },
                     ),
@@ -121,7 +121,7 @@ class TestOCPWarmstart(unittest.TestCase):
             0.0,
             places=1,
         )
-        self._visualize()
+        # self._visualize() # For debug purposes
 
     def _visualize(self):
         vis = self._create_viewer()

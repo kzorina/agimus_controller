@@ -125,51 +125,51 @@ class OCPCrocoJointState(OCPBaseCroco):
         """Set the reference trajectory for the OCP."""
 
         # Modify running costs reference and weights
-        for t in range(self.horizon_size - 1):
+        for i in range(self.horizon_size - 1):
             # Modifying the state regularization cost
             xref = np.concatenate(
                 (
-                    weighted_trajectory_points[t].point.robot_configuration,
-                    weighted_trajectory_points[t].point.robot_velocity,
+                    weighted_trajectory_points[i].point.robot_configuration,
+                    weighted_trajectory_points[i].point.robot_velocity,
                 )
             )
-            state_reg = self._solver.problem.runningModels[t].differential.costs.costs[
+            state_reg = self._solver.problem.runningModels[i].differential.costs.costs[
                 "stateReg"
             ]
             state_reg.cost.residual.reference = xref
             # Modify running cost weight
             state_reg.cost.activation.weights = np.concatenate(
                 (
-                    weighted_trajectory_points[t].weight.w_robot_configuration,
-                    weighted_trajectory_points[t].weight.w_robot_velocity,
+                    weighted_trajectory_points[i].weight.w_robot_configuration,
+                    weighted_trajectory_points[i].weight.w_robot_velocity,
                 )
             )
             # state_reg.weight = weighted_trajectory_points[
-            # t
+            # i
             # ].weight.w_robot_configuration
             # Modify control regularization cost
-            u_ref = weighted_trajectory_points[t].point.robot_effort
-            ctrl_reg = self._solver.problem.runningModels[t].differential.costs.costs[
+            u_ref = weighted_trajectory_points[i].point.robot_effort
+            ctrl_reg = self._solver.problem.runningModels[i].differential.costs.costs[
                 "ctrlReg"
             ]
             ctrl_reg.cost.residual.reference = u_ref
             # Modify running cost weight
-            # ctrl_reg.weight = weighted_trajectory_points[t].weight.w_robot_effort
+            # ctrl_reg.weight = weighted_trajectory_points[i].weight.w_robot_effort
             ctrl_reg.cost.activation.weights = weighted_trajectory_points[
-                t
+                i
             ].weight.w_robot_effort
             # Modify end effector frame cost
-            ee_cost = self._solver.problem.runningModels[t].differential.costs.costs[
+            ee_cost = self._solver.problem.runningModels[i].differential.costs.costs[
                 "goalTracking"
             ]
-            # ee_cost.weight = weighted_trajectory_points[t].weight.w_end_effector_poses[
+            # ee_cost.weight = weighted_trajectory_points[i].weight.w_end_effector_poses[
             #     "panda_hand_tcp"
             # ]
             ee_cost.cost.activation.weights = weighted_trajectory_points[
-                t
+                i
             ].weight.w_end_effector_poses["panda_hand_tcp"]
             ee_cost.cost.residual.reference = weighted_trajectory_points[
-                t
+                i
             ].point.end_effector_poses["panda_hand_tcp"]
 
         # Modify terminal costs reference and weights
@@ -187,8 +187,8 @@ class OCPCrocoJointState(OCPBaseCroco):
         # state_reg.weight = weighted_trajectory_points[-1].weight.w_robot_configuration
         state_reg.cost.activation.weights = np.concatenate(
             (
-                weighted_trajectory_points[t].weight.w_robot_configuration,
-                weighted_trajectory_points[t].weight.w_robot_velocity,
+                weighted_trajectory_points[i].weight.w_robot_configuration,
+                weighted_trajectory_points[i].weight.w_robot_velocity,
             )
         )
         # Modify end effector frame cost
@@ -202,5 +202,5 @@ class OCPCrocoJointState(OCPBaseCroco):
             -1
         ].point.end_effector_poses["panda_hand_tcp"]
         ee_cost.cost.activation.weights = weighted_trajectory_points[
-            t
+            i
         ].weight.w_end_effector_poses["panda_hand_tcp"]
