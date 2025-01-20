@@ -3,6 +3,7 @@ import numpy as np
 import pinocchio as pin
 
 from agimus_controller.ocp_base_croco import OCPBaseCroco
+from agimus_controller.trajectory import WeightedTrajectoryPoint
 
 
 class OCPCrocoGoalReaching(OCPBaseCroco):
@@ -121,7 +122,9 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
         terminal_model.differential.armature = self._robot_models.armature
         return terminal_model
 
-    def set_reference_weighted_trajectory(self, weighted_trajectory_points):
+    def set_reference_weighted_trajectory(
+        self, reference_weighted_trajectory: list[WeightedTrajectoryPoint]
+    ):
         """Set the reference trajectory for the OCP."""
 
         # Modify running costs reference and weights
@@ -129,8 +132,8 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             # Modifying the state regularization cost
             xref = np.concatenate(
                 (
-                    weighted_trajectory_points[i].point.robot_configuration,
-                    weighted_trajectory_points[i].point.robot_velocity,
+                    reference_weighted_trajectory[i].point.robot_configuration,
+                    reference_weighted_trajectory[i].point.robot_velocity,
                 )
             )
             state_reg = self._solver.problem.runningModels[i].differential.costs.costs[
@@ -140,43 +143,43 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             # Modify running cost weight
             state_reg.cost.activation.weights = np.concatenate(
                 (
-                    weighted_trajectory_points[i].weight.w_robot_configuration,
-                    weighted_trajectory_points[i].weight.w_robot_velocity,
+                    reference_weighted_trajectory[i].weight.w_robot_configuration,
+                    reference_weighted_trajectory[i].weight.w_robot_velocity,
                 )
             )
-            # state_reg.weight = weighted_trajectory_points[
+            # state_reg.weight = reference_weighted_trajectory[
             # i
             # ].weight.w_robot_configuration
             # Modify control regularization cost
-            u_ref = weighted_trajectory_points[i].point.robot_effort
+            u_ref = reference_weighted_trajectory[i].point.robot_effort
             ctrl_reg = self._solver.problem.runningModels[i].differential.costs.costs[
                 "ctrlReg"
             ]
             ctrl_reg.cost.residual.reference = u_ref
             # Modify running cost weight
-            # ctrl_reg.weight = weighted_trajectory_points[i].weight.w_robot_effort
-            ctrl_reg.cost.activation.weights = weighted_trajectory_points[
+            # ctrl_reg.weight = reference_weighted_trajectory[i].weight.w_robot_effort
+            ctrl_reg.cost.activation.weights = reference_weighted_trajectory[
                 i
             ].weight.w_robot_effort
             # Modify end effector frame cost
             ee_cost = self._solver.problem.runningModels[i].differential.costs.costs[
                 "goalTracking"
             ]
-            # ee_cost.weight = weighted_trajectory_points[i].weight.w_end_effector_poses[
+            # ee_cost.weight = reference_weighted_trajectory[i].weight.w_end_effector_poses[
             #     "panda_hand_tcp"
             # ]
-            ee_cost.cost.activation.weights = weighted_trajectory_points[
+            ee_cost.cost.activation.weights = reference_weighted_trajectory[
                 i
             ].weight.w_end_effector_poses["panda_hand_tcp"]
-            ee_cost.cost.residual.reference = weighted_trajectory_points[
+            ee_cost.cost.residual.reference = reference_weighted_trajectory[
                 i
             ].point.end_effector_poses["panda_hand_tcp"]
 
         # Modify terminal costs reference and weights
         xref = np.concatenate(
             (
-                weighted_trajectory_points[-1].point.robot_configuration,
-                weighted_trajectory_points[-1].point.robot_velocity,
+                reference_weighted_trajectory[-1].point.robot_configuration,
+                reference_weighted_trajectory[-1].point.robot_velocity,
             )
         )
 
@@ -184,23 +187,23 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             "stateReg"
         ]
         state_reg.cost.residual.reference = xref
-        # state_reg.weight = weighted_trajectory_points[-1].weight.w_robot_configuration
+        # state_reg.weight = reference_weighted_trajectory[-1].weight.w_robot_configuration
         state_reg.cost.activation.weights = np.concatenate(
             (
-                weighted_trajectory_points[i].weight.w_robot_configuration,
-                weighted_trajectory_points[i].weight.w_robot_velocity,
+                reference_weighted_trajectory[i].weight.w_robot_configuration,
+                reference_weighted_trajectory[i].weight.w_robot_velocity,
             )
         )
         # Modify end effector frame cost
         ee_cost = self._solver.problem.runningModels[-1].differential.costs.costs[
             "goalTracking"
         ]
-        # ee_cost.weight = weighted_trajectory_points[-1].weight.w_end_effector_poses[
+        # ee_cost.weight = reference_weighted_trajectory[-1].weight.w_end_effector_poses[
         #     "panda_hand_tcp"
         # ]
-        ee_cost.cost.residual.reference = weighted_trajectory_points[
+        ee_cost.cost.residual.reference = reference_weighted_trajectory[
             -1
         ].point.end_effector_poses["panda_hand_tcp"]
-        ee_cost.cost.activation.weights = weighted_trajectory_points[
+        ee_cost.cost.activation.weights = reference_weighted_trajectory[
             i
         ].weight.w_end_effector_poses["panda_hand_tcp"]
