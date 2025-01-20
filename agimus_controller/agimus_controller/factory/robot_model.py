@@ -20,7 +20,7 @@ class RobotModelParameters:
     locked_joint_names: list[str] = field(default_factory=list)
     urdf_path: Path = Path()  # Path to the URDF file
     urdf_xml: str | None = (
-        None  # String containing URDF. If None, then ``urdf_path`` used
+        None  # String containing URDF. If None, then ``urdf_path`` is used
     )
     srdf_path: Path | None = None  # Path to the SRDF file
     urdf_meshes_dir: Path | None = (
