@@ -38,9 +38,9 @@ class TestRobotModelParameters(unittest.TestCase):
         self.assertTrue(np.array_equal(params.q0, q0))
         self.assertEqual(params.free_flyer, free_flyer)
         self.assertEqual(params.locked_joint_names, ["panda_joint1", "panda_joint2"])
-        self.assertEqual(params.urdf_path, urdf_path)
-        self.assertEqual(params.srdf_path, srdf_path)
-        self.assertEqual(params.urdf_meshes_dir, urdf_meshes_dir)
+        self.assertEqual(params.urdf_path, urdf_path.absolute().as_posix())
+        self.assertEqual(params.srdf_path, srdf_path.absolute().as_posix())
+        self.assertEqual(params.urdf_meshes_dir, urdf_meshes_dir.absolute().as_posix())
         self.assertTrue(params.collision_as_capsule)
         self.assertTrue(params.self_collision)
         self.assertTrue(
