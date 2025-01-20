@@ -89,11 +89,23 @@ class TestRobotModelParameters(unittest.TestCase):
         with self.assertRaises(ValueError):
             RobotModelParameters(full_q0=full_q0, urdf_path=Path("invalid_path"))
 
+    def test_invalid_urdf_string(self):
+        """Test that an invalid URDF string raises a ValueError."""
+        full_q0 = np.array([0.0, 1.0, 2.0])
+        with self.assertRaises(ValueError):
+            RobotModelParameters(full_q0=full_q0, urdf_xml="")
+
     def test_invalid_srdf_path_type_raises_error(self):
         """Test that a non-string SRDF path raises a ValueError."""
         full_q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
             RobotModelParameters(full_q0=full_q0, srdf_path=Path("invalid_path"))
+
+    def test_invalid_urdf_mesh_path_type_raises_error(self):
+        """Test that a non-string SRDF path raises a ValueError."""
+        full_q0 = np.array([0.0, 1.0, 2.0])
+        with self.assertRaises(ValueError):
+            RobotModelParameters(full_q0=full_q0, urdf_meshes_dir=Path("invalid_path"))
 
 
 class TestRobotModels(unittest.TestCase):
@@ -132,6 +144,33 @@ class TestRobotModels(unittest.TestCase):
         """
         self.params = deepcopy(self.params)
         self.robot_models = RobotModels(self.params)
+
+    def test_load_urdf_from_string(self):
+        params = deepcopy(self.params)
+        with open(Path(robex.load("panda").urdf), "r") as file:
+            params.urdf_xml = file.read().replace("\n", "")
+
+        robot_models_str = RobotModels(params)
+        self.assertEqual(
+            robot_models_str.full_robot_model,
+            self.robot_models.full_robot_model,
+        )
+        self.assertEqual(
+            robot_models_str.robot_model,
+            self.robot_models.robot_model,
+        )
+        self.assertTrue(np.array_equal(robot_models_str.q0, self.robot_models.q0))
+        self.assertTrue(
+            np.array_equal(robot_models_str.full_q0, self.robot_models.full_q0)
+        )
+        self.assertEqual(
+            robot_models_str.collision_model.ngeoms,
+            self.robot_models.collision_model.ngeoms,
+        )
+        self.assertEqual(
+            robot_models_str.visual_model.ngeoms,
+            self.robot_models.visual_model.ngeoms,
+        )
 
     def test_initial_configuration(self):
         self.assertTrue(np.array_equal(self.robot_models.q0, self.params.q0))
