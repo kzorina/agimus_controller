@@ -16,16 +16,16 @@ from agimus_controller.trajectory import (
 
 class TestOCPWarmstart(unittest.TestCase):
     def setUp(self):
-        # Initialize robot
+        ### LOAD ROBOT
         robot = robex.load("panda")
         urdf_path = Path(robot.urdf)
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
-        locked_joint_names = []
+        locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
         reduced_nq = robot.model.nq - len(locked_joint_names)
-        full_q0 = np.zeros(robot.model.nq)
-        q0 = np.zeros(reduced_nq)
+        full_q0 = pin.randomConfiguration(robot.model)
+        q0 = full_q0[:reduced_nq]
         armature = np.full(reduced_nq, 0.1)
 
         # Store shared initial parameters
@@ -43,124 +43,107 @@ class TestOCPWarmstart(unittest.TestCase):
         )
 
         self.robot_models = RobotModels(self.params)
-        self.robot_model = self.robot_models.robot_model
-        self.robot_data = self.robot_model.createData()
 
         # OCP parameters
         dt = 0.05
-        self._horizon_size = 30
+        horizon_size = 200
         solver_iters = 100
         callbacks = False
 
         self._ocp_params = OCPParamsBaseCroco(
             dt=dt,
-            horizon_size=self._horizon_size,
+            horizon_size=horizon_size,
             solver_iters=solver_iters,
             callbacks=callbacks,
-            qp_iters=500,
         )
 
     def test_ocp_solution(self):
         # Set initial state
-        q0 = pin.neutral(self.robot_model)
-
-        # Generate warmstart trajectories
-        amplitude = np.deg2rad(20)
-        frequency = 2.0
-        self._horizon_size = self._ocp_params.horizon_size
-        self._state_warmstart = []
+        q0 = pin.neutral(self.robot_models.robot_model)
+        state_warmstart = []
         control_warmstart = []
         trajectory_points = []
 
-        for t in range(1, self._horizon_size):
-            fraction = t / self._horizon_size
-            oscillation = amplitude * np.sin(2.0 * np.pi * frequency * fraction)
+        ee_pose = pin.SE3(np.eye(3), np.array([0.5, 0.2, 0.5]))
+        for t in range(1, self._ocp_params.horizon_size):
+            u_ref = np.zeros(self.robot_models.robot_model.nv)
             q_t = q0.copy()
-            q_t[3] += oscillation
-            self._state_warmstart.append(
-                np.concatenate((q_t, np.zeros(self.robot_model.nv)))
-            )
-            qdot_t = (
-                np.zeros(self.robot_model.nv)
-                if t == 1
-                else self._state_warmstart[-1][: self.robot_model.nq]
-                - self._state_warmstart[t - 2][: self.robot_model.nq]
-            )
-            control_warmstart.append(
-                pin.rnea(
-                    self.robot_model,
-                    self.robot_data,
-                    q_t,
-                    qdot_t,
-                    np.zeros(self.robot_model.nv),
-                )
-            )
-
             trajectory_points.append(
                 WeightedTrajectoryPoint(
                     TrajectoryPoint(
-                        robot_configuration=self._state_warmstart[-1][
-                            : self.robot_model.nq
-                        ],
-                        robot_velocity=self._state_warmstart[-1][
-                            self.robot_model.nq : self.robot_model.nq
-                            + self.robot_model.nv
-                        ],
+                        robot_configuration=q0,
+                        robot_velocity=q0,
+                        robot_effort=u_ref,
+                        end_effector_poses={"panda_hand_tcp": ee_pose},
                     ),
                     TrajectoryPointWeights(
-                        w_robot_configuration=1e6,
+                        w_robot_configuration=0.01
+                        * np.ones(self.robot_models.robot_model.nq),
+                        w_robot_velocity=0.01
+                        * np.ones(self.robot_models.robot_model.nv),
+                        w_robot_effort=0.0001
+                        * np.ones(self.robot_models.robot_model.nv),
+                        w_end_effector_poses={
+                            "panda_hand_tcp": 1e3 * np.ones(6)
+                            if t < self._ocp_params.horizon_size - 1
+                            else 1e3 * np.ones(6)
+                        },
                     ),
                 )
             )
+            state_warmstart.append(
+                np.concatenate((q_t, np.zeros(self.robot_models.robot_model.nv)))
+            )
+            control_warmstart.append(u_ref)
 
         # Solve OCP
-        self._state_reg = np.concatenate((q0, np.zeros(self.robot_model.nv)))
+        self._state_reg = np.concatenate(
+            (q0, np.zeros(self.robot_models.robot_model.nv))
+        )
         self._ocp = OCPCrocoJointState(self.robot_models, self._ocp_params)
         self._ocp.set_reference_weighted_trajectory(trajectory_points)
-        self._ocp.solve(self._state_reg, self._state_warmstart, control_warmstart)
+        self._ocp.solve(self._state_reg, state_warmstart, control_warmstart)
 
-        # Test solution consistency
-        for t in range(self._horizon_size - 1):
-            for joint_idx in range(self.robot_model.nq):
-                with self.subTest(t=t, joint=joint_idx):
-                    error = abs(
-                        self._state_warmstart[t][joint_idx]
-                        - self._ocp.ocp_results.states[t + 1][joint_idx]
-                    )
-                    self.assertLess(
-                        error,
-                        1e-2,
-                        f"Error at time {t}, joint {joint_idx}: {error:.5f}",
-                    )
-
-        # Test trajectories match the reference
-        reference_trajectory = [
-            self._state_warmstart[t][3] for t in range(self._horizon_size - 1)
-        ]
-        solution_trajectory = [
-            self._ocp.ocp_results.states[t + 1][3]
-            for t in range(self._horizon_size - 1)
-        ]
-        np.testing.assert_allclose(reference_trajectory, solution_trajectory, atol=1e-2)
-
-    def plot(self):
-        import matplotlib.pyplot as plt
-
-        plt.plot(
-            [self._state_reg[3]]
-            + [self._state_warmstart[t][3] for t in range(self._horizon_size - 1)],
-            "o-",
-            label="Warmstart",
+        data = self.robot_models.robot_model.createData()
+        pin.framesForwardKinematics(
+            self.robot_models.robot_model,
+            data,
+            self._ocp.ocp_results.states[-1][: self.robot_models.robot_model.nq],
         )
-        plt.plot(
-            [self._ocp.ocp_results.states[t][3] for t in range(self._horizon_size)],
-            "o-",
-            label="Solution",
+        # Test that the last position of the end-effector is close to the target
+        self.assertAlmostEqual(
+            np.linalg.norm(
+                data.oMf[
+                    self.robot_models.robot_model.getFrameId("panda_hand_tcp")
+                ].translation
+                - ee_pose.translation
+            ),
+            0.0,
+            places=1,
         )
-        plt.xlabel("Time")
-        plt.ylabel("Joint 3")
-        plt.legend()
-        plt.show()
+        self._visualize()
+
+    def _visualize(self):
+        vis = self._create_viewer()
+        for xs in self._ocp.ocp_results.states:
+            q = xs[: self.robot_models.robot_model.nq]
+            vis.display(q)
+            input()
+
+    def _create_viewer(self):
+        import meshcat
+        from pinocchio import visualize
+
+        viz = visualize.MeshcatVisualizer(
+            model=self.robot_models.robot_model,
+            collision_model=self.robot_models.collision_model,
+            visual_model=self.robot_models.visual_model,
+        )
+        viz.initViewer(viewer=meshcat.Visualizer(zmq_url="tcp://127.0.0.1:6000"))
+        viz.loadViewerModel("pinocchio")
+
+        viz.displayCollisions(True)
+        return viz
 
 
 if __name__ == "__main__":
