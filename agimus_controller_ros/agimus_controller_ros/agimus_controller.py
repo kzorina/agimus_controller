@@ -209,7 +209,7 @@ class AgimusController(Node):
         """Get OCP control output and publish it."""
         # _, tau, K_ricatti = self.mpc.get_mpc_output()
         ctrl_msg = lfc_py_types.Control(
-            feedback_gain=np.zeros_like(ocp_res.ricatti_gains[0]),
+            feedback_gain=ocp_res.ricatti_gains[0],
             feedforward=ocp_res.feed_forward_terms[0].reshape(self.rmodel.nv, 1),
             initial_state=sensor_msg_to_numpy(self.sensor_msg),
         )

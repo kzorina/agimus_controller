@@ -57,8 +57,9 @@ class MpcInputDummyPublisher(Node):
 
         # Currently not changing the last two joints - fingers
         # TODO: change once we have a finger flag
-        for i in range(self.pin_model.nq - 2):
-            self.q[i] = self.q0[i] + 0.2 * np.sin(2 * np.pi * self.t)
+        # for i in range(self.pin_model.nq - 2):
+        for i in [3, 4]:
+            self.q[i] = self.q0[i] + 0.6 * np.sin(0.5 * np.pi * self.t)
 
         # Extract the end-effector position and orientation
         pin.forwardKinematics(self.pin_model, self.pin_data, self.q)
@@ -77,9 +78,9 @@ class MpcInputDummyPublisher(Node):
         msg.qddot = [0.0] * len(
             self.q
         )  # TODO: only works for robot with only revolute joints
-        msg.q_w = [1e1] * len(self.q)
-        msg.qdot_w = [1e-2] * len(self.q)
-        msg.qddot_w = [1e-2] * len(self.q)
+        msg.q_w = [1e2] * len(self.q)
+        msg.qdot_w = [1e-3] * len(self.q)
+        msg.qddot_w = [1e-4] * len(self.q)
 
         pose = Pose()
         pose.position.x = xyz_quatxyzw[0]
@@ -90,7 +91,7 @@ class MpcInputDummyPublisher(Node):
         pose.orientation.z = xyz_quatxyzw[5]
         pose.orientation.w = xyz_quatxyzw[6]
         msg.pose = pose
-        msg.pose_w = [0.0] * 6
+        msg.pose_w = [1e-6] * 6
 
         msg.ee_frame_name = self.ee_frame_name
 
