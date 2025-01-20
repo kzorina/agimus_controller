@@ -195,9 +195,7 @@ class RobotModels:
         """Update the collision model to self collision."""
         self._collision_model.addAllCollisionPairs()
         pin.removeCollisionPairs(
-            self._robot_model,
-            self._collision_model,
-            str(self._params.srdf_path),
+            self._robot_model, self._collision_model, str(self._params.srdf_path)
         )
 
     def _generate_capsule_name(self, base_name: str, existing_names: list[str]) -> str:
