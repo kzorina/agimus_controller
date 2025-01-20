@@ -4,7 +4,7 @@ from pathlib import Path
 import example_robot_data as robex
 import pinocchio as pin
 
-from agimus_controller.ocp.ocp_croco_joint_state import OCPCrocoJointState
+from agimus_controller.ocp.ocp_croco_goal_reaching import OCPCrocoGoalReaching
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
 from agimus_controller.trajectory import (
@@ -14,7 +14,7 @@ from agimus_controller.trajectory import (
 )
 
 
-class TestOCPWarmstart(unittest.TestCase):
+class TestOCPGoalReaching(unittest.TestCase):
     def setUp(self):
         ### LOAD ROBOT
         robot = robex.load("panda")
@@ -100,7 +100,7 @@ class TestOCPWarmstart(unittest.TestCase):
         self._state_reg = np.concatenate(
             (q0, np.zeros(self.robot_models.robot_model.nv))
         )
-        self._ocp = OCPCrocoJointState(self.robot_models, self._ocp_params)
+        self._ocp = OCPCrocoGoalReaching(self.robot_models, self._ocp_params)
         self._ocp.set_reference_weighted_trajectory(trajectory_points)
         self._ocp.solve(self._state_reg, state_warmstart, control_warmstart)
 

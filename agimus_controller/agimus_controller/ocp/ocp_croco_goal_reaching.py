@@ -5,7 +5,7 @@ import pinocchio as pin
 from agimus_controller.ocp_base_croco import OCPBaseCroco
 
 
-class OCPCrocoJointState(OCPBaseCroco):
+class OCPCrocoGoalReaching(OCPBaseCroco):
     def create_running_model_list(self) -> list[crocoddyl.ActionModelAbstract]:
         running_model_list = []
         for _ in range(self._ocp_params.horizon_size - 1):
