@@ -56,7 +56,6 @@ class MpcInputDummyPublisher(Node):
             return
 
         # Currently not changing the last two joints - fingers
-        # TODO: change once we have a finger flag
         # for i in range(self.pin_model.nq - 2):
         for i in [3, 4]:
             self.q[i] = self.q0[i] + 0.6 * np.sin(0.5 * np.pi * self.t)

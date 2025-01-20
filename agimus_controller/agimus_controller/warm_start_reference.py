@@ -89,5 +89,5 @@ class WarmStartReference(WarmStartBase):
             f"Expected u_init shape {(len(reference_trajectory), self._rmodel.nv)}, "
             f"from provided reference got {u_init.shape}"
         )
-
-        return x0, x_init, u_init[:-1]  # TODO: maybe fix this later?
+        # reduce the size of control ref by one to fit Croco way of doing things
+        return x0, x_init, u_init[:-1]  
