@@ -30,21 +30,38 @@ class MPC(object):
     def run(self, initial_state: TrajectoryPoint, current_time_ns: int) -> OCPResults:
         assert self._ocp is not None
         assert self._warm_start is not None
+        # print(f"ocp horizon is {self._ocp.horizon_size}")
         timer1 = time.perf_counter_ns()
+        # print(f"Buffer len before clear {len(self._buffer)}")
         self._buffer.clear_past(current_time_ns)
+        # print(f"Buffer len after clear {len(self._buffer)}")
+        if len(self._buffer) < self._ocp.horizon_size:
+            return None
         reference_trajectory = self._extract_horizon_from_buffer()
-        self._ocp.set_reference_trajectory(reference_trajectory)
+        # print(f"Extracted {len(reference_trajectory)} points as ref traj!")
+        # exit(44)
+        self._ocp.set_reference_weighted_trajectory(reference_trajectory)
         timer2 = time.perf_counter_ns()
+        reference_trajectory_points = [el.point for el in reference_trajectory]
         x0, x_init, u_init = self._warm_start.generate(
-            initial_state, reference_trajectory, self._ocp.debug_data.result
+            initial_state, reference_trajectory_points
         )
         timer3 = time.perf_counter_ns()
         self._ocp.solve(x0, x_init, u_init)
-        self._warm_start.update_previous_solution(self._ocp.debug_data.result)
+        self._warm_start.update_previous_solution(self._ocp._ocp_results.states)
         timer4 = time.perf_counter_ns()
 
         # Extract the solution.
-        self._mpc_debug_data = self._ocp.debug_data
+        # TODO: fix this later
+        if self._mpc_debug_data is None:
+            self._mpc_debug_data = MPCDebugData(
+                ocp=self._ocp.debug_data,
+                duration_iteration_ns=timer4 - timer1,
+                duration_horizon_update_ns=timer2 - timer1,
+                duration_generate_warm_start_ns=timer3 - timer2,
+                duration_ocp_solve_ns=timer4 - timer3,
+            )
+        self._mpc_debug_data.ocp = self._ocp.debug_data
         self._mpc_debug_data.duration_iteration_ns = timer4 - timer1
         self._mpc_debug_data.duration_horizon_update_ns = timer2 - timer1
         self._mpc_debug_data.duration_generate_warm_start_ns = timer3 - timer2

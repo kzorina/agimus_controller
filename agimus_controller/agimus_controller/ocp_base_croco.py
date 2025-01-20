@@ -104,7 +104,7 @@ class OCPBaseCroco(OCPBase):
         self._problem.x0 = x0
         # Solve the OCP
         self._solver.solve(
-            [x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters
+            list([x0] + x_warmstart), u_warmstart, self._ocp_params.solver_iters
         )
 
         # Store the results

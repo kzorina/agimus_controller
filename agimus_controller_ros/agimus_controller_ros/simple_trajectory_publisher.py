@@ -37,7 +37,7 @@ class MpcInputDummyPublisher(Node):
             qos_profile=qos_profile,
         )
         self.publisher_ = self.create_publisher(MpcInput, "mpc_input", 10)
-        self.timer = self.create_timer(0.05, self.publish_mpc_input)  # Publish at 20 Hz
+        self.timer = self.create_timer(0.01, self.publish_mpc_input)  # Publish at 100 Hz
         self.get_logger().info("MPC Dummy Input Publisher Node started.")
 
     def robot_description_callback(self, msg: String):
@@ -77,9 +77,9 @@ class MpcInputDummyPublisher(Node):
         msg.qddot = [0.0] * len(
             self.q
         )  # TODO: only works for robot with only revolute joints
-        msg.q_w = [1.0] * len(self.q)
-        msg.qdot_w = [1e-3] * len(self.q)
-        msg.qddot_w = [1e-3] * len(self.q)
+        msg.q_w = [1e1] * len(self.q)
+        msg.qdot_w = [1e-2] * len(self.q)
+        msg.qddot_w = [1e-2] * len(self.q)
 
         pose = Pose()
         pose.position.x = xyz_quatxyzw[0]
@@ -90,7 +90,7 @@ class MpcInputDummyPublisher(Node):
         pose.orientation.z = xyz_quatxyzw[5]
         pose.orientation.w = xyz_quatxyzw[6]
         msg.pose = pose
-        msg.pose_w = [1.0] * 6
+        msg.pose_w = [0.0] * 6
 
         msg.ee_frame_name = self.ee_frame_name
 

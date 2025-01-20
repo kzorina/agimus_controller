@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 import time
 import pinocchio as pin
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
@@ -12,6 +13,8 @@ from rclpy.duration import Duration
 from std_msgs.msg import String
 from agimus_msgs.msg import MpcInput
 import builtin_interfaces
+import os
+from ament_index_python.packages import get_package_share_directory
 
 import linear_feedback_controller_msgs_py.lfc_py_types as lfc_py_types
 from linear_feedback_controller_msgs_py.numpy_conversions import (
@@ -20,11 +23,19 @@ from linear_feedback_controller_msgs_py.numpy_conversions import (
 )
 from linear_feedback_controller_msgs.msg import Control, Sensor
 
-from agimus_controller_ros.ros_utils import mpc_msg_to_weighted_traj_point
 from agimus_controller.mpc import MPC
-from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
+from agimus_controller.mpc_data import OCPResults
+from agimus_controller.ocp.ocp_croco_joint_state import OCPCrocoJointState
+from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+from agimus_controller.warm_start_reference import WarmStartReference
+from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
 
-from agimus_controller.trajectory import TrajectoryBuffer
+
+from agimus_controller_ros.ros_utils import mpc_msg_to_weighted_traj_point
+# from agimus_controller.mpc import MPC
+# from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
+
+from agimus_controller.trajectory import TrajectoryBuffer, TrajectoryPoint
 from agimus_controller_ros.agimus_controller_parameters import agimus_controller_params
 
 
@@ -40,6 +51,8 @@ class AgimusController(Node):
         self.traj_buffer = TrajectoryBuffer()
         self.last_point = None
         self.first_run_done = False
+        self.rmodel = None
+        self.mpc = None
 
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
@@ -88,61 +101,79 @@ class AgimusController(Node):
             self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
         self.create_timer(1.0 / self.params.rate, self.run_callback)
 
+    def setup_mpc(self):
+        """Creates mpc, ocp, warmstart"""
+
+        ocp_params = OCPParamsBaseCroco(
+            dt=self.params.ocp.dt,
+            horizon_size=self.params.ocp.horizon_size,
+            solver_iters=self.params.ocp.max_iter,
+            callbacks=self.params.ocp.activate_callback,
+            qp_iters=self.params.ocp.max_qp_iter,
+        )
+
+        ocp = OCPCrocoJointState(self.robot_models, ocp_params)
+        ws = WarmStartReference()
+        ws.setup(self.robot_models._robot_model)
+        self.mpc = MPC()
+        self.mpc.setup(ocp, ws, self.traj_buffer)
+    
     def sensor_callback(self, sensor_msg: Sensor) -> None:
         """Update the sensor_msg attribute of the class."""
         self.sensor_msg = sensor_msg
 
     def mpc_input_callback(self, msg: MpcInput) -> None:
         """Fill the new point msg in the trajectory buffer."""
-        w_traj_point = mpc_msg_to_weighted_traj_point(msg)
+        w_traj_point = mpc_msg_to_weighted_traj_point(msg, self.get_clock().now().nanoseconds)
         self.traj_buffer.append(w_traj_point)
         self.params.ocp.effector_frame_name = msg.ee_frame_name
         self.effector_frame_name = msg.ee_frame_name
 
     def robot_description_callback(self, msg: String) -> None:
         """Create the models of the robot from the urdf string."""
-        # Initialize models from URDF String
-        self.rmodel = pin.buildModelFromXML(msg.data)
-        self.cmodel = pin.buildGeomFromUrdfString(
-            self.rmodel, msg.data, geom_type=pin.COLLISION
-        )
-        self.rdata = self.rmodel.createData()
-        self.nq = self.rmodel.nq
-        self.nv = self.rmodel.nv
-        self.nx = self.nq + self.nv
-        self.x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
-        self.a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
-        self.weight_q = np.zeros([self.params.ocp.horizon_size, self.nq])
-        self.weight_qdot = np.zeros([self.params.ocp.horizon_size, self.nv])
-        self.weight_pose = np.zeros([self.params.ocp.horizon_size, 6])
+        
+        # self.x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
+        # self.a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
+        # self.weight_q = np.zeros([self.params.ocp.horizon_size, self.nq])
+        # self.weight_qdot = np.zeros([self.params.ocp.horizon_size, self.nv])
+        # self.weight_pose = np.zeros([self.params.ocp.horizon_size, 6])
 
-        # Build reduced models
-        locked_joint_names = [
-            name
-            for name in self.rmodel.names
-            if name not in self.params.moving_joint_names and name != "universe"
-        ]
-        locked_joint_ids = [self.rmodel.getJointId(name) for name in locked_joint_names]
-        self.rmodel, geometric_models_reduced = pin.buildReducedModel(
-            self.rmodel,
-            list_of_geom_models=[self.cmodel],
-            list_of_joints_to_lock=locked_joint_ids,
-            reference_configuration=np.zeros(self.rmodel.nq),
+        
+        armature = np.full(7, self.params.armature)  # TODO: might change
+        # TODO: fix, just hardcoded the thing: should exist in the demo folder, add as a ros parameter in the yaml file srdf_path
+        temp_srdf_path = os.path.join(
+                get_package_share_directory("franka_description"),
+                "robots/fer",
+                "fer.srdf",
+            )
+        params = RobotModelParameters(
+            urdf_xml=msg.data,
+            srdf_path=Path(temp_srdf_path),
+            q0=np.zeros(7),
+            full_q0=np.zeros(7),
+            free_flyer=self.params.free_flyer,
+            locked_joint_names=[],
+            collision_as_capsule=self.params.collision_as_capsule,
+            self_collision=self.params.self_collision,
+            armature=armature,
         )
-        self.cmodel = geometric_models_reduced[0]
+
+        self.robot_models = RobotModels(params)
+        self.rmodel = self.robot_models._robot_model
+
         self.get_logger().info("Robot Models initialized")
 
-    def set_weighted_traj_attributes(self) -> None:
-        """Set attributes to setup OCP from the weighted trajectory buffer."""
-        for idx_point in range(self.params.ocp.horizon_size):
-            traj_point = self.traj_buffer.popleft()
-            self.x_plan[idx_point, :] = np.concatenate(
-                [traj_point.point.robot_configuration, traj_point.point.robot_velocity]
-            )
-            self.a_plan[idx_point, :] = traj_point.point.robot_acceleration
-            self.weight_q[idx_point, :] = traj_point.weights.w_robot_configuration
-            self.weight_qdot[idx_point, :] = traj_point.weights.w_robot_velocity
-            self.weight_pose[idx_point, :] = traj_point.weights.w_end_effector_poses
+    # def set_weighted_traj_attributes(self) -> None:
+    #     """Set attributes to setup OCP from the weighted trajectory buffer."""
+    #     for idx_point in range(self.params.ocp.horizon_size):
+    #         traj_point = self.traj_buffer.popleft()
+    #         self.x_plan[idx_point, :] = np.concatenate(
+    #             [traj_point.point.robot_configuration, traj_point.point.robot_velocity]
+    #         )
+    #         self.a_plan[idx_point, :] = traj_point.point.robot_acceleration
+    #         self.weight_q[idx_point, :] = traj_point.weights.w_robot_configuration
+    #         self.weight_qdot[idx_point, :] = traj_point.weights.w_robot_velocity
+    #         self.weight_pose[idx_point, :] = traj_point.weights.w_end_effector_poses
 
     def buffer_has_twice_horizon_points(self) -> bool:
         """
@@ -151,36 +182,36 @@ class AgimusController(Node):
         """
         return len(self.traj_buffer) >= 2 * self.params.ocp.horizon_size
 
-    def first_solve(self, x0: npt.NDArray[np.float64]) -> None:
-        """Initialize OCP, then do the first solve."""
-        # Initialize OCP
-        self.set_weighted_traj_attributes()
-        self.ocp = OCPCrocoHPP(self.rmodel, self.cmodel, self.params.ocp)
-        self.ocp.set_planning_variables(self.x_plan, self.a_plan)
-        self.ocp.set_weights_variables(
-            self.weight_q, self.weight_qdot, self.weight_pose
-        )
+    # def first_solve(self, x0: npt.NDArray[np.float64]) -> None:
+    #     """Initialize OCP, then do the first solve."""
+    #     # Initialize OCP
+    #     self.set_weighted_traj_attributes()
+    #     self.ocp = OCPCrocoHPP(self.rmodel, self.cmodel, self.params.ocp)
+    #     self.ocp.set_planning_variables(self.x_plan, self.a_plan)
+    #     self.ocp.set_weights_variables(
+    #         self.weight_q, self.weight_qdot, self.weight_pose
+    #     )
 
-        # First solve
-        self.mpc = MPC(self.ocp, self.x_plan, self.a_plan, self.rmodel, self.cmodel)
-        us_init = self.mpc.ocp.u_plan[: self.params.ocp.horizon_size - 1]
-        self.mpc.mpc_first_step(self.x_plan, us_init, x0)
-        self.next_node_idx = self.params.ocp.horizon_size
-        self.get_logger().info("First solve done ")
+    #     # First solve
+    #     self.mpc = MPC(self.ocp, self.x_plan, self.a_plan, self.rmodel, self.cmodel)
+    #     us_init = self.mpc.ocp.u_plan[: self.params.ocp.horizon_size - 1]
+    #     self.mpc.mpc_first_step(self.x_plan, us_init, x0)
+    #     self.next_node_idx = self.params.ocp.horizon_size
+    #     self.get_logger().info("First solve done ")
 
-    def solve(self, x0: npt.NDArray[np.float64]) -> None:
-        """get new trajectory point, reset and solve the OCP problem."""
-        if len(self.traj_buffer) > 0:
-            self.last_point = self.traj_buffer.popleft()
-        self.mpc.mpc_step(x0, self.last_point, self.effector_frame_name)
+    # def solve(self, x0: npt.NDArray[np.float64]) -> None:
+    #     """get new trajectory point, reset and solve the OCP problem."""
+    #     if len(self.traj_buffer) > 0:
+    #         self.last_point = self.traj_buffer.popleft()
+    #     self.mpc.mpc_step(x0, self.last_point, self.effector_frame_name)
 
-    def send_control_msg(self, sensor_msg: Sensor) -> None:
+    def send_control_msg(self, ocp_res: OCPResults) -> None:
         """Get OCP control output and publish it."""
-        _, tau, K_ricatti = self.mpc.get_mpc_output()
+        # _, tau, K_ricatti = self.mpc.get_mpc_output()
         ctrl_msg = lfc_py_types.Control(
-            feedback_gain=K_ricatti,
-            feedforward=tau.reshape(self.rmodel.nv, 1),
-            initial_state=sensor_msg,
+            feedback_gain=np.zeros_like(ocp_res.ricatti_gains[0]),
+            feedforward=ocp_res.feed_forward_terms[0].reshape(self.rmodel.nv, 1),
+            initial_state=sensor_msg_to_numpy(self.sensor_msg),
         )
         self.control_publisher.publish(control_numpy_to_msg(ctrl_msg))
 
@@ -195,27 +226,44 @@ class AgimusController(Node):
                 throttle_duration_sec=5.0,
             )
             return
-        start_compute_time = time.perf_counter()
-        np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
-        x0 = np.concatenate(
-            [np_sensor_msg.joint_state.position, np_sensor_msg.joint_state.velocity]
-        )
-        if not self.first_run_done:
-            if not self.buffer_has_twice_horizon_points():
+        if self.rmodel is None:
+            self.get_logger().warn(
+                "Waiting for robot model to arrive...",
+                throttle_duration_sec=5.0,
+            )
+            return
+        if self.mpc is None:
+            self.setup_mpc()
+        if not self.buffer_has_twice_horizon_points():
                 self.get_logger().warn(
-                    "Waiting for buffer to be filled...",
+                    f"Waiting for buffer to be filled... Current size {len(self.traj_buffer)}",
                     throttle_duration_sec=5.0,
                 )
                 return
-            self.first_solve(x0)
-            self.first_run_done = True
-        else:
-            self.solve(x0)
-        self.send_control_msg(np_sensor_msg)
+        start_compute_time = time.perf_counter()
+        np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
+        # x0 = np.concatenate(
+        #     [np_sensor_msg.joint_state.position, np_sensor_msg.joint_state.velocity]
+        # )
+        x0_traj_point = TrajectoryPoint(
+            time_ns=self.get_clock().now().nanoseconds,
+            robot_configuration=np_sensor_msg.joint_state.position,
+            robot_velocity=np_sensor_msg.joint_state.velocity,
+            )
+        ocp_res =self.mpc.run(initial_state=x0_traj_point, current_time_ns=self.get_clock().now().nanoseconds)
+        if ocp_res is None:
+            return
+        # if not self.first_run_done:
+            
+        #     self.first_solve(x0)
+        #     self.first_run_done = True
+        # else:
+        #     self.solve(x0)
+        self.send_control_msg(ocp_res)
         compute_time = time.perf_counter() - start_compute_time
-        if self.params.publish_debug_data:
-            self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
-            self.ocp_x0_pub.publish(self.sensor_msg)
+        # if self.params.publish_debug_data:
+        #     self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
+        #     self.ocp_x0_pub.publish(self.sensor_msg)
 
 
 def main(args=None) -> None:

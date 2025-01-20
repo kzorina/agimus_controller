@@ -52,3 +52,19 @@ agimus_controller_params:
     type: double
     default_value: 100.0
     description: "Rate of mpc node in hertz"
+  free_flyer:
+    type: bool
+    default_value: False
+    description: "Wether we add a free flyer to the robot base"
+  armature:
+    type: double
+    default_value: 0.1
+    description: "Default value for armature"
+  collision_as_capsule:
+    type: bool
+    default_value: True
+    description: "Wether we convert collision objects to capsules"
+  self_collision:
+    type: bool
+    default_value: True
+    description: "Wether we account for self-collision"

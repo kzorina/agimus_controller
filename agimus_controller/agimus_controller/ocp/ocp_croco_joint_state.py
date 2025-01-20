@@ -27,7 +27,7 @@ class OCPCrocoJointState(OCPBaseCroco):
             u_residual = crocoddyl.ResidualModelControl(self._state)
             u_reg_cost = crocoddyl.CostModelResidual(self._state, u_residual)
             running_cost_model.addCost("stateReg", x_reg_cost, 0.1)
-            running_cost_model.addCost("ctrlRegGrav", u_reg_cost, 1e-10)
+            running_cost_model.addCost("ctrlRegGrav", u_reg_cost, 1e-2)
             # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
             running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
                 self._state,
@@ -89,7 +89,7 @@ class OCPCrocoJointState(OCPBaseCroco):
             # Modify running cost weight
             state_reg.weight = weighted_trajectory_points[
                 t
-            ].weight.w_robot_configuration
+            ].weights.w_robot_configuration[0]  # TODO: fix, big hardcode moment
 
         # Modify terminal costs reference and weights
         xref = np.concatenate(
@@ -104,4 +104,4 @@ class OCPCrocoJointState(OCPBaseCroco):
         ]
         state_reg.cost.residual.reference = xref
         # Modify running cost weight
-        state_reg.weight = weighted_trajectory_points[-1].weight.w_robot_configuration
+        state_reg.weight = weighted_trajectory_points[-1].weights.w_robot_configuration[0]  # TODO: fix, big hardcode moment

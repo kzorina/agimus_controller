@@ -72,14 +72,16 @@ class WarmStartReference(WarmStartBase):
             f"Expected x_init shape {(len(reference_trajectory), self._nx)}, "
             f"from provided reference got {x_init.shape}"
         )
-
+        # print(np.array(reference_trajectory[0].robot_configuration).shape)
+        # print(np.array(reference_trajectory[0].robot_velocity).shape)
+        # print(np.array(reference_trajectory[0].robot_acceleration).shape)
         u_init = [
             pin.rnea(
                 self._rmodel,
                 self._rdata,
-                point.robot_configuration,
-                point.robot_velocity,
-                point.robot_acceleration,
+                np.array(point.robot_configuration),
+                np.array(point.robot_velocity),
+                np.array(point.robot_acceleration),
             )
             for point in reference_trajectory
         ]
@@ -88,4 +90,4 @@ class WarmStartReference(WarmStartBase):
             f"from provided reference got {u_init.shape}"
         )
 
-        return x0, x_init, u_init
+        return x0, x_init, u_init[:-1]  # TODO: maybe fix this later?

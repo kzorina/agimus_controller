@@ -28,10 +28,11 @@ def ros_pose_to_array(pose: Pose) -> npt.NDArray[np.float64]:
     )
 
 
-def mpc_msg_to_weighted_traj_point(msg: MpcInput) -> WeightedTrajectoryPoint:
+def mpc_msg_to_weighted_traj_point(msg: MpcInput, time_ns: int) -> WeightedTrajectoryPoint:
     """Build WeightedTrajectoryPoint object from MPCInput msg."""
     xyz_quat_pose = ros_pose_to_array(msg.pose)
     traj_point = TrajectoryPoint(
+        time_ns=time_ns,
         robot_configuration=msg.q,
         robot_velocity=msg.qdot,
         robot_acceleration=msg.qddot,
