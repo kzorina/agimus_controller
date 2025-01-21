@@ -42,8 +42,9 @@ class TrajectoryBuffer(deque):
     """List of variable size in which the HPP trajectory nodes will be."""
 
     def clear_past(self, current_time_ns, delta_ns = 1e9):
-        while self and self[0].point.time_ns < current_time_ns - delta_ns:
-            self.popleft()
+        self.popleft()
+        # while self and self[0].point.time_ns < current_time_ns - delta_ns:
+        #     self.popleft()
 
     def horizon(self, horizon_size, dt_ocp=None):
         # TBD improve this implementation in case the dt_mpc != dt_ocp

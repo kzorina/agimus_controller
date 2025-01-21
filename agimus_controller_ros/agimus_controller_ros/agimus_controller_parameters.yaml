@@ -41,9 +41,9 @@ agimus_controller_params:
       type: bool
       default_value: False
       description: "Whether or not we want to use solver callbacks"
-  moving_joint_names:
-    type: string_array
-    description: "The name of the joints we use"
+  # moving_joint_names:
+  #   type: string_array
+  #   description: "The name of the joints we use"
   publish_debug_data:
     type: bool
     default_value: True

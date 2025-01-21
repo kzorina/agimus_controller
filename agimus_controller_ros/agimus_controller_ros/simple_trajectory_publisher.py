@@ -17,7 +17,9 @@ class MpcInputDummyPublisher(Node):
         self.ee_frame_id = None
         self.ee_frame_name = "fer_joint7"
         # Zero pose from which the motion will start
-        self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78])
+        # TODO: fix the fact that this is hardcoded
+        self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78, 0., 0.])
+        # self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78])
         self.q = self.q0.copy()
         self.t = 0.0
         self.dt = 0.01
@@ -57,7 +59,7 @@ class MpcInputDummyPublisher(Node):
 
         # Currently not changing the last two joints - fingers
         # for i in range(self.pin_model.nq - 2):
-        for i in [3, 4]:
+        for i in [4]:
             self.q[i] = self.q0[i] + 0.6 * np.sin(0.5 * np.pi * self.t)
 
         # Extract the end-effector position and orientation
@@ -68,18 +70,29 @@ class MpcInputDummyPublisher(Node):
         xyz_quatxyzw = pin.SE3ToXYZQUAT(ee_pose)
 
         # Create the message
+        croco_nq = 7
         msg = MpcInput()
-        msg.q = [float(val) for val in self.q]
+        msg.q = [float(val) for val in self.q][:croco_nq]
 
-        msg.qdot = [0.0] * len(
-            self.q
-        )  # TODO: only works for robot with only revolute joints
-        msg.qddot = [0.0] * len(
-            self.q
-        )  # TODO: only works for robot with only revolute joints
-        msg.q_w = [1e2] * len(self.q)
-        msg.qdot_w = [1e-3] * len(self.q)
-        msg.qddot_w = [1e-4] * len(self.q)
+        msg.qdot = [0.0] * croco_nq
+        msg.qddot = [0.0] * croco_nq
+        msg.q_w = [1e1] * croco_nq
+        msg.qdot_w = [1e-1] * croco_nq
+        msg.qddot_w = [1e-2] * croco_nq
+
+        # # Create the message
+        # msg = MpcInput()
+        # msg.q = [float(val) for val in self.q]
+
+        # msg.qdot = [0.0] * len(
+        #     self.q
+        # )  # TODO: only works for robot with only revolute joints
+        # msg.qddot = [0.0] * len(
+        #     self.q
+        # )  # TODO: only works for robot with only revolute joints
+        # msg.q_w = [1e2] * len(self.q)
+        # msg.qdot_w = [1e-3] * len(self.q)
+        # msg.qddot_w = [1e-4] * len(self.q)
 
         pose = Pose()
         pose.position.x = xyz_quatxyzw[0]
@@ -113,3 +126,6 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+
+
+# ros2 bag record /mpc_input /joint_states /control
