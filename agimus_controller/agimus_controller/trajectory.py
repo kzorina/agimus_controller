@@ -38,13 +38,19 @@ class WeightedTrajectoryPoint:
     weight: TrajectoryPointWeights
 
 
-class TrajectoryBuffer(deque):
+class TrajectoryBuffer(list):
     """List of variable size in which the HPP trajectory nodes will be."""
 
     def clear_past(self, current_time_ns):
         while self and self[0].point.time_ns < current_time_ns:
-            self.popleft()
+            self.remove(0)
 
-    def horizon(self, horizon_size, dt_ocp):
+    def horizon(self, horizon_size, horizon_dt):
         # TBD improve this implementation in case the dt_mpc != dt_ocp
-        return self._buffer[: self._ocp.horizon_size]
+        if len(horizon_dt) != 1:
+            assert len(horizon_size) == len(horizon_dt) and "Size must match."
+
+        indexes = [0] * horizon_size
+        for index, factor in zip(indexes, horizon_dt):
+            index += factor
+        return self[indexes]
