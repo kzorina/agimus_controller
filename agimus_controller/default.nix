@@ -25,6 +25,7 @@ buildPythonPackage {
       ./package.xml
       ./resource
       ./setup.py
+      ./tests
     ];
   };
 
