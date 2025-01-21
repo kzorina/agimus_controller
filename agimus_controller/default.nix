@@ -9,7 +9,7 @@
   mim-solvers,
   numpy,
   pinocchio,
-  #pytestCheckHook,
+  pytestCheckHook,
   rosPackages,
   rospkg,
   setuptools,
@@ -43,7 +43,7 @@ buildPythonPackage {
     rospkg
   ];
 
-  #nativeCheckInputs = [ pytestCheckHook ];
+  nativeCheckInputs = [ pytestCheckHook ];
   doCheck = true;
   pythonImportsCheck = [ "agimus_controller" ];
 
