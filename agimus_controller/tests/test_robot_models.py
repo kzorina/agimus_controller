@@ -1,4 +1,5 @@
 from copy import deepcopy
+from os import environ
 from os.path import dirname
 import unittest
 from pathlib import Path
@@ -144,6 +145,29 @@ class TestRobotModels(unittest.TestCase):
         """
         self.params = deepcopy(self.params)
         self.robot_models = RobotModels(self.params)
+
+    def test_invalid_urdf_value(self):
+        self.params.urdf = None
+        with self.assertRaises(ValueError):
+            RobotModels(self.params)
+
+    def test_invalid_srdf_value(self):
+        self.params.srdf = None
+        with self.assertRaises(ValueError):
+            RobotModels(self.params)
+
+    def test_invalid_srdf_no_colision(self):
+        self.params.srdf = None
+        self.params.self_collision = False
+        RobotModels(self.params)
+
+    def test_no_meshes(self):
+        self.params.urdf_meshes_dir = None
+        # Clear paths where pinocchio searches for meshes
+        environ["ROS_PACKAGE_PATH"] = ""
+        environ["AMENT_PREFIX_PATH"] = ""
+        with self.assertRaises(ValueError):
+            RobotModels(self.params)
 
     def test_load_urdf_from_string(self):
         params = deepcopy(self.params)

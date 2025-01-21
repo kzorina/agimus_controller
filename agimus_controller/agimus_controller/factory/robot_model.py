@@ -125,7 +125,7 @@ class RobotModels:
     def collision_model(self) -> pin.GeometryModel:
         """Collision model of the robot."""
         if self._collision_model is None:
-            raise AttributeError("Visual model has not been computed yet.")
+            raise AttributeError("Colision model has not been computed yet.")
         return self._collision_model
 
     @property
@@ -143,13 +143,16 @@ class RobotModels:
         self._load_full_pinocchio_models()
         if self._params.locked_joint_names:
             self._apply_locked_joints()
-        if self._params.collision_as_capsule:
-            self._update_collision_model_to_capsules()
-        if self._params.self_collision:
-            self._update_collision_model_to_self_collision()
+        if self._params.urdf_meshes_dir is not None:
+            if self._params.collision_as_capsule:
+                self._update_collision_model_to_capsules()
+            if self._params.self_collision:
+                self._update_collision_model_to_self_collision()
 
     def _load_full_pinocchio_models(self) -> None:
         """Load the full robot model, the visual model and the collision model."""
+        if self._params.urdf is None:
+            raise ValueError(f"Param 'urdf' was not specified!")
         try:
             if isinstance(self._params.urdf, Path):
                 with open(self._params.urdf, "r") as file:
@@ -164,26 +167,25 @@ class RobotModels:
             else:
                 self._full_robot_model = pin.buildModelFromXML(urdf)
 
-            if self._params.urdf_meshes_dir:
-                self._collision_model, self._visual_model = [
-                    (
-                        pin.buildGeomFromUrdfString(
-                            self._full_robot_model,
-                            urdf,
-                            geometry_type,
-                            package_dirs=[
-                                self._params.urdf_meshes_dir.absolute().as_posix()
-                            ],
-                        )
+            package_dirs = (
+                self._params.urdf_meshes_dir.absolute().as_posix()
+                if self._params.urdf_meshes_dir is not None
+                else None
+            )
+            self._collision_model, self._visual_model = [
+                (
+                    pin.buildGeomFromUrdfString(
+                        self._full_robot_model,
+                        urdf,
+                        geometry_type,
+                        package_dirs=package_dirs,
                     )
-                    for geometry_type in [
-                        pin.GeometryType.COLLISION,
-                        pin.GeometryType.VISUAL,
-                    ]
+                )
+                for geometry_type in [
+                    pin.GeometryType.COLLISION,
+                    pin.GeometryType.VISUAL,
                 ]
-            else:
-                self._collision_model = None
-                self._visual_model = None
+            ]
 
         except Exception as e:
             raise ValueError(
@@ -236,6 +238,8 @@ class RobotModels:
     def _update_collision_model_to_self_collision(self) -> None:
         """Update the collision model to self collision."""
         self._collision_model.addAllCollisionPairs()
+        if self._params.srdf is None:
+            raise ValueError(f"Param 'srdf' was not specified!")
         pin.removeCollisionPairs(
             self._robot_model,
             self._collision_model,
