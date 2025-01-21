@@ -143,11 +143,11 @@ class AgimusController(Node):
             urdf_xml=msg.data,
             srdf_path=Path(temp_srdf_path),
             q0=np.zeros(7),  # TODO: change from hardcooding
-            full_q0=np.zeros(9),  # TODO: change from hardcooding
-            # full_q0=np.zeros(7),  # TODO: change from hardcooding
+            # full_q0=np.zeros(9),  # TODO: change from hardcooding
+            full_q0=np.zeros(7),  # TODO: change from hardcooding
             free_flyer=self.params.free_flyer,
-            locked_joint_names=['fer_finger_joint1', 'fer_finger_joint2'],
-            # locked_joint_names=[],
+            # locked_joint_names=['fer_finger_joint1', 'fer_finger_joint2'],
+            locked_joint_names=[],
             collision_as_capsule=self.params.collision_as_capsule,
             self_collision=self.params.self_collision,
             armature=self.params.ocp.armature,

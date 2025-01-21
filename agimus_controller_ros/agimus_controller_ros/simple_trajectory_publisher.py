@@ -18,8 +18,8 @@ class MpcInputDummyPublisher(Node):
         self.ee_frame_name = "fer_joint7"
         # Zero pose from which the motion will start
         # TODO: fix the fact that this is hardcoded
-        self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78, 0., 0.])
-        # self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78])
+        # self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78, 0., 0.])
+        self.q0 = np.array([0, -0.78, 0.0, -2.35, 0.0, 1.57, 0.78])
         self.q = self.q0.copy()
         self.t = 0.0
         self.dt = 0.01
