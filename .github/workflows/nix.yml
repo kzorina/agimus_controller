@@ -3,11 +3,12 @@ name: "CI - Nix"
 on:
   push:
     branches:
-    - humble_devel
+    - humble-devel
+    - topic/humble-devel/refactor
   pull_request:
     branches:
-    - humble_devel
-
+    - humble-devel 
+    - topic/humble-devel/refactor
 jobs:
   nix:
     runs-on: "ubuntu-latest"
