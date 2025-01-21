@@ -18,10 +18,8 @@ class RobotModelParameters:
     )  # Initial reduced configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
-    urdf: Path | str | None = (
-        None  # Path to the URDF file or string containing URDF as an XML
-    )
-    srdf: Path | None = None  # Path to the SRDF file
+    urdf: Path | str = ""  # Path to the URDF file or string containing URDF as an XML
+    srdf: Path = Path()  # Path to the SRDF file
     urdf_meshes_dir: Path | None = (
         None  # Path to the directory containing the meshes and the URDF file.
     )
@@ -61,18 +59,16 @@ class RobotModelParameters:
             )
 
         # Ensure URDF and SRDF are valid
-        if self.urdf is not None:
-            if isinstance(self.urdf, Path) and not self.urdf.is_file():
-                raise ValueError(
-                    "urdf must be a valid file path. "
-                    f"File: '{self.urdf}' doesn't exist!"
-                )
-            elif self.urdf == "":
-                raise ValueError("urdf can not be an empty string.")
-
-        if self.srdf is not None and not self.srdf.is_file():
+        if not self.urdf:
+            raise ValueError("URDF can not be an empty string.")
+        elif isinstance(self.urdf, Path) and not self.urdf.is_file():
             raise ValueError(
-                "srdf must be a valid file path. " f"File: '{self.srdf}' doesn't exist!"
+                "URDF must be a valid file path. " f"File: '{self.urdf}' doesn't exist!"
+            )
+
+        if not self.srdf.is_file():
+            raise ValueError(
+                "SRDF must be a valid file path. " f"File: '{self.srdf}' doesn't exist!"
             )
 
         if self.urdf_meshes_dir is not None and not self.urdf_meshes_dir.exists():
@@ -143,16 +139,13 @@ class RobotModels:
         self._load_full_pinocchio_models()
         if self._params.locked_joint_names:
             self._apply_locked_joints()
-        if self._params.urdf_meshes_dir is not None:
-            if self._params.collision_as_capsule:
-                self._update_collision_model_to_capsules()
-            if self._params.self_collision:
-                self._update_collision_model_to_self_collision()
+        if self._params.collision_as_capsule:
+            self._update_collision_model_to_capsules()
+        if self._params.self_collision:
+            self._update_collision_model_to_self_collision()
 
     def _load_full_pinocchio_models(self) -> None:
         """Load the full robot model, the visual model and the collision model."""
-        if self._params.urdf is None:
-            raise ValueError(f"Param 'urdf' was not specified!")
         try:
             if isinstance(self._params.urdf, Path):
                 with open(self._params.urdf, "r") as file:
@@ -238,8 +231,6 @@ class RobotModels:
     def _update_collision_model_to_self_collision(self) -> None:
         """Update the collision model to self collision."""
         self._collision_model.addAllCollisionPairs()
-        if self._params.srdf is None:
-            raise ValueError(f"Param 'srdf' was not specified!")
         pin.removeCollisionPairs(
             self._robot_model,
             self._collision_model,
