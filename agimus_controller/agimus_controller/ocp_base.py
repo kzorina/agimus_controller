@@ -17,7 +17,7 @@ class OCPBase(ABC):
 
     @abstractmethod
     def set_reference_weighted_trajectory(
-        self, reference_trajectory: list[WeightedTrajectoryPoint]
+        self, reference_weighted_trajectory: list[WeightedTrajectoryPoint]
     ) -> None:
         """Set the reference trajectory and the weights of the costs for the OCP solver. This method should be implemented by the derived class."""
         pass

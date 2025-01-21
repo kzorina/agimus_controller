@@ -137,8 +137,7 @@ class RobotModels:
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
         self._load_full_pinocchio_models()
-        if self._params.locked_joint_names:
-            self._apply_locked_joints()
+        self._apply_locked_joints()
         if self._params.collision_as_capsule:
             self._update_collision_model_to_capsules()
         if self._params.self_collision:
@@ -194,8 +193,14 @@ class RobotModels:
             else:
                 raise ValueError(f"Joint {jn} not found in the robot model.")
 
-        self._robot_model = pin.buildReducedModel(
-            self._full_robot_model, joints_to_lock, self._full_q0
+        self._robot_model, [
+            self._collision_model,
+            self._visual_model,
+        ] = pin.buildReducedModel(
+            self._full_robot_model,
+            [self._collision_model, self._visual_model],
+            joints_to_lock,
+            self._full_q0,
         )
 
     def _update_collision_model_to_capsules(self) -> None:
