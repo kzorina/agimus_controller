@@ -27,8 +27,8 @@ class TestRobotModelParameters(unittest.TestCase):
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
+            urdf=urdf_path,
+            srdf=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
@@ -38,9 +38,9 @@ class TestRobotModelParameters(unittest.TestCase):
         self.assertTrue(np.array_equal(params.q0, q0))
         self.assertEqual(params.free_flyer, free_flyer)
         self.assertEqual(params.locked_joint_names, ["panda_joint1", "panda_joint2"])
-        self.assertEqual(params.urdf_path, urdf_path.absolute().as_posix())
-        self.assertEqual(params.srdf_path, srdf_path.absolute().as_posix())
-        self.assertEqual(params.urdf_meshes_dir, urdf_meshes_dir.absolute().as_posix())
+        self.assertEqual(params.urdf, urdf_path)
+        self.assertEqual(params.srdf, srdf_path)
+        self.assertEqual(params.urdf_meshes_dir, urdf_meshes_dir)
         self.assertTrue(params.collision_as_capsule)
         self.assertTrue(params.self_collision)
         self.assertTrue(
@@ -68,8 +68,8 @@ class TestRobotModelParameters(unittest.TestCase):
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
+            urdf=urdf_path,
+            srdf=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
@@ -83,23 +83,23 @@ class TestRobotModelParameters(unittest.TestCase):
         with self.assertRaises(ValueError):
             RobotModelParameters(full_q0=full_q0, armature=armature)
 
-    def test_invalid_urdf_path_raises_error(self):
+    def test_invalid_urdf_raises_error(self):
         """Test that an invalid URDF path raises a ValueError."""
         full_q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(full_q0=full_q0, urdf_path=Path("invalid_path"))
+            RobotModelParameters(full_q0=full_q0, urdf=Path("invalid_path"))
 
     def test_invalid_urdf_string(self):
         """Test that an invalid URDF string raises a ValueError."""
         full_q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(full_q0=full_q0, urdf_xml="")
+            RobotModelParameters(full_q0=full_q0, urdf="")
 
-    def test_invalid_srdf_path_type_raises_error(self):
+    def test_invalid_srdf_type_raises_error(self):
         """Test that a non-string SRDF path raises a ValueError."""
         full_q0 = np.array([0.0, 1.0, 2.0])
         with self.assertRaises(ValueError):
-            RobotModelParameters(full_q0=full_q0, srdf_path=Path("invalid_path"))
+            RobotModelParameters(full_q0=full_q0, srdf=Path("invalid_path"))
 
     def test_invalid_urdf_mesh_path_type_raises_error(self):
         """Test that a non-string SRDF path raises a ValueError."""
@@ -129,8 +129,8 @@ class TestRobotModels(unittest.TestCase):
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
+            urdf=urdf_path,
+            srdf=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
@@ -148,7 +148,7 @@ class TestRobotModels(unittest.TestCase):
     def test_load_urdf_from_string(self):
         params = deepcopy(self.params)
         with open(Path(robex.load("panda").urdf), "r") as file:
-            params.urdf_xml = file.read().replace("\n", "")
+            params.urdf = file.read().replace("\n", "")
 
         robot_models_str = RobotModels(params)
         self.assertEqual(
