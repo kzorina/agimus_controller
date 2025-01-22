@@ -74,7 +74,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             "duration_generate_warm_start_ns": random.randint(0, 10000),
             "duration_ocp_solve_ns": random.randint(0, 10000),
         }
-        obj = MPCDebugData(**params)
+        obj = MPCDebugData(**deepcopy(params))
         for key, val in params.items():
             res = getattr(obj, key)
             self.assertEqual(
