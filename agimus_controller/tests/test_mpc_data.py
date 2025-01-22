@@ -26,7 +26,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             "ricatti_gains": [np.random.rand(rows, cols) for _ in range(N)],
             "feed_forward_terms": [np.random.rand(rows) for _ in range(N)],
         }
-        obj = OCPResults(**params)
+        obj = OCPResults(**deepcopy(params))
         for key, val in params.items():
             res = getattr(obj, key)
             self.assertEqual(
