@@ -22,9 +22,9 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         rows = random.randint(10, 20)
         cols = 2 * rows
         params = {
-            "states": [np.random.rand(rows, cols) for _ in range(N)],
-            "ricatti_gains": list(),
-            "feed_forward_terms": list(),
+            "states": [np.random.rand(cols) for _ in range(N)],
+            "ricatti_gains": [np.random.rand(rows, cols) for _ in range(N)],
+            "feed_forward_terms": [np.random.rand(rows) for _ in range(N)],
         }
         obj = OCPResults(**params)
         for key, val in params.items():
