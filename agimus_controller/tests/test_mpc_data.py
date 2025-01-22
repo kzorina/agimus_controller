@@ -46,7 +46,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             "collision_distance_residuals": list(),
             "problem_solved": False,
         }
-        obj = OCPDebugData(**params)
+        obj = OCPDebugData(**deepcopy(params))
         for key, val in params.items():
             res = getattr(obj, key)
             self.assertEqual(
