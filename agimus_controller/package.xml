@@ -20,7 +20,7 @@
   <exec_depend>mim_solvers</exec_depend>
   <exec_depend>numpy</exec_depend>
   <exec_depend>pinocchio</exec_depend>
-  <exec_depend>rosPackages.humble.xacro</exec_depend>
+  <exec_depend>xacro</exec_depend>
   <exec_depend>rospkg</exec_depend>
 
   <!-- Test dependencies -->
