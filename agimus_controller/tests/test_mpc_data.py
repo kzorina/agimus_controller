@@ -1,4 +1,6 @@
+from copy import deepcopy
 import numpy as np
+import numpy.typing as npt
 import random
 import unittest
 
@@ -16,7 +18,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
 
     def test_ocp_results(self):
         """
-        Test the initialization of the MPCDebugData class.
+        Test the initialization of the OCPResults class.
         """
         N = random.randint(10, 100)
         rows = random.randint(10, 20)
@@ -29,15 +31,20 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         obj = OCPResults(**deepcopy(params))
         for key, val in params.items():
             res = getattr(obj, key)
-            self.assertEqual(
-                res,
-                val,
-                f"Value missmatch for parameter '{key}'. Expected: '{val}', got: '{res}'",
-            )
+            if type(res) is list:
+                if res and type(res[0]) is npt.NDArray[np.float64]:
+                    for res_i, val_i in zip(res, val):
+                        np.testing.assert_almost_equal(res_i, val_i)
+            else:
+                self.assertEqual(
+                    res,
+                    val,
+                    f"Value missmatch for parameter '{key}'. Expected: '{val}', got: '{res}'",
+                )
 
     def test_ocp_debug_data(self):
         """
-        Test the initialization of the MPCDebugData class.
+        Test the initialization of the OCPDebugData class.
         """
         params = {
             "result": list(),
