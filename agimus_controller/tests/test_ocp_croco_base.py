@@ -151,7 +151,8 @@ class TestSimpleOCPCroco(unittest.TestCase):
         # Create a concrete implementation of OCPBaseCroco
         self.ocp = self.TestOCPCroco(self.robot_models, self.ocp_params)
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)
-        self.save_results()
+        # Uncomment to re-generate the simple_ocp_crocco_results.pkl
+        # self.save_results()
 
     @classmethod
     def save_results(self):
