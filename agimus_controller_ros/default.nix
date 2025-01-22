@@ -1,5 +1,6 @@
 {
   agimus-controller,
+  agimus-msgs,
   buildPythonPackage,
   lib,
   linear-feedback-controller-msgs,
@@ -28,12 +29,14 @@ buildPythonPackage {
 
   dependencies = [
     agimus-controller
+    agimus-msgs
     linear-feedback-controller-msgs
     numpy
     pinocchio
     rosPackages.humble.ament-copyright
     rosPackages.humble.ament-flake8
     rosPackages.humble.ament-pep257
+    rosPackages.humble.builtin-interfaces
     rosPackages.humble.generate-parameter-library-py
     rosPackages.humble.geometry-msgs
     rosPackages.humble.rclpy
