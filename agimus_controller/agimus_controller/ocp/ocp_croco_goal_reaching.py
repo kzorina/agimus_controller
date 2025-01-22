@@ -175,17 +175,16 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             ].point.end_effector_poses["panda_hand_tcp"]
 
         # Modify terminal costs reference and weights
-        xref = np.concatenate(
+        state_reg = self._solver.problem.terminalModel.differential.costs.costs[
+            "stateReg"
+        ]
+        state_reg.cost.residual.reference = np.concatenate(
             (
                 reference_weighted_trajectory[-1].point.robot_configuration,
                 reference_weighted_trajectory[-1].point.robot_velocity,
             )
         )
 
-        state_reg = self._solver.problem.terminalModel.differential.costs.costs[
-            "stateReg"
-        ]
-        state_reg.cost.residual.reference = xref
         # state_reg.weight = reference_weighted_trajectory[-1].weight.w_robot_configuration
         state_reg.cost.activation.weights = np.concatenate(
             (
