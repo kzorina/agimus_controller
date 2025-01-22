@@ -9,8 +9,11 @@ setup(
     packages=find_packages(exclude=["tests"]),
     python_requires=REQUIRES_PYTHON,
     install_requires=[
-        "setuptools",
+        "crocoddyl",
+        "mim_solvers",
         "numpy==1.21.5",
+        "pinocchio",
+        "setuptools",
     ],
     zip_safe=True,
     maintainer="Guilhem Saurel",
