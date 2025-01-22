@@ -3,9 +3,8 @@
   colmpc,
   crocoddyl,
   coal,
+  example-robot-data,
   lib,
-  matplotlib,
-  meshcat,
   mim-solvers,
   numpy,
   pinocchio,
@@ -35,8 +34,7 @@ buildPythonPackage {
     colmpc
     crocoddyl
     coal
-    matplotlib
-    meshcat
+    example-robot-data
     mim-solvers
     numpy
     pinocchio
