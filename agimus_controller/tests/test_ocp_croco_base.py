@@ -160,12 +160,16 @@ class TestSimpleOCPCroco(unittest.TestCase):
             "ricatti_gains": self.ocp.ocp_results.ricatti_gains.tolist(),
             "feed_forward_terms": self.ocp.ocp_results.feed_forward_terms.tolist(),
         }
-
-        with open("ressources/simple_ocp_croco_results.pkl", "wb") as handle:
+        data_file = str(
+            Path(__file__).parent / "ressources" / "simple_ocp_croco_results.pkl"
+        )
+        with open(data_file, "wb") as handle:
             pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def test_check_results(self):
-        file_path = "ressources/simple_ocp_croco_results.pkl"
+        file_path = str(
+            Path(__file__).parent / "ressources" / "simple_ocp_croco_results.pkl"
+        )
         # Load the results
         with open(file_path, "rb") as handle:
             results = pickle.load(handle)
