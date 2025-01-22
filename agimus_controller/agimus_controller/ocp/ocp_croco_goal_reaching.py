@@ -130,16 +130,15 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
         # Modify running costs reference and weights
         for i in range(self.horizon_size - 1):
             # Modifying the state regularization cost
-            xref = np.concatenate(
+            state_reg = self._solver.problem.runningModels[i].differential.costs.costs[
+                "stateReg"
+            ]
+            state_reg.cost.residual.reference = np.concatenate(
                 (
                     reference_weighted_trajectory[i].point.robot_configuration,
                     reference_weighted_trajectory[i].point.robot_velocity,
                 )
             )
-            state_reg = self._solver.problem.runningModels[i].differential.costs.costs[
-                "stateReg"
-            ]
-            state_reg.cost.residual.reference = xref
             # Modify running cost weight
             state_reg.cost.activation.weights = np.concatenate(
                 (
