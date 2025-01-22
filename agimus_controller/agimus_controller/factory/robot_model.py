@@ -1,7 +1,7 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import coal
 import numpy as np
@@ -11,14 +11,12 @@ import pinocchio as pin
 
 @dataclass
 class RobotModelParameters:
-    full_q0: npt.NDArray[np.float64] = field(
-        default_factory=lambda: np.array([], dtype=np.float64)
-    )  # Initial full configuration of the robot
-    q0: npt.NDArray[np.float64] = field(
-        default_factory=lambda: np.array([], dtype=np.float64)
-    )  # Initial reduced configuration of the robot
+    # Initial full configuration of the robot
+    full_q0: npt.NDArray[np.float64] = np.array([], dtype=np.float64)
+    # Initial reduced configuration of the robot
+    q0: npt.NDArray[np.float64] = np.array([], dtype=np.float64)
     free_flyer: bool = False  # True if the robot has a free flyer
-    locked_joint_names: List[str] = field(default_factory=list)
+    locked_joint_names: list[str] = list()
     urdf_path: Path = Path()  # Path to the URDF file
     srdf_path: Optional[Path] = None  # Path to the SRDF file
     urdf_meshes_dir: Optional[
