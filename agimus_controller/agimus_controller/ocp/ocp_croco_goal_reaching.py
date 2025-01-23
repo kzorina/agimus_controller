@@ -45,7 +45,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             frame_cost_weights = np.ones(6)
             framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
                 self._state,
-                self._robot_models.robot_model.getFrameId("panda_hand_tcp"),
+                0,
                 pin.SE3.Identity(),
             )
             goalTrackingCost = crocoddyl.CostModelResidual(
@@ -99,7 +99,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
         frame_cost_weights = np.ones(6)
         framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
             self._state,
-            self._robot_models.robot_model.getFrameId("panda_hand_tcp"),
+            0,
             pin.SE3.Identity(),
         )
 
@@ -157,16 +157,26 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
                 i
             ].weight.w_robot_effort
             # Modify end effector frame cost
+
+            # setting running model goal tracking reference, weight and frame id
+            # assuming exactly one end-effector tracking reference was passed to the trajectory
+            ee_names = list(
+                iter(reference_weighted_trajectory[i].weight.w_end_effector_poses)
+            )
+            if len(ee_names) > 1:
+                raise ValueError("Only one end-effector tracking reference is allowed.")
+            ee_name = ee_names[0]
+            ee_id = self._robot_models.robot_model.getFrameId(ee_name)
             ee_cost = self._solver.problem.runningModels[i].differential.costs.costs[
                 "goalTracking"
             ]
-
+            ee_cost.cost.residual.id = ee_id
             ee_cost.cost.activation.weights = reference_weighted_trajectory[
                 i
-            ].weight.w_end_effector_poses["panda_hand_tcp"]
+            ].weight.w_end_effector_poses[ee_name]
             ee_cost.cost.residual.reference = reference_weighted_trajectory[
                 i
-            ].point.end_effector_poses["panda_hand_tcp"]
+            ].point.end_effector_poses[ee_name]
 
         # Modify terminal costs reference and weights
         state_reg = self._solver.problem.terminalModel.differential.costs.costs[
@@ -186,12 +196,18 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             )
         )
         # Modify end effector frame cost
+
+        ee_names = list(
+            iter(reference_weighted_trajectory[i].weight.w_end_effector_poses)
+        )
+        ee_name = ee_names[0]
         ee_cost = self._solver.problem.runningModels[-1].differential.costs.costs[
             "goalTracking"
         ]
+        ee_cost.cost.residual.id = ee_id
+        ee_cost.cost.activation.weights = reference_weighted_trajectory[
+            -1
+        ].weight.w_end_effector_poses[ee_name]
         ee_cost.cost.residual.reference = reference_weighted_trajectory[
             -1
-        ].point.end_effector_poses["panda_hand_tcp"]
-        ee_cost.cost.activation.weights = reference_weighted_trajectory[
-            i
-        ].weight.w_end_effector_poses["panda_hand_tcp"]
+        ].point.end_effector_poses[ee_name]
