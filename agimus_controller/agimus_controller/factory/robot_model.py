@@ -1,6 +1,7 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional, Union
 
 import coal
 import numpy as np
@@ -10,19 +11,21 @@ import pinocchio as pin
 
 @dataclass
 class RobotModelParameters:
-    full_q0: npt.NDArray[np.float64] = np.array(
-        [], dtype=np.float64
+    full_q0: npt.NDArray[np.float64] = field(
+        default_factory=lambda: np.array([], dtype=np.float64)
     )  # Initial full configuration of the robot
-    q0: npt.NDArray[np.float64] = np.array(
-        [], dtype=np.float64
+    q0: npt.NDArray[np.float64] = field(
+        default_factory=lambda: np.array([], dtype=np.float64)
     )  # Initial reduced configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     locked_joint_names: list[str] = field(default_factory=list)
-    urdf: Path | str = ""  # Path to the URDF file or string containing URDF as an XML
+    urdf: Union[
+        Path, str
+    ] = ""  # Path to the URDF file or string containing URDF as an XML
     srdf: Path = Path()  # Path to the SRDF file
-    urdf_meshes_dir: Path | None = (
-        None  # Path to the directory containing the meshes and the URDF file.
-    )
+    urdf_meshes_dir: Optional[
+        Path
+    ] = None  # Path to the directory containing the meshes and the URDF file.
     collision_as_capsule: bool = (
         False  # True if the collision model should be reduced to capsules.
     )
@@ -31,8 +34,8 @@ class RobotModelParameters:
     armature: npt.NDArray[np.float64] = field(
         default_factory=lambda: np.array([], dtype=np.float64)
     )  # Default empty NumPy array
-    collision_color: npt.NDArray[np.float64] = (
-        np.array([249.0, 136.0, 126.0, 125.0]) / 255.0
+    collision_color: npt.NDArray[np.float64] = field(
+        default_factory=lambda: np.array([249.0, 136.0, 126.0, 125.0]) / 255.0
     )  # Red color for the collision model
 
     def __post_init__(self):

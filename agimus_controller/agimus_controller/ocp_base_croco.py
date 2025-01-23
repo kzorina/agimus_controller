@@ -9,7 +9,6 @@ from agimus_controller.factory.robot_model import RobotModels
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.ocp_base import OCPBase
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
-from agimus_controller.trajectory import TrajectoryPointWeights
 
 
 class OCPBaseCroco(OCPBase):
