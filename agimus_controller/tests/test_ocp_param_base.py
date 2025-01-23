@@ -18,6 +18,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
         params = {
             "dt": 0.01,
             "horizon_size": 100,
+            "horizon_dts": range(100),
             "solver_iters": 50,
             "qp_iters": 200,
             "termination_tolerance": 1e-3,

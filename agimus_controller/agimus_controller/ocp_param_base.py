@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -7,11 +7,13 @@ class OCPParamsBaseCroco:
 
     # Data relevant to solve the OCP.
     dt: float  # Integration step of the OCP.
-    horizon_dt: list[
-        int
-    ]  # List of factor to multiply to dt in the horizon. For example [1, 2, 3] is a linearly increasing dt along the horizon: [1*dt, 2*dt, 3*dt]
     horizon_size: int  # Number of time steps in the horizon.
     solver_iters: int  # Number of solver iterations.
+    horizon_dts: list[
+        int  # List of factor to multiply to dt in the horizon.
+        # For example [1, 2, 3] is a linearly increasing dt along the horizon:
+        # [1*dt, 2*dt, 3*dt]
+    ] = field(default_factory=lambda: list())
     qp_iters: int = 200  # Number of QP iterations (must be a multiple of 25).
     termination_tolerance: float = (
         1e-3  # Termination tolerance (norm of the KKT conditions).
