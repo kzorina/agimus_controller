@@ -9,6 +9,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.duration import Duration
+from rcl_interfaces.srv import GetParameters
+from rcl_interfaces.msg import ParameterValue
 
 from std_msgs.msg import String
 from agimus_msgs.msg import MpcInput
@@ -56,11 +58,34 @@ class AgimusController(Node):
 
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
+    
+    def get_param_from_node(self, node_name: str, param_name: str) -> ParameterValue:
+        """Returns parameter from the node"""
+        param_client = self.create_client(GetParameters, f'/{node_name}/get_parameters')
+        while not param_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Service not available, waiting again...')
+        request = GetParameters.Request()
+        request.names = [param_name]
 
+        future = param_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future)
+
+        if future.result() is not None:
+            return future.result().values[0]
+        else:
+            raise ValueError("Failed to load moving joint names from LFC")
+    
     def initialize_ros_attributes(self) -> None:
         """Initialize ROS related attributes such as Publishers, Subscribers and Timers"""
         self.sensor_msg = None
         self.control_msg = None
+
+        # Get moving joint names from LFC
+        self.moving_joint_names = self.get_param_from_node(
+            'linear_feedback_controller',
+            'moving_joint_names'
+        ).string_array_value
+
         self.state_subscriber = self.create_subscription(
             Sensor,
             "sensor",
@@ -136,21 +161,19 @@ class AgimusController(Node):
         # add as a ros parameter in the yaml file srdf_path
         temp_srdf_path = os.path.join(
                 get_package_share_directory("franka_description"),
-                "robots/fer",
-                "fer.srdf",
+                "robots/fer/fer.srdf",
             )
+
+        np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
         params = RobotModelParameters(
             urdf_xml=msg.data,
             srdf_path=Path(temp_srdf_path),
-            q0=np.zeros(7),  # TODO: change from hardcooding
-            # full_q0=np.zeros(9),  # TODO: change from hardcooding
-            full_q0=np.zeros(7),  # TODO: change from hardcooding
+            q0=np_sensor_msg.joint_state.position,  
             free_flyer=self.params.free_flyer,
-            # locked_joint_names=['fer_finger_joint1', 'fer_finger_joint2'],
-            locked_joint_names=[],
             collision_as_capsule=self.params.collision_as_capsule,
             self_collision=self.params.self_collision,
             armature=self.params.ocp.armature,
+            moving_joint_names=self.moving_joint_names
         )
 
         self.robot_models = RobotModels(params)
