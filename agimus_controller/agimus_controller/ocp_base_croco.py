@@ -41,6 +41,29 @@ class OCPBaseCroco(OCPBase):
         self._running_model_list = self.create_running_model_list()
         # Create the terminal model
         self._terminal_model = self.create_terminal_model()
+        # Create the shooting problem
+        self._problem = crocoddyl.ShootingProblem(
+            np.zeros(
+                self._robot_models.robot_model.nq + self._robot_models.robot_model.nv
+            ),
+            self._running_model_list,
+            self._terminal_model,
+        )
+        # Create solver + callbacks
+        self._solver = mim_solvers.SolverCSQP(self._problem)
+
+        # Merit function
+        self._solver.use_filter_line_search = self._ocp_params.use_filter_line_search
+
+        # Parameters of the solver
+        self._solver.termination_tolerance = self._ocp_params.termination_tolerance
+        self._solver.max_qp_iters = self._ocp_params.qp_iters
+        self._solver.eps_abs = self._ocp_params.eps_abs
+        self._solver.eps_rel = self._ocp_params.eps_rel
+        if self._ocp_params.callbacks:
+            self._solver.setCallbacks(
+                [mim_solvers.CallbackVerbose(), mim_solvers.CallbackLogger()]
+            )
 
     @property
     def horizon_size(self) -> int:
@@ -76,27 +99,8 @@ class OCPBaseCroco(OCPBase):
             x_warmstart (list[npt.NDArray[np.float64]]): Predicted states for the OCP.
             u_warmstart (list[npt.NDArray[np.float64]]): Predicted control inputs for the OCP.
         """
-        # Creating the warmstart lists for the solver
-        if self._solver is None:
-            # Create the shooting problem
-            self._problem = crocoddyl.ShootingProblem(
-                x0, self._running_model_list, self._terminal_model
-            )
-            # Create solver + callbacks
-            self._solver = mim_solvers.SolverCSQP(self._problem)
-
-            # Merit function
-            self._solver.use_filter_line_search = (
-                self._ocp_params.use_filter_line_search
-            )
-
-            # Parameters of the solver
-            self._solver.termination_tolerance = self._ocp_params.termination_tolerance
-            self._solver.max_qp_iters = self._ocp_params.qp_iters
-            self._solver.eps_abs = self._ocp_params.eps_abs
-            self._solver.eps_rel = self._ocp_params.eps_rel
-            self._solver.with_callbacks = self._ocp_params.callbacks
-
+        # Set the initial state
+        self._problem.x0 = x0
         # Solve the OCP
         self._solver.solve(
             [x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters
