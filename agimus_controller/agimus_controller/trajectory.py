@@ -1,5 +1,5 @@
-from collections import deque
 from dataclasses import dataclass
+from itertools import accumulate
 import numpy as np
 import numpy.typing as npt
 from pinocchio import SE3, Force
@@ -17,6 +17,56 @@ class TrajectoryPoint:
     forces: dict[Force] | None = None  # Dictionary of pinocchio.Force
     end_effector_poses: dict[SE3] | None = None  # Dictionary of pinocchio.SE3
 
+    def __eq__(self, other):
+        if not isinstance(other, TrajectoryPoint):
+            return False
+
+        # Compare scalar values directly
+        if self.time_ns != other.time_ns:
+            return False
+
+        # Compare numpy arrays (ignoring None values)
+        if (
+            self.robot_configuration is not None
+            and other.robot_configuration is not None
+        ):
+            if not np.array_equal(self.robot_configuration, other.robot_configuration):
+                return False
+        elif (
+            self.robot_configuration is not None
+            or other.robot_configuration is not None
+        ):
+            return False
+
+        if self.robot_velocity is not None and other.robot_velocity is not None:
+            if not np.array_equal(self.robot_velocity, other.robot_velocity):
+                return False
+        elif self.robot_velocity is not None or other.robot_velocity is not None:
+            return False
+
+        if self.robot_acceleration is not None and other.robot_acceleration is not None:
+            if not np.array_equal(self.robot_acceleration, other.robot_acceleration):
+                return False
+        elif (
+            self.robot_acceleration is not None or other.robot_acceleration is not None
+        ):
+            return False
+
+        if self.robot_effort is not None and other.robot_effort is not None:
+            if not np.array_equal(self.robot_effort, other.robot_effort):
+                return False
+        elif self.robot_effort is not None or other.robot_effort is not None:
+            return False
+
+        # Compare dictionaries (forces and end_effector_poses)
+        if self.forces != other.forces:
+            return False
+
+        if self.end_effector_poses != other.end_effector_poses:
+            return False
+
+        return True
+
 
 @dataclass
 class TrajectoryPointWeights:
@@ -29,6 +79,59 @@ class TrajectoryPointWeights:
     w_forces: dict[npt.NDArray[np.float64]] | None = None
     w_end_effector_poses: dict[npt.NDArray[np.float64]] | None = None
 
+    def __eq__(self, other):
+        if not isinstance(other, TrajectoryPointWeights):
+            return False
+
+        # Compare numpy arrays (weights)
+        if (
+            self.w_robot_configuration is not None
+            and other.w_robot_configuration is not None
+        ):
+            if not np.array_equal(
+                self.w_robot_configuration, other.w_robot_configuration
+            ):
+                return False
+        elif (
+            self.w_robot_configuration is not None
+            or other.w_robot_configuration is not None
+        ):
+            return False
+
+        if self.w_robot_velocity is not None and other.w_robot_velocity is not None:
+            if not np.array_equal(self.w_robot_velocity, other.w_robot_velocity):
+                return False
+        elif self.w_robot_velocity is not None or other.w_robot_velocity is not None:
+            return False
+
+        if (
+            self.w_robot_acceleration is not None
+            and other.w_robot_acceleration is not None
+        ):
+            if not np.array_equal(
+                self.w_robot_acceleration, other.w_robot_acceleration
+            ):
+                return False
+        elif (
+            self.w_robot_acceleration is not None
+            or other.w_robot_acceleration is not None
+        ):
+            return False
+
+        if self.w_robot_effort is not None and other.w_robot_effort is not None:
+            if not np.array_equal(self.w_robot_effort, other.w_robot_effort):
+                return False
+        elif self.w_robot_effort is not None or other.w_robot_effort is not None:
+            return False
+
+        if self.w_forces != other.w_forces:
+            return False
+
+        if self.w_end_effector_poses != other.w_end_effector_poses:
+            return False
+
+        return True
+
 
 @dataclass
 class WeightedTrajectoryPoint:
@@ -36,6 +139,19 @@ class WeightedTrajectoryPoint:
 
     point: TrajectoryPoint
     weight: TrajectoryPointWeights
+
+    def __eq__(self, other):
+        if not isinstance(other, WeightedTrajectoryPoint):
+            return False
+
+        # Compare the 'point' and 'weight' attributes
+        if self.point != other.point:
+            return False
+
+        if self.weight != other.weight:
+            return False
+
+        return True
 
 
 class TrajectoryBuffer(list):
@@ -45,12 +161,14 @@ class TrajectoryBuffer(list):
         while len(self) > 2 and self[0].point.time_ns + 2 * dt_ns < current_time_ns:
             self.pop(0)
 
-    def horizon(self, horizon_size, dt, horizon_dts):
-        # TBD improve this implementation in case the dt_mpc != dt_ocp
-        if len(horizon_dts) != 1:
-            assert len(horizon_size) == len(horizon_dts) and "Size must match."
-
-        indexes = [0] * horizon_size
-        for index, factor in zip(indexes, horizon_dts):
-            index += factor
-        return self[indexes]
+    def horizon(self, horizon_size, dt, horizon_dts=list()):
+        # Ensure sizes match when `horizon_dts` is provided
+        if horizon_dts:
+            assert len(horizon_size) == len(
+                horizon_dts
+            ), "Size of horizon_size and horizon_dts must match."
+            # Compute cumulative sum of `horizon_dts` for indexes
+            indexes = list(accumulate(horizon_dts))
+        else:
+            indexes = range(horizon_size)
+        return [self[i] for i in indexes]
