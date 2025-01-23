@@ -11,62 +11,6 @@ from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
 
 
-class TestOCPBaseCroco(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        # Mock the RobotModelFactory and OCPParamsCrocoBase
-        robot = robex.load("panda")
-        urdf_path = Path(robot.urdf)
-        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
-        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
-        free_flyer = False
-        locked_joint_names = ["panda_joint1", "panda_joint2"]
-        reduced_nq = robot.model.nq - len(locked_joint_names)
-        full_q0 = np.zeros(robot.model.nq)
-        armature = np.full(reduced_nq, 0.1)
-        q0 = np.zeros(robot.model.nq - len(locked_joint_names))
-        # Store shared initial parameters
-        self.params = RobotModelParameters(
-            full_q0=full_q0,
-            q0=q0,
-            free_flyer=free_flyer,
-            locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
-            urdf_meshes_dir=urdf_meshes_dir,
-            collision_as_capsule=True,
-            self_collision=True,
-            armature=armature,
-        )
-
-        self.robot_models = RobotModels(self.params)
-
-        self.ocp_params = OCPParamsBaseCroco(
-            dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
-        )
-
-        # Create a concrete implementation of OCPBaseCroco
-        class TestOCPCroco(OCPBaseCroco):
-            def create_running_model_list(self):
-                return None
-
-            def create_terminal_model(self):
-                return None
-
-            def set_reference_weighted_trajectory(self, horizon_size):
-                return None
-
-        self.ocp = TestOCPCroco(self.robot_models, self.ocp_params)
-
-    def test_horizon_size(self):
-        """Test the horizon_size property."""
-        self.assertEqual(self.ocp.horizon_size, self.ocp_params.horizon_size)
-
-    def test_dt(self):
-        """Test the dt property."""
-        self.assertAlmostEqual(self.ocp.dt, self.ocp_params.dt)
-
-
 class TestSimpleOCPCroco(unittest.TestCase):
     class TestOCPCroco(OCPBaseCroco):
         def create_running_model_list(self):
@@ -156,7 +100,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
             terminal_model.differential.armature = self._robot_models.armature
             return terminal_model
 
-        def set_reference_weighted_trajectory(self, horizon_size):
+        def set_reference_weighted_trajectory(self, reference_weighted_trajectory):
             ### Not implemented in this OCP example.
             return None
 
@@ -179,8 +123,8 @@ class TestSimpleOCPCroco(unittest.TestCase):
             full_q0=full_q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
+            urdf=urdf_path,
+            srdf=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
@@ -193,7 +137,7 @@ class TestSimpleOCPCroco(unittest.TestCase):
 
         # Set mock parameters
         self.ocp_params = OCPParamsBaseCroco(
-            dt=0.1, horizon_size=10, solver_iters=100, callbacks=True
+            dt=0.1, horizon_size=10, solver_iters=100, callbacks=False
         )
         self.state_reg = np.concatenate(
             (pin.neutral(self.robot_model), np.zeros(self.robot_model.nv))
@@ -207,7 +151,8 @@ class TestSimpleOCPCroco(unittest.TestCase):
         # Create a concrete implementation of OCPBaseCroco
         self.ocp = self.TestOCPCroco(self.robot_models, self.ocp_params)
         self.ocp.solve(self.state_reg, self.state_warmstart, self.control_warmstart)
-        self.save_results()
+        # Uncomment to re-generate the simple_ocp_crocco_results.pkl
+        # self.save_results()
 
     @classmethod
     def save_results(self):
@@ -216,12 +161,16 @@ class TestSimpleOCPCroco(unittest.TestCase):
             "ricatti_gains": self.ocp.ocp_results.ricatti_gains.tolist(),
             "feed_forward_terms": self.ocp.ocp_results.feed_forward_terms.tolist(),
         }
-
-        with open("ressources/simple_ocp_croco_results.pkl", "wb") as handle:
+        data_file = str(
+            Path(__file__).parent / "ressources" / "simple_ocp_croco_results.pkl"
+        )
+        with open(data_file, "wb") as handle:
             pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def test_check_results(self):
-        file_path = "ressources/simple_ocp_croco_results.pkl"
+        file_path = str(
+            Path(__file__).parent / "ressources" / "simple_ocp_croco_results.pkl"
+        )
         # Load the results
         with open(file_path, "rb") as handle:
             results = pickle.load(handle)
@@ -248,6 +197,14 @@ class TestSimpleOCPCroco(unittest.TestCase):
                 self.ocp.ocp_results.feed_forward_terms.tolist()[iter],
                 err_msg="Feed forward term are not equal",
             )
+
+    def test_horizon_size(self):
+        """Test the horizon_size property."""
+        self.assertEqual(self.ocp.horizon_size, self.ocp_params.horizon_size)
+
+    def test_dt(self):
+        """Test the dt property."""
+        self.assertAlmostEqual(self.ocp.dt, self.ocp_params.dt)
 
 
 if __name__ == "__main__":

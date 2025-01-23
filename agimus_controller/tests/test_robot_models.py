@@ -1,4 +1,5 @@
 from copy import deepcopy
+from os import environ
 from os.path import dirname
 import unittest
 from pathlib import Path
@@ -10,90 +11,84 @@ from agimus_controller.factory.robot_model import RobotModelParameters, RobotMod
 
 
 class TestRobotModelParameters(unittest.TestCase):
+    def setUp(self):
+        robot = robex.load("panda")
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        self.valid_args = {
+            "full_q0": np.array([0.0, 1.0, 2.0]),
+            "urdf": urdf_path,
+            "srdf": srdf_path,
+            "urdf_meshes_dir": urdf_path.parent.parent.parent.parent.parent,
+            "free_flyer": False,
+            "full_q0": np.zeros(robot.model.nq),
+            "locked_joint_names": ["panda_joint1", "panda_joint2"],
+            "collision_as_capsule": True,
+            "self_collision": True,
+        }
+        reduced_nq = robot.model.nq - len(self.valid_args["locked_joint_names"])
+        self.valid_args["q0"] = np.zeros(reduced_nq)
+        self.valid_args["armature"] = np.linspace(0.1, 0.9, reduced_nq)
+
     def test_valid_initialization(self):
         """Test that the dataclass initializes correctly with valid input."""
 
-        robot = robex.load("panda")
-        urdf_path = Path(robot.urdf)
-        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
-        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
-        free_flyer = False
-        full_q0 = np.zeros(robot.model.nq)
-        locked_joint_names = ["panda_joint1", "panda_joint2"]
-        reduced_nq = robot.model.nq - len(locked_joint_names)
-        q0 = np.zeros(reduced_nq)
-        params = RobotModelParameters(
-            full_q0=full_q0,
-            q0=q0,
-            free_flyer=free_flyer,
-            locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
-            urdf_meshes_dir=urdf_meshes_dir,
-            collision_as_capsule=True,
-            self_collision=True,
-            armature=np.linspace(0.1, 0.9, reduced_nq),
+        self.valid_args["collision_as_capsule"] = True
+        self.valid_args["self_collision"] = True
+
+        params = RobotModelParameters(**deepcopy(self.valid_args))
+        self.assertEqual(params.free_flyer, self.valid_args["free_flyer"])
+        self.assertEqual(
+            params.locked_joint_names, self.valid_args["locked_joint_names"]
         )
-        self.assertTrue(np.array_equal(params.full_q0, full_q0))
-        self.assertTrue(np.array_equal(params.q0, q0))
-        self.assertEqual(params.free_flyer, free_flyer)
-        self.assertEqual(params.locked_joint_names, ["panda_joint1", "panda_joint2"])
-        self.assertEqual(params.urdf_path, urdf_path.absolute().as_posix())
-        self.assertEqual(params.srdf_path, srdf_path.absolute().as_posix())
-        self.assertEqual(params.urdf_meshes_dir, urdf_meshes_dir.absolute().as_posix())
+        self.assertEqual(params.urdf, self.valid_args["urdf"])
+        self.assertEqual(params.srdf, self.valid_args["srdf"])
+        self.assertEqual(params.urdf_meshes_dir, self.valid_args["urdf_meshes_dir"])
         self.assertTrue(params.collision_as_capsule)
         self.assertTrue(params.self_collision)
-        self.assertTrue(
-            np.array_equal(params.armature, np.linspace(0.1, 0.9, reduced_nq))
-        )
+        np.testing.assert_array_equal(params.full_q0, self.valid_args["full_q0"])
+        np.testing.assert_array_equal(params.q0, self.valid_args["q0"])
+        np.testing.assert_array_equal(params.armature, self.valid_args["armature"])
 
     def test_empty_q0_raises_error(self):
         """Test that an empty q0 raises a ValueError."""
+        self.valid_args["q0"] = np.array([])
         with self.assertRaises(ValueError):
-            RobotModelParameters(q0=np.array([]))
+            RobotModelParameters(**self.valid_args)
 
     def test_armature_default_value(self):
         """Test that the armature is set to default if not provided."""
-        robot = robex.load("panda")
-        urdf_path = Path(robot.urdf)
-        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
-        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
-        locked_joint_names = ["panda_joint1", "panda_joint2"]
-        free_flyer = False
-        full_q0 = np.zeros(robot.model.nq)
-        locked_joint_names = ["panda_joint1", "panda_joint2"]
-        q0 = np.zeros(robot.model.nq - len(locked_joint_names))
-        params = RobotModelParameters(
-            full_q0=full_q0,
-            q0=q0,
-            free_flyer=free_flyer,
-            locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
-            urdf_meshes_dir=urdf_meshes_dir,
-            collision_as_capsule=True,
-            self_collision=True,
+        del self.valid_args["armature"]
+        params = RobotModelParameters(**self.valid_args)
+        np.testing.assert_array_equal(
+            params.armature, np.zeros_like(self.valid_args["q0"])
         )
-        self.assertTrue(np.array_equal(params.armature, np.zeros_like(q0)))
 
     def test_armature_mismatched_shape_raises_error(self):
         """Test that a mismatched armature raises a ValueError."""
-        full_q0 = np.array([0.0, 1.0, 2.0])
-        armature = np.array([0.1, 0.2])  # Wrong shape
+        self.valid_args["full_q0"] = np.array([0.0, 1.0, 2.0])
+        self.valid_args["armature"] = np.array([0.1, 0.2])  # Wrong shape
         with self.assertRaises(ValueError):
-            RobotModelParameters(full_q0=full_q0, armature=armature)
+            RobotModelParameters(**self.valid_args)
 
-    def test_invalid_urdf_path_raises_error(self):
+    def test_invalid_urdf_raises_error(self):
         """Test that an invalid URDF path raises a ValueError."""
-        full_q0 = np.array([0.0, 1.0, 2.0])
-        with self.assertRaises(ValueError):
-            RobotModelParameters(full_q0=full_q0, urdf_path=Path("invalid_path"))
+        for val in [Path("invalid_path"), ""]:
+            self.valid_args["urdf"] = val
+            with self.assertRaises(ValueError):
+                RobotModelParameters(**self.valid_args)
 
-    def test_invalid_srdf_path_type_raises_error(self):
+    def test_invalid_srdf_type_raises_error(self):
         """Test that a non-string SRDF path raises a ValueError."""
-        full_q0 = np.array([0.0, 1.0, 2.0])
+        self.valid_args["srdf"] = Path("invalid_path")
         with self.assertRaises(ValueError):
-            RobotModelParameters(full_q0=full_q0, srdf_path=Path("invalid_path"))
+            RobotModelParameters(**self.valid_args)
+
+    def test_invalid_urdf_mesh_path_type_raises_error(self):
+        """Test that a non-string SRDF path raises a ValueError."""
+        self.valid_args["urdf_meshes_dir"] = Path("invalid_path")
+        with self.assertRaises(ValueError):
+            RobotModelParameters(**self.valid_args)
 
 
 class TestRobotModels(unittest.TestCase):
@@ -117,8 +112,8 @@ class TestRobotModels(unittest.TestCase):
             q0=q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
-            urdf_path=urdf_path,
-            srdf_path=srdf_path,
+            urdf=urdf_path,
+            srdf=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=True,
@@ -133,8 +128,43 @@ class TestRobotModels(unittest.TestCase):
         self.params = deepcopy(self.params)
         self.robot_models = RobotModels(self.params)
 
+    def test_no_meshes(self):
+        self.params.urdf_meshes_dir = None
+        # Clear paths where pinocchio searches for meshes
+        environ["ROS_PACKAGE_PATH"] = ""
+        environ["AMENT_PREFIX_PATH"] = ""
+        with self.assertRaises(ValueError):
+            RobotModels(self.params)
+
+    def test_load_urdf_from_string(self):
+        params = deepcopy(self.params)
+        with open(Path(robex.load("panda").urdf), "r") as file:
+            params.urdf = file.read().replace("\n", "")
+
+        robot_models_str = RobotModels(params)
+        self.assertEqual(
+            robot_models_str.full_robot_model,
+            self.robot_models.full_robot_model,
+        )
+        self.assertEqual(
+            robot_models_str.robot_model,
+            self.robot_models.robot_model,
+        )
+        np.testing.assert_array_equal(robot_models_str.q0, self.robot_models.q0)
+        np.testing.assert_array_equal(
+            robot_models_str.full_q0, self.robot_models.full_q0
+        )
+        self.assertEqual(
+            robot_models_str.collision_model.ngeoms,
+            self.robot_models.collision_model.ngeoms,
+        )
+        self.assertEqual(
+            robot_models_str.visual_model.ngeoms,
+            self.robot_models.visual_model.ngeoms,
+        )
+
     def test_initial_configuration(self):
-        self.assertTrue(np.array_equal(self.robot_models.q0, self.params.q0))
+        np.testing.assert_array_equal(self.robot_models.q0, self.params.q0)
 
     def test_load_models_populates_models(self):
         self.robot_models.load_models()
@@ -157,9 +187,7 @@ class TestRobotModels(unittest.TestCase):
             self.robot_models._apply_locked_joints()
 
     def test_armature_property(self):
-        self.assertTrue(
-            np.array_equal(self.robot_models.armature, self.params.armature)
-        )
+        np.testing.assert_array_equal(self.robot_models.armature, self.params.armature)
 
     def test_collision_pairs(self):
         """Checking that the collision model has collision pairs."""
