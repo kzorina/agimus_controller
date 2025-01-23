@@ -46,9 +46,9 @@ class TestRobotModelParameters(unittest.TestCase):
         self.assertEqual(params.urdf_meshes_dir, self.valid_args["urdf_meshes_dir"])
         self.assertTrue(params.collision_as_capsule)
         self.assertTrue(params.self_collision)
-        self.assertTrue(np.array_equal(params.full_q0, self.valid_args["full_q0"]))
-        self.assertTrue(np.array_equal(params.q0, self.valid_args["q0"]))
-        self.assertTrue(np.array_equal(params.armature, self.valid_args["armature"]))
+        np.testing.assert_array_equal(params.full_q0, self.valid_args["full_q0"])
+        np.testing.assert_array_equal(params.q0, self.valid_args["q0"])
+        np.testing.assert_array_equal(params.armature, self.valid_args["armature"])
 
     def test_empty_q0_raises_error(self):
         """Test that an empty q0 raises a ValueError."""
@@ -60,8 +60,8 @@ class TestRobotModelParameters(unittest.TestCase):
         """Test that the armature is set to default if not provided."""
         del self.valid_args["armature"]
         params = RobotModelParameters(**self.valid_args)
-        self.assertTrue(
-            np.array_equal(params.armature, np.zeros_like(self.valid_args["q0"]))
+        np.testing.assert_array_equal(
+            params.armature, np.zeros_like(self.valid_args["q0"])
         )
 
     def test_armature_mismatched_shape_raises_error(self):
@@ -150,9 +150,9 @@ class TestRobotModels(unittest.TestCase):
             robot_models_str.robot_model,
             self.robot_models.robot_model,
         )
-        self.assertTrue(np.array_equal(robot_models_str.q0, self.robot_models.q0))
-        self.assertTrue(
-            np.array_equal(robot_models_str.full_q0, self.robot_models.full_q0)
+        np.testing.assert_array_equal(robot_models_str.q0, self.robot_models.q0)
+        np.testing.assert_array_equal(
+            robot_models_str.full_q0, self.robot_models.full_q0
         )
         self.assertEqual(
             robot_models_str.collision_model.ngeoms,
@@ -164,7 +164,7 @@ class TestRobotModels(unittest.TestCase):
         )
 
     def test_initial_configuration(self):
-        self.assertTrue(np.array_equal(self.robot_models.q0, self.params.q0))
+        np.testing.assert_array_equal(self.robot_models.q0, self.params.q0)
 
     def test_load_models_populates_models(self):
         self.robot_models.load_models()
@@ -187,9 +187,7 @@ class TestRobotModels(unittest.TestCase):
             self.robot_models._apply_locked_joints()
 
     def test_armature_property(self):
-        self.assertTrue(
-            np.array_equal(self.robot_models.armature, self.params.armature)
-        )
+        np.testing.assert_array_equal(self.robot_models.armature, self.params.armature)
 
     def test_collision_pairs(self):
         """Checking that the collision model has collision pairs."""
