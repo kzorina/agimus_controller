@@ -24,16 +24,15 @@ class TestOCPGoalReaching(unittest.TestCase):
         free_flyer = False
         locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
         reduced_nq = robot.model.nq - len(locked_joint_names)
-        full_q0 = pin.randomConfiguration(robot.model)
-        q0 = full_q0[:reduced_nq]
+        moving_joint_names = set(robot.model.names) - set(locked_joint_names + ['universe'])
+        q0 = pin.randomConfiguration(robot.model)
         armature = np.full(reduced_nq, 0.1)
 
         # Store shared initial parameters
         self.params = RobotModelParameters(
             q0=q0,
-            full_q0=full_q0,
             free_flyer=free_flyer,
-            locked_joint_names=locked_joint_names,
+            moving_joint_names=moving_joint_names,
             urdf=urdf,
             srdf=srdf,
             urdf_meshes_dir=urdf_meshes_dir,

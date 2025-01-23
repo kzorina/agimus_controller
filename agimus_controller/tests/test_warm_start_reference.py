@@ -44,7 +44,7 @@ class TestWarmStart(unittest.TestCase):
             [
                 pin.rnea(rmodel, rdata, q, v, a)
                 for q, v, a in zip(random_qs, random_vs, random_acs)
-            ]
+            ][:-1]
         )
 
         # Act

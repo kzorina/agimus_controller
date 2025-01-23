@@ -142,8 +142,8 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             # Modify running cost weight
             state_reg.cost.activation.weights = np.concatenate(
                 (
-                    reference_weighted_trajectory[i].weight.w_robot_configuration,
-                    reference_weighted_trajectory[i].weight.w_robot_velocity,
+                    reference_weighted_trajectory[i].weights.w_robot_configuration,
+                    reference_weighted_trajectory[i].weights.w_robot_velocity,
                 )
             )
             # Modify control regularization cost
@@ -155,13 +155,13 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             # Modify running cost weight
             ctrl_reg.cost.activation.weights = reference_weighted_trajectory[
                 i
-            ].weight.w_robot_effort
+            ].weights.w_robot_effort
             # Modify end effector frame cost
 
             # setting running model goal tracking reference, weight and frame id
             # assuming exactly one end-effector tracking reference was passed to the trajectory
             ee_names = list(
-                iter(reference_weighted_trajectory[i].weight.w_end_effector_poses)
+                iter(reference_weighted_trajectory[i].weights.w_end_effector_poses)
             )
             if len(ee_names) > 1:
                 raise ValueError("Only one end-effector tracking reference is allowed.")
@@ -173,7 +173,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             ee_cost.cost.residual.id = ee_id
             ee_cost.cost.activation.weights = reference_weighted_trajectory[
                 i
-            ].weight.w_end_effector_poses[ee_name]
+            ].weights.w_end_effector_poses[ee_name]
             ee_cost.cost.residual.reference = reference_weighted_trajectory[
                 i
             ].point.end_effector_poses[ee_name]
@@ -191,14 +191,14 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
 
         state_reg.cost.activation.weights = np.concatenate(
             (
-                reference_weighted_trajectory[i].weight.w_robot_configuration,
-                reference_weighted_trajectory[i].weight.w_robot_velocity,
+                reference_weighted_trajectory[i].weights.w_robot_configuration,
+                reference_weighted_trajectory[i].weights.w_robot_velocity,
             )
         )
         # Modify end effector frame cost
 
         ee_names = list(
-            iter(reference_weighted_trajectory[i].weight.w_end_effector_poses)
+            iter(reference_weighted_trajectory[i].weights.w_end_effector_poses)
         )
         ee_name = ee_names[0]
         ee_cost = self._solver.problem.runningModels[-1].differential.costs.costs[
@@ -207,7 +207,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
         ee_cost.cost.residual.id = ee_id
         ee_cost.cost.activation.weights = reference_weighted_trajectory[
             -1
-        ].weight.w_end_effector_poses[ee_name]
+        ].weights.w_end_effector_poses[ee_name]
         ee_cost.cost.residual.reference = reference_weighted_trajectory[
             -1
         ].point.end_effector_poses[ee_name]

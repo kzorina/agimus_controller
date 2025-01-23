@@ -36,14 +36,18 @@ def mpc_msg_to_weighted_traj_point(msg: MpcInput, time_ns: int) -> WeightedTraje
         robot_configuration=msg.q,
         robot_velocity=msg.qdot,
         robot_acceleration=msg.qddot,
+        robot_effort=np.array(msg.robot_effort, dtype=np.float64),
+        # robot_effort=np.zeros(7),
         end_effector_poses={msg.ee_frame_name: pin.XYZQUATToSE3(xyz_quat_pose)},
     )
 
     traj_weights = TrajectoryPointWeights(
-        w_robot_configuration=msg.q_w,
-        w_robot_velocity=msg.qdot_w,
-        w_robot_acceleration=msg.qddot_w,
-        w_end_effector_poses=msg.pose_w,
+        w_robot_configuration=msg.w_q,
+        w_robot_velocity=msg.w_qdot,
+        w_robot_acceleration=msg.w_qddot,
+        w_robot_effort=np.array(msg.w_robot_effort, dtype=np.float64),
+        # w_robot_effort=np.ones(7) * 1e-5,
+        w_end_effector_poses={msg.ee_frame_name: msg.w_pose},
     )
 
     return WeightedTrajectoryPoint(point=traj_point, weights=traj_weights)

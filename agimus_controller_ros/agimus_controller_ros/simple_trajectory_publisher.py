@@ -74,25 +74,13 @@ class MpcInputDummyPublisher(Node):
         msg = MpcInput()
         msg.q = [float(val) for val in self.q][:croco_nq]
 
-        msg.qdot = [0.0] * croco_nq
-        msg.qddot = [0.0] * croco_nq
-        msg.q_w = [1e1] * croco_nq
-        msg.qdot_w = [1e-1] * croco_nq
-        msg.qddot_w = [1e-2] * croco_nq
-
-        # # Create the message
-        # msg = MpcInput()
-        # msg.q = [float(val) for val in self.q]
-
-        # msg.qdot = [0.0] * len(
-        #     self.q
-        # )  # TODO: only works for robot with only revolute joints
-        # msg.qddot = [0.0] * len(
-        #     self.q
-        # )  # TODO: only works for robot with only revolute joints
-        # msg.q_w = [1e2] * len(self.q)
-        # msg.qdot_w = [1e-3] * len(self.q)
-        # msg.qddot_w = [1e-4] * len(self.q)
+        msg.qdot = [0.0] * croco_nq # TODO: only works for robot with only revolute joints
+        msg.qddot = [0.0] * croco_nq # TODO: only works for robot with only revolute joints
+        msg.robot_effort = [0.0] * croco_nq
+        msg.w_q = [1e-1] * croco_nq
+        msg.w_qdot = [1e-2] * croco_nq
+        msg.w_qddot = [1e-3] * croco_nq
+        msg.w_robot_effort = [1e-4] * croco_nq
 
         pose = Pose()
         pose.position.x = xyz_quatxyzw[0]
@@ -103,7 +91,7 @@ class MpcInputDummyPublisher(Node):
         pose.orientation.z = xyz_quatxyzw[5]
         pose.orientation.w = xyz_quatxyzw[6]
         msg.pose = pose
-        msg.pose_w = [1e-6] * 6
+        msg.w_pose = [1e-4] * 6
 
         msg.ee_frame_name = self.ee_frame_name
 

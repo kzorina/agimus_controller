@@ -27,7 +27,7 @@ from linear_feedback_controller_msgs.msg import Control, Sensor
 
 from agimus_controller.mpc import MPC
 from agimus_controller.mpc_data import OCPResults
-from agimus_controller.ocp.ocp_croco_joint_state import OCPCrocoJointState
+from agimus_controller.ocp.ocp_croco_goal_reaching import OCPCrocoGoalReaching
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 from agimus_controller.warm_start_reference import WarmStartReference
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
@@ -137,7 +137,7 @@ class AgimusController(Node):
             qp_iters=self.params.ocp.max_qp_iter,
         )
 
-        ocp = OCPCrocoJointState(self.robot_models, ocp_params)
+        ocp = OCPCrocoGoalReaching(self.robot_models, ocp_params)
         ws = WarmStartReference()
         ws.setup(self.robot_models._robot_model)
         self.mpc = MPC()
@@ -166,8 +166,8 @@ class AgimusController(Node):
 
         np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
         params = RobotModelParameters(
-            urdf_xml=msg.data,
-            srdf_path=Path(temp_srdf_path),
+            urdf=msg.data,
+            srdf=Path(temp_srdf_path),
             q0=np_sensor_msg.joint_state.position,  
             free_flyer=self.params.free_flyer,
             collision_as_capsule=self.params.collision_as_capsule,

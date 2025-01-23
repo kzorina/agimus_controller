@@ -16,18 +16,16 @@ class TestRobotModelParameters(unittest.TestCase):
         urdf_path = Path(robot.urdf)
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         self.valid_args = {
-            "full_q0": np.array([0.0, 1.0, 2.0]),
+            "q0": np.array([0.0, 1.0, 2.0]),
             "urdf": urdf_path,
             "srdf": srdf_path,
             "urdf_meshes_dir": urdf_path.parent.parent.parent.parent.parent,
             "free_flyer": False,
-            "full_q0": np.zeros(robot.model.nq),
-            "locked_joint_names": ["panda_joint1", "panda_joint2"],
+            "moving_joint_names": [f"panda_joint{x}" for x in range(3, 8)],
             "collision_as_capsule": True,
             "self_collision": True,
         }
-        reduced_nq = robot.model.nq - len(self.valid_args["locked_joint_names"])
-        self.valid_args["q0"] = np.zeros(reduced_nq)
+        reduced_nq = len(self.valid_args["moving_joint_names"])
         self.valid_args["armature"] = np.linspace(0.1, 0.9, reduced_nq)
 
     def test_valid_initialization(self):
@@ -39,14 +37,13 @@ class TestRobotModelParameters(unittest.TestCase):
         params = RobotModelParameters(**deepcopy(self.valid_args))
         self.assertEqual(params.free_flyer, self.valid_args["free_flyer"])
         self.assertEqual(
-            params.locked_joint_names, self.valid_args["locked_joint_names"]
+            params.moving_joint_names, self.valid_args["moving_joint_names"]
         )
         self.assertEqual(params.urdf, self.valid_args["urdf"])
         self.assertEqual(params.srdf, self.valid_args["srdf"])
         self.assertEqual(params.urdf_meshes_dir, self.valid_args["urdf_meshes_dir"])
         self.assertTrue(params.collision_as_capsule)
         self.assertTrue(params.self_collision)
-        np.testing.assert_array_equal(params.full_q0, self.valid_args["full_q0"])
         np.testing.assert_array_equal(params.q0, self.valid_args["q0"])
         np.testing.assert_array_equal(params.armature, self.valid_args["armature"])
 
@@ -61,12 +58,12 @@ class TestRobotModelParameters(unittest.TestCase):
         del self.valid_args["armature"]
         params = RobotModelParameters(**self.valid_args)
         np.testing.assert_array_equal(
-            params.armature, np.zeros_like(self.valid_args["q0"])
+            params.armature, np.zeros(len(self.valid_args["moving_joint_names"]))
         )
 
     def test_armature_mismatched_shape_raises_error(self):
         """Test that a mismatched armature raises a ValueError."""
-        self.valid_args["full_q0"] = np.array([0.0, 1.0, 2.0])
+        self.valid_args["q0"] = np.array([0.0, 1.0, 2.0])
         self.valid_args["armature"] = np.array([0.1, 0.2])  # Wrong shape
         with self.assertRaises(ValueError):
             RobotModelParameters(**self.valid_args)
@@ -103,15 +100,13 @@ class TestRobotModels(unittest.TestCase):
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
-        full_q0 = np.zeros(robot.model.nq)
-        locked_joint_names = ["panda_joint1", "panda_joint2"]
-        reduced_nq = robot.model.nq - len(locked_joint_names)
-        q0 = np.zeros(reduced_nq)
+        q0 = np.zeros(robot.model.nq)
+        moving_joint_names = [f"panda_joint{x}" for x in range(3, 8)]
+        reduced_nq = len(moving_joint_names)
         cls.params = RobotModelParameters(
-            full_q0=full_q0,
             q0=q0,
             free_flyer=free_flyer,
-            locked_joint_names=locked_joint_names,
+            moving_joint_names=moving_joint_names,
             urdf=urdf_path,
             srdf=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
@@ -150,10 +145,8 @@ class TestRobotModels(unittest.TestCase):
             robot_models_str.robot_model,
             self.robot_models.robot_model,
         )
-        np.testing.assert_array_equal(robot_models_str.q0, self.robot_models.q0)
-        np.testing.assert_array_equal(
-            robot_models_str.full_q0, self.robot_models.full_q0
-        )
+        np.testing.assert_array_equal(robot_models_str._q0, self.robot_models._q0)
+
         self.assertEqual(
             robot_models_str.collision_model.ngeoms,
             self.robot_models.collision_model.ngeoms,
@@ -164,7 +157,7 @@ class TestRobotModels(unittest.TestCase):
         )
 
     def test_initial_configuration(self):
-        np.testing.assert_array_equal(self.robot_models.q0, self.params.q0)
+        np.testing.assert_array_equal(self.robot_models._q0, self.params.q0)
 
     def test_load_models_populates_models(self):
         self.robot_models.load_models()
@@ -176,15 +169,8 @@ class TestRobotModels(unittest.TestCase):
         self.robot_models.load_models()
         self.assertTrue(
             self.robot_models.robot_model.nq
-            == self.robot_models.full_robot_model.nq
-            - len(self.params.locked_joint_names)
+            == len(self.params.moving_joint_names)
         )
-
-    def test_invalid_joint_name_raises_value_error(self):
-        # Modify a fresh instance of parameters for this test
-        self.params.locked_joint_names = ["InvalidJoint"]
-        with self.assertRaises(ValueError):
-            self.robot_models._apply_locked_joints()
 
     def test_armature_property(self):
         np.testing.assert_array_equal(self.robot_models.armature, self.params.armature)
