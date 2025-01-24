@@ -74,17 +74,8 @@ class MpcInputDummyPublisher(Node):
         self.pin_model = pin.buildModelFromXML(self.robot_description_msg.data)
         self.pin_data = self.pin_model.createData()
         self.ee_frame_id = self.pin_model.getFrameId(self.ee_frame_name)
-        self.q = pin.neutral(self.pin_model)
-        self.get_logger().warn(f"Model nq is {self.pin_model.nq}")
-        self.get_logger().warn(f"Len of q {len(self.q)}")
-        # TODO fix this, temp hac
-        for i in range(self.pin_model.nq):
-            if i < len(self.q0):
-                self.q[i] = self.q0[i]
-        # self.q = np.zeros(self.pin_model.nq)
-        # self.q[:self.pin_model.nq] = self.q0
+        self.q = self.q0.copy()
         self.get_logger().warn(f"Model loaded, pin_model.nq = {self.pin_model.nq}")
-        self.get_logger().warn(f"Set q to {self.q}.")
 
     def publish_mpc_input(self):
         """
@@ -112,19 +103,19 @@ class MpcInputDummyPublisher(Node):
         u = pin.computeGeneralizedGravity(
             self.pin_model,
             self.pin_data,
-            np.concatenate([self.q0, np.array([0.])])
+            self.q0
         )
 
         # Create the message
 
         msg = MpcInput()
-        msg.w_q = [1.] * self.croco_nq
+        msg.w_q = [1e-1] * self.croco_nq
         msg.w_qdot = [1e-2] * self.croco_nq
         msg.w_qddot = [1e-4] * self.croco_nq
-        msg.w_robot_effort = [1e-4] * self.croco_nq
+        msg.w_robot_effort = [1e-3] * self.croco_nq
         msg.w_pose = [1e-2] * 6
 
-        msg.q = [float(val) for val in self.q][: self.croco_nq]
+        msg.q = list(self.q[: self.croco_nq])
         msg.qdot = [
             0.0
         ] * self.croco_nq  # TODO: only works for robot with only revolute joints
