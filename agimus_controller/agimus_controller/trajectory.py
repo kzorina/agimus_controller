@@ -1,3 +1,4 @@
+import bisect
 from dataclasses import dataclass
 from itertools import accumulate
 import numpy as np
@@ -161,14 +162,38 @@ class TrajectoryBuffer(list):
         while len(self) > 2 and self[0].point.time_ns + 2 * dt_ns < current_time_ns:
             self.pop(0)
 
-    def horizon(self, horizon_size, dt, horizon_dts=list()):
+    def find_next_index(self, current_time_ns):
+        # Use bisect_right directly on the time_ns values without extracting them
+        index = bisect.bisect_right(
+            [wpoint.point.time_ns for wpoint in self], current_time_ns
+        )
+
+        # Ensure that the index is within bounds
+        if index < len(self):
+            return index
+        else:
+            raise LookupError(
+                "current_time_ns is likely greater than the trajectory horizon time."
+            )
+
+    def horizon(self, current_time_ns, horizon_size, horizon_dts=list()):
+        # Starting index:
+        start = self.find_next_index(current_time_ns)
+
         # Ensure sizes match when `horizon_dts` is provided
         if horizon_dts:
             assert len(horizon_size) == len(
                 horizon_dts
             ), "Size of horizon_size and horizon_dts must match."
-            # Compute cumulative sum of `horizon_dts` for indexes
-            indexes = list(accumulate(horizon_dts))
+
+            # Instead of creating an intermediate list,
+            # directly compute the cumulative sum
+            # and use it in the loop
+            cumulative_sum = 0
+            for dt in horizon_dts:
+                cumulative_sum += dt - 1
+                yield self[start + cumulative_sum]  # Yielding on-the-fly
         else:
-            indexes = range(horizon_size)
-        return [self[i] for i in indexes]
+            # Generate range directly and access elements in one go
+            for i in range(horizon_size):
+                yield self[start + i]  # Yielding on-the-fly

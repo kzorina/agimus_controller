@@ -74,7 +74,7 @@ class TestTrajectoryBuffer(unittest.TestCase):
         obj.clear_past(times_ns[-1] / 2, self.dt_ns)
         self.assertEqual(len(obj), times_ns.size / 2 + 2)
 
-    def test_horizon_no_horizon_dts(self):
+    def test_horizon_with_horizon_dts(self):
         """
         Test accessing the horizon from a given trajectory.
         """
@@ -87,6 +87,25 @@ class TestTrajectoryBuffer(unittest.TestCase):
 
         horizon_size = 10
         horizon = obj.horizon(horizon_size, self.dt_ns)
+        np.testing.assert_array_equal(deepcopy(horizon), obj[:horizon_size])
+
+    def test_horizon_with_horizon_dts(self):
+        """
+        Test accessing the horizon from a given trajectory.
+        """
+        obj = TrajectoryBuffer()
+        times_ns = np.arange(
+            0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
+        )
+        for time_ns in times_ns:
+            obj.append(self.generate_random_weighted_states(time_ns))
+
+        horizon_size = 10
+        horizon = obj.horizon(
+            current_time_ns=0,
+            horizon_size=horizon_size,
+            horizon_dts=[1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+        )
         np.testing.assert_array_equal(deepcopy(horizon), obj[:horizon_size])
 
 
