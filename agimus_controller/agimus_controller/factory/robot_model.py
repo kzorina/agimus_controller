@@ -66,12 +66,12 @@ class RobotModelParameters:
             raise ValueError("URDF can not be an empty string.")
         elif isinstance(self.urdf, Path) and not self.urdf.is_file():
             raise ValueError(
-                "URDF must be a valid file path. " f"File: '{self.urdf}' doesn't exist!"
+                f"URDF must be a valid file path. File: '{self.urdf}' doesn't exist!"
             )
 
         if not self.srdf.is_file():
             raise ValueError(
-                "SRDF must be a valid file path. " f"File: '{self.srdf}' doesn't exist!"
+                f"SRDF must be a valid file path. File: '{self.srdf}' doesn't exist!"
             )
 
         if self.urdf_meshes_dir is not None and not self.urdf_meshes_dir.exists():
