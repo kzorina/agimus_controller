@@ -13,8 +13,10 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import numpy.typing as npt
+import typing as T
 
 from agimus_controller.trajectory import TrajectoryPoint
+from agimus_controller.mpc_data import OCPResults
 
 
 class WarmStartBase(ABC):
@@ -28,7 +30,7 @@ class WarmStartBase(ABC):
         """Initialize the WarmStartBase class."""
         super().__init__()
         # Stores the previous solution of the optimization problem.
-        self._previous_solution: list[TrajectoryPoint] = []
+        self._previous_solution: T.Optional[OCPResults] = None
 
     @abstractmethod
     def generate(
@@ -80,13 +82,13 @@ class WarmStartBase(ABC):
         ...
 
     def update_previous_solution(
-        self, previous_solution: list[TrajectoryPoint]
+        self, previous_solution: OCPResults
     ) -> None:
         """Update the stored previous solution.
 
         Stores the solution from a previous optimization cycle to be used as a reference
         or initialization for warm-start generation.
         Args:
-            previous_solution (list[TrajectoryPoint]): The solution of the optimization problem.
+            previous_solution (OCPResuls): The solution of the optimization problem.
         """
         self._previous_solution = previous_solution
