@@ -90,4 +90,4 @@ class WarmStartReference(WarmStartBase):
             f"from provided reference got {u_init.shape}"
         )
         # reduce the size of control ref by one to fit Croco way of doing things
-        return x0, x_init, u_init[:-1]  
+        return x0, x_init, u_init[:-1]

@@ -168,8 +168,7 @@ class TestRobotModels(unittest.TestCase):
     def test_reduced_robot_model(self):
         self.robot_models.load_models()
         self.assertTrue(
-            self.robot_models.robot_model.nq
-            == len(self.params.moving_joint_names)
+            self.robot_models.robot_model.nq == len(self.params.moving_joint_names)
         )
 
     def test_armature_property(self):

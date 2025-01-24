@@ -40,7 +40,9 @@ class MpcInputDummyPublisher(Node):
             qos_profile=qos_profile,
         )
         self.publisher_ = self.create_publisher(MpcInput, "mpc_input", 10)
-        self.timer = self.create_timer(0.01, self.publish_mpc_input)  # Publish at 100 Hz
+        self.timer = self.create_timer(
+            0.01, self.publish_mpc_input
+        )  # Publish at 100 Hz
         self.get_logger().info("MPC Dummy Input Publisher Node started.")
 
     def robot_description_callback(self, msg: String):
@@ -72,16 +74,15 @@ class MpcInputDummyPublisher(Node):
         xyz_quatxyzw = pin.SE3ToXYZQUAT(ee_pose)
 
         u = pin.rnea(
-                self.pin_model,
-                self.pin_data,
-                np.array(self.q[:self.croco_nq]),
-                np.zeros(self.croco_nq),
-                np.zeros(self.croco_nq),
-            )
-        
+            self.pin_model,
+            self.pin_data,
+            np.array(self.q[: self.croco_nq]),
+            np.zeros(self.croco_nq),
+            np.zeros(self.croco_nq),
+        )
 
         # Create the message
-        
+
         msg = MpcInput()
         msg.w_q = [1e-1] * self.croco_nq
         msg.w_qdot = [1e-2] * self.croco_nq
@@ -89,11 +90,14 @@ class MpcInputDummyPublisher(Node):
         msg.w_robot_effort = [1e-4] * self.croco_nq
         msg.w_pose = [1e-2] * 6
 
-        msg.q = [float(val) for val in self.q][:self.croco_nq]
-        msg.qdot = [0.0] * self.croco_nq # TODO: only works for robot with only revolute joints
-        msg.qddot = [0.0] * self.croco_nq # TODO: only works for robot with only revolute joints
+        msg.q = [float(val) for val in self.q][: self.croco_nq]
+        msg.qdot = [
+            0.0
+        ] * self.croco_nq  # TODO: only works for robot with only revolute joints
+        msg.qddot = [
+            0.0
+        ] * self.croco_nq  # TODO: only works for robot with only revolute joints
         msg.robot_effort = list(u)
-        
 
         pose = Pose()
         pose.position.x = xyz_quatxyzw[0]
@@ -104,7 +108,6 @@ class MpcInputDummyPublisher(Node):
         pose.orientation.z = xyz_quatxyzw[5]
         pose.orientation.w = xyz_quatxyzw[6]
         msg.pose = pose
-        
 
         msg.ee_frame_name = self.ee_frame_name
 

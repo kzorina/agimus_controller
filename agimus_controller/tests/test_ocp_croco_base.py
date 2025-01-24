@@ -114,7 +114,9 @@ class TestSimpleOCPCroco(unittest.TestCase):
         free_flyer = False
         locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
         reduced_nq = robot.model.nq - len(locked_joint_names)
-        moving_joint_names = set(robot.model.names) - set(locked_joint_names + ['universe'])
+        moving_joint_names = set(robot.model.names) - set(
+            locked_joint_names + ["universe"]
+        )
         q0 = pin.randomConfiguration(robot.model)
         armature = np.full(reduced_nq, 0.1)
 

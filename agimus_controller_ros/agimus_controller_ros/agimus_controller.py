@@ -34,6 +34,7 @@ from agimus_controller.factory.robot_model import RobotModels, RobotModelParamet
 
 
 from agimus_controller_ros.ros_utils import mpc_msg_to_weighted_traj_point
+
 # from agimus_controller.mpc import MPC
 # from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
@@ -58,12 +59,12 @@ class AgimusController(Node):
 
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
-    
+
     def get_param_from_node(self, node_name: str, param_name: str) -> ParameterValue:
         """Returns parameter from the node"""
-        param_client = self.create_client(GetParameters, f'/{node_name}/get_parameters')
+        param_client = self.create_client(GetParameters, f"/{node_name}/get_parameters")
         while not param_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Service not available, waiting again...')
+            self.get_logger().info("Service not available, waiting again...")
         request = GetParameters.Request()
         request.names = [param_name]
 
@@ -74,7 +75,7 @@ class AgimusController(Node):
             return future.result().values[0]
         else:
             raise ValueError("Failed to load moving joint names from LFC")
-    
+
     def initialize_ros_attributes(self) -> None:
         """Initialize ROS related attributes such as Publishers, Subscribers and Timers"""
         self.sensor_msg = None
@@ -82,8 +83,7 @@ class AgimusController(Node):
 
         # Get moving joint names from LFC
         self.moving_joint_names = self.get_param_from_node(
-            'linear_feedback_controller',
-            'moving_joint_names'
+            "linear_feedback_controller", "moving_joint_names"
         ).string_array_value
 
         self.state_subscriber = self.create_subscription(
@@ -142,45 +142,46 @@ class AgimusController(Node):
         ws.setup(self.robot_models._robot_model)
         self.mpc = MPC()
         self.mpc.setup(ocp, ws, self.traj_buffer)
-    
+
     def sensor_callback(self, sensor_msg: Sensor) -> None:
         """Update the sensor_msg attribute of the class."""
         self.sensor_msg = sensor_msg
 
     def mpc_input_callback(self, msg: MpcInput) -> None:
         """Fill the new point msg in the trajectory buffer."""
-        w_traj_point = mpc_msg_to_weighted_traj_point(msg, self.get_clock().now().nanoseconds)
+        w_traj_point = mpc_msg_to_weighted_traj_point(
+            msg, self.get_clock().now().nanoseconds
+        )
         self.traj_buffer.append(w_traj_point)
         self.params.ocp.effector_frame_name = msg.ee_frame_name
         self.effector_frame_name = msg.ee_frame_name
 
     def robot_description_callback(self, msg: String) -> None:
         """Create the models of the robot from the urdf string."""
-        
+
         # TODO: fix, just hardcoded the thing: should exist in the demo folder?
         # add as a ros parameter in the yaml file srdf_path
         temp_srdf_path = os.path.join(
-                get_package_share_directory("franka_description"),
-                "robots/fer/fer.srdf",
-            )
+            get_package_share_directory("franka_description"),
+            "robots/fer/fer.srdf",
+        )
 
         np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
         params = RobotModelParameters(
             urdf=msg.data,
             srdf=Path(temp_srdf_path),
-            q0=np_sensor_msg.joint_state.position,  
+            q0=np_sensor_msg.joint_state.position,
             free_flyer=self.params.free_flyer,
             collision_as_capsule=self.params.collision_as_capsule,
             self_collision=self.params.self_collision,
             armature=self.params.ocp.armature,
-            moving_joint_names=self.moving_joint_names
+            moving_joint_names=self.moving_joint_names,
         )
 
         self.robot_models = RobotModels(params)
         self.rmodel = self.robot_models._robot_model
 
         self.get_logger().info("Robot Models initialized")
-
 
     def buffer_has_twice_horizon_points(self) -> bool:
         """
@@ -219,11 +220,11 @@ class AgimusController(Node):
         if self.mpc is None:
             self.setup_mpc()
         if not self.buffer_has_twice_horizon_points():
-                self.get_logger().warn(
-                    f"Waiting for buffer to be filled... Current size {len(self.traj_buffer)}",
-                    throttle_duration_sec=5.0,
-                )
-                return
+            self.get_logger().warn(
+                f"Waiting for buffer to be filled... Current size {len(self.traj_buffer)}",
+                throttle_duration_sec=5.0,
+            )
+            return
         start_compute_time = time.perf_counter()
         np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
 
@@ -231,8 +232,11 @@ class AgimusController(Node):
             time_ns=self.get_clock().now().nanoseconds,
             robot_configuration=np_sensor_msg.joint_state.position,
             robot_velocity=np_sensor_msg.joint_state.velocity,
-            )
-        ocp_res =self.mpc.run(initial_state=x0_traj_point, current_time_ns=self.get_clock().now().nanoseconds)
+        )
+        ocp_res = self.mpc.run(
+            initial_state=x0_traj_point,
+            current_time_ns=self.get_clock().now().nanoseconds,
+        )
         if ocp_res is None:
             return
 
