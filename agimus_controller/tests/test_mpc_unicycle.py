@@ -30,15 +30,15 @@ class OCPUnicycle(OCPBase):
 
         self._debug_data = OCPDebugData(None, None, None, None)
         self._results = None
+        self._ref_traj_callback = None
 
 
     def set_reference_horizon_callback(self, ref_traj_callback):
         self._ref_traj_callback = ref_traj_callback
 
-    def set_reference_horizon(self, reference_trajectory):
-        # allow to check what the reference trajectory is
+    def set_reference_weighted_trajectory(self, ref_w_traj):
         if self._ref_traj_callback is not None:
-            self._ref_traj_callback(reference_trajectory)
+            self._ref_traj_callback(ref_w_traj)
 
     @property
     def horizon_size(self):
@@ -93,14 +93,14 @@ class WarmStartUnicycle(WarmStartBase):
         
     def generate(self, initial_state, reference_trajectory):
         x0 = initial_state.robot_configuration
-        if self._previous_solution is None or len(self._previous_solution) == 0:
+        if self._previous_solution is None or len(self._previous_solution.states) == 0:
             # No previous solution. Use the reference trajectory.
             x_init = [ wpoint.point.robot_configuration for wpoint in reference_trajectory[1:] ]
             us = None
         else:
             # Use the previous solution as warm start. For the last point, use the reference trajectory.
-            x_init = [ pt.robot_configuration for pt in self._previous_solution[2:]] + [ reference_trajectory[-1].point.robot_configuration ]
-            us = [ pt.robot_velocity for pt in self._previous_solution[1:]]
+            x_init = list(self._previous_solution.states[2:]) + [ reference_trajectory[-1].point.robot_configuration ]
+            us = self._previous_solution.feed_forward_terms
         return x0, x_init, us
     
     def setup(self):
