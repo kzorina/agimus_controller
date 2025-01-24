@@ -1,6 +1,5 @@
 from copy import deepcopy
 from os import environ
-from os.path import dirname
 import unittest
 from pathlib import Path
 import example_robot_data as robex
@@ -16,7 +15,6 @@ class TestRobotModelParameters(unittest.TestCase):
         urdf_path = Path(robot.urdf)
         srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
         self.valid_args = {
-            "full_q0": np.array([0.0, 1.0, 2.0]),
             "urdf": urdf_path,
             "srdf": srdf_path,
             "urdf_meshes_dir": urdf_path.parent.parent.parent.parent.parent,
