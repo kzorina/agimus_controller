@@ -23,6 +23,7 @@ class MpcInputDummyPublisher(Node):
         self.q = self.q0.copy()
         self.t = 0.0
         self.dt = 0.01
+        self.croco_nq = 7
 
         # Obtained by checking "QoS profile" values in out of:
         # ros2 topic info -v /robot_description
@@ -54,6 +55,7 @@ class MpcInputDummyPublisher(Node):
         Main function to create a dummy mpc input
         Modifies each joint in sin manner with 0.2 rad amplitude
         """
+
         if self.pin_model is None:  # wait for model to be available
             return
 
@@ -69,18 +71,29 @@ class MpcInputDummyPublisher(Node):
         ee_pose = self.pin_data.oMf[self.ee_frame_id]
         xyz_quatxyzw = pin.SE3ToXYZQUAT(ee_pose)
 
-        # Create the message
-        croco_nq = 7
-        msg = MpcInput()
-        msg.q = [float(val) for val in self.q][:croco_nq]
+        u = pin.rnea(
+                self.pin_model,
+                self.pin_data,
+                np.array(self.q[:self.croco_nq]),
+                np.zeros(self.croco_nq),
+                np.zeros(self.croco_nq),
+            )
+        
 
-        msg.qdot = [0.0] * croco_nq # TODO: only works for robot with only revolute joints
-        msg.qddot = [0.0] * croco_nq # TODO: only works for robot with only revolute joints
-        msg.robot_effort = [0.0] * croco_nq
-        msg.w_q = [1e-1] * croco_nq
-        msg.w_qdot = [1e-2] * croco_nq
-        msg.w_qddot = [1e-3] * croco_nq
-        msg.w_robot_effort = [1e-4] * croco_nq
+        # Create the message
+        
+        msg = MpcInput()
+        msg.w_q = [1e-1] * self.croco_nq
+        msg.w_qdot = [1e-2] * self.croco_nq
+        msg.w_qddot = [1e-4] * self.croco_nq
+        msg.w_robot_effort = [1e-4] * self.croco_nq
+        msg.w_pose = [1e-2] * 6
+
+        msg.q = [float(val) for val in self.q][:self.croco_nq]
+        msg.qdot = [0.0] * self.croco_nq # TODO: only works for robot with only revolute joints
+        msg.qddot = [0.0] * self.croco_nq # TODO: only works for robot with only revolute joints
+        msg.robot_effort = list(u)
+        
 
         pose = Pose()
         pose.position.x = xyz_quatxyzw[0]
@@ -91,7 +104,7 @@ class MpcInputDummyPublisher(Node):
         pose.orientation.z = xyz_quatxyzw[5]
         pose.orientation.w = xyz_quatxyzw[6]
         msg.pose = pose
-        msg.w_pose = [1e-4] * 6
+        
 
         msg.ee_frame_name = self.ee_frame_name
 
