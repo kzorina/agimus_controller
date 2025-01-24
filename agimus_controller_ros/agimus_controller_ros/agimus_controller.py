@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 import numpy as np
-import numpy.typing as npt
 import time
-import pinocchio as pin
 from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from rclpy.duration import Duration
 from rcl_interfaces.srv import GetParameters
 from rcl_interfaces.msg import ParameterValue
 
@@ -261,7 +258,7 @@ class AgimusController(Node):
             return
 
         self.send_control_msg(ocp_res)
-        compute_time = time.perf_counter() - start_compute_time
+        # compute_time = time.perf_counter() - start_compute_time
         # if self.params.publish_debug_data:
         #     self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
         #     self.ocp_x0_pub.publish(self.sensor_msg)
