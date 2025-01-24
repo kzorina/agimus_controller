@@ -27,7 +27,7 @@ class TestOCPGoalReaching(unittest.TestCase):
         moving_joint_names = set(robot.model.names) - set(
             locked_joint_names + ["universe"]
         )
-        q0 = pin.randomConfiguration(robot.model)
+        q0 = np.zeros(robot.model.nq)
         armature = np.full(reduced_nq, 0.1)
 
         # Store shared initial parameters
