@@ -11,8 +11,8 @@ import pinocchio as pin
 
 @dataclass
 class RobotModelParameters:
-    q0: npt.NDArray[np.float64] = np.array(
-        [], dtype=np.float64
+    q0: npt.NDArray[np.float64] = field(
+        default_factory=lambda: np.array([], dtype=np.float64)
     )  # Initial full configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     moving_joint_names: list[str] = field(default_factory=list)
