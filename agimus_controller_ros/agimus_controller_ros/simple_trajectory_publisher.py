@@ -127,6 +127,3 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
-
-
-# ros2 bag record /mpc_input /joint_states /control
