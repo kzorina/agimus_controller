@@ -24,6 +24,7 @@ from linear_feedback_controller_msgs_py.numpy_conversions import (
     control_numpy_to_msg,
 )
 from linear_feedback_controller_msgs.msg import Control, Sensor
+from sensor_msgs.msg import JointState
 
 from agimus_controller.mpc import MPC
 from agimus_controller.mpc_data import OCPResults
@@ -56,6 +57,8 @@ class AgimusController(Node):
         self.first_run_done = False
         self.rmodel = None
         self.mpc = None
+        self.q0 = None
+        self.robot_description_msg = None
 
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
@@ -119,6 +122,15 @@ class AgimusController(Node):
                 reliability=ReliabilityPolicy.BEST_EFFORT,
             ),
         )
+        self.state_subscriber = self.create_subscription(
+            JointState,
+            "joint_states",
+            self.joint_states_callback,
+            qos_profile=QoSProfile(
+                depth=10,
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+            ),
+        )
         if self.params.publish_debug_data:
             self.ocp_solve_time_pub = self.create_publisher(
                 builtin_interfaces.msg.Duration, "ocp_solve_time", 10
@@ -147,6 +159,14 @@ class AgimusController(Node):
         """Update the sensor_msg attribute of the class."""
         self.sensor_msg = sensor_msg
 
+    def joint_states_callback(self, joint_states_msg: JointState) -> None:
+        """Set joint state reference."""
+        if self.robot_description_msg is None:
+            return
+        if self.q0 is None:
+            self.q0 = np.array(joint_states_msg.position)
+            self.create_robot_models()
+
     def mpc_input_callback(self, msg: MpcInput) -> None:
         """Fill the new point msg in the trajectory buffer."""
         w_traj_point = mpc_msg_to_weighted_traj_point(
@@ -158,6 +178,9 @@ class AgimusController(Node):
 
     def robot_description_callback(self, msg: String) -> None:
         """Create the models of the robot from the urdf string."""
+        self.robot_description_msg = msg
+    
+    def create_robot_models(self) -> None:
 
         # TODO: fix, just hardcoded the thing: should exist in the demo folder?
         # add as a ros parameter in the yaml file srdf_path
@@ -166,11 +189,9 @@ class AgimusController(Node):
             "robots/fer/fer.srdf",
         )
 
-        np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
         params = RobotModelParameters(
-            urdf=msg.data,
+            urdf=self.robot_description_msg.data,
             srdf=Path(temp_srdf_path),
-            q0=np_sensor_msg.joint_state.position,
             free_flyer=self.params.free_flyer,
             collision_as_capsule=self.params.collision_as_capsule,
             self_collision=self.params.self_collision,

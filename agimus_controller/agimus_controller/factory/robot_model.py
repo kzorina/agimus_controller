@@ -36,10 +36,6 @@ class RobotModelParameters:
     )  # Red color for the collision model
 
     def __post_init__(self):
-        # Check full_q0 is not empty
-        if len(self.q0) == 0:
-            raise ValueError("q0 cannot be empty.")
-
         # Handle armature:
         if self.armature.size == 0:
             # Use a default armature filled with 0s, based on the size of moving_joint_names
@@ -176,7 +172,8 @@ class RobotModels:
                 continue
             if not jn in self._params.moving_joint_names:
                 joints_to_lock.append(self._full_robot_model.getJointId(jn))
-
+        if len(self._q0) == 0:
+            self._q0 = np.zeros(self._full_robot_model.nq)
         self._robot_model, [
             self._collision_model,
             self._visual_model,
