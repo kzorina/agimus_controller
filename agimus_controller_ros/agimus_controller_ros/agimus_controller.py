@@ -179,9 +179,8 @@ class AgimusController(Node):
     def robot_description_callback(self, msg: String) -> None:
         """Create the models of the robot from the urdf string."""
         self.robot_description_msg = msg
-    
-    def create_robot_models(self) -> None:
 
+    def create_robot_models(self) -> None:
         # TODO: fix, just hardcoded the thing: should exist in the demo folder?
         # add as a ros parameter in the yaml file srdf_path
         temp_srdf_path = os.path.join(

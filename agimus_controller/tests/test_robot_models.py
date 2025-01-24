@@ -47,7 +47,6 @@ class TestRobotModelParameters(unittest.TestCase):
         np.testing.assert_array_equal(params.q0, self.valid_args["q0"])
         np.testing.assert_array_equal(params.armature, self.valid_args["armature"])
 
-
     def test_armature_default_value(self):
         """Test that the armature is set to default if not provided."""
         del self.valid_args["armature"]

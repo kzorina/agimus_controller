@@ -57,14 +57,14 @@ class MpcInputDummyPublisher(Node):
     def joint_states_callback(self, joint_states_msg: JointState) -> None:
         """Set joint state reference."""
         if self.q0 is None:
-            jpos =  np.array(joint_states_msg.position)
+            jpos = np.array(joint_states_msg.position)
             # TODO fix this, temp hac to work from sim
-            if jpos[0] != 0.:
-            # if not np.isclose(jpos, np.zeros_like(jpos)).all():
+            if jpos[0] != 0.0:
+                # if not np.isclose(jpos, np.zeros_like(jpos)).all():
                 self.q0 = jpos
                 self.get_logger().warn(f"Set q0 to {self.q0}.")
                 self.load_models()
-    
+
     def robot_description_callback(self, msg: String) -> None:
         """Create the models of the robot from the urdf string."""
         self.robot_description_msg = msg
@@ -100,11 +100,7 @@ class MpcInputDummyPublisher(Node):
         ee_pose = self.pin_data.oMf[self.ee_frame_id]
         xyz_quatxyzw = pin.SE3ToXYZQUAT(ee_pose)
 
-        u = pin.computeGeneralizedGravity(
-            self.pin_model,
-            self.pin_data,
-            self.q0
-        )
+        u = pin.computeGeneralizedGravity(self.pin_model, self.pin_data, self.q0)
 
         # Create the message
 
