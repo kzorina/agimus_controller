@@ -242,7 +242,7 @@ class AgimusController(Node):
                 throttle_duration_sec=5.0,
             )
             return
-        start_compute_time = time.perf_counter()
+        # start_compute_time = time.perf_counter()
         np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
 
         x0_traj_point = TrajectoryPoint(
