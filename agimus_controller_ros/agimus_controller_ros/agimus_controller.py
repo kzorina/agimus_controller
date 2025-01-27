@@ -33,8 +33,6 @@ from agimus_controller.factory.robot_model import RobotModels, RobotModelParamet
 
 from agimus_controller_ros.ros_utils import mpc_msg_to_weighted_traj_point
 
-# from agimus_controller.mpc import MPC
-# from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
 from agimus_controller.trajectory import TrajectoryBuffer, TrajectoryPoint
 from agimus_controller_ros.agimus_controller_parameters import agimus_controller_params
