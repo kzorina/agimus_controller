@@ -255,10 +255,6 @@ class AgimusController(Node):
             return
 
         self.send_control_msg(ocp_res)
-        # compute_time = time.perf_counter() - start_compute_time
-        # if self.params.publish_debug_data:
-        #     self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
-        #     self.ocp_x0_pub.publish(self.sensor_msg)
 
 
 def main(args=None) -> None:
