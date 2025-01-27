@@ -124,10 +124,11 @@ if __name__ == "__main__":
     plt.title("eigen values of sensibility matrix")
     plt.show()
     plt.imshow(np.abs(u))
+
     plt.colorbar()
     plt.title("eigen vectors on the left of sensibility matrix")
     plt.show()
-    plt.imshow(np.abs(vh[: (nq + nv), :]))
+    plt.imshow(np.abs(vh))
     plt.title("eigen vectors on the right of sensibility matrix")
     plt.colorbar()
     plt.show()
