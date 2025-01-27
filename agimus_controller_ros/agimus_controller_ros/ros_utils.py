@@ -47,7 +47,6 @@ def mpc_msg_to_weighted_traj_point(
         w_robot_velocity=msg.w_qdot,
         w_robot_acceleration=msg.w_qddot,
         w_robot_effort=np.array(msg.w_robot_effort, dtype=np.float64),
-        # w_robot_effort=np.ones(7) * 1e-5,
         w_end_effector_poses={msg.ee_frame_name: msg.w_pose},
     )
 
