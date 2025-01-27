@@ -108,9 +108,9 @@ class TestSimpleOCPCroco(unittest.TestCase):
     def setUpClass(self):
         # Mock the RobotModelFactory and OCPParamsCrocoBase
         robot = robex.load("panda")
-        urdf = Path(robot.urdf)
-        srdf = Path(robot.urdf.replace("urdf", "srdf"))
-        urdf_meshes_dir = urdf.parent.parent.parent.parent.parent
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
         locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
         reduced_nq = robot.model.nq - len(locked_joint_names)
