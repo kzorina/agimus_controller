@@ -72,9 +72,6 @@ class WarmStartReference(WarmStartBase):
             f"Expected x_init shape {(len(reference_trajectory), self._nx)}, "
             f"from provided reference got {x_init.shape}"
         )
-        # print(np.array(reference_trajectory[0].robot_configuration).shape)
-        # print(np.array(reference_trajectory[0].robot_velocity).shape)
-        # print(np.array(reference_trajectory[0].robot_acceleration).shape)
         u_init = [
             pin.rnea(
                 self._rmodel,
