@@ -48,15 +48,15 @@ class WarmStartReference(WarmStartBase):
             based on the reference trajectory.
         """
         # Ensure the robot model (_rmodel) is initialized before proceeding
-        assert (
-            self._rmodel is not None
-        ), "Robot model is missing in warmstart. please use warmstart.setup(rmodel)"
+        assert self._rmodel is not None, (
+            "Robot model is missing in warmstart. please use warmstart.setup(rmodel)"
+        )
 
         x0 = np.concatenate(
             [initial_state.robot_configuration, initial_state.robot_velocity]
         )
         assert x0.shape[0] == (self._nx), (
-            f"Expected x0 shape {(self._nx)}," f"from provided reference got {x0.shape}"
+            f"Expected x0 shape {(self._nx)},from provided reference got {x0.shape}"
         )
 
         x_init = np.array(

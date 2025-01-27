@@ -84,9 +84,11 @@ class TestOCPGoalReaching(unittest.TestCase):
                         w_robot_effort=0.0001
                         * np.ones(self.robot_models.robot_model.nv),
                         w_end_effector_poses={
-                            "panda_hand_tcp": 1e3 * np.ones(6)
-                            if i < self._ocp_params.horizon_size - 1
-                            else 1e3 * np.ones(6)
+                            "panda_hand_tcp": (
+                                1e3 * np.ones(6)
+                                if i < self._ocp_params.horizon_size - 1
+                                else 1e3 * np.ones(6)
+                            )
                         },
                     ),
                 )
