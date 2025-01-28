@@ -163,9 +163,11 @@ class TrajectoryBuffer(list):
             self.pop(0)
 
     def find_next_index(self, current_time_ns):
-        # Use bisect_right directly on the time_ns values without extracting them
+        """
+        Use bisect_right with a key function to avoid creating a separate list
+        """
         index = bisect.bisect_right(
-            [wpoint.point.time_ns for wpoint in self], current_time_ns
+            self, current_time_ns, key=lambda w: w.point.time_ns
         )
 
         # Ensure that the index is within bounds
@@ -176,24 +178,34 @@ class TrajectoryBuffer(list):
                 "current_time_ns is likely greater than the trajectory horizon time."
             )
 
-    def horizon(self, current_time_ns, horizon_size, horizon_dts=list()):
+    def compute_horizon_indexes(self, dt_factor_n_seq: list[tuple[int, int]]):
+        indexes = [
+            0,
+        ] * sum(sn for _, sn in dt_factor_n_seq)
+        i = 0
+        for factor, sn in dt_factor_n_seq:
+            for _ in range(sn):
+                if i == 0:
+                    indexes[i] = 0
+                else:
+                    indexes[i] = factor + indexes[i - 1]
+                i += 1
+        # check first time step
+        assert indexes[0] == 0 and "First time step must be 0"
+        # increasing time steps
+        assert all(t0 <= t1 for t0, t1 in zip(indexes[:-1], indexes[1:]))
+        print("indexes = ", indexes)
+        return indexes
+
+    def horizon(self, current_time_ns: int, dt_factor_n_seq: list[tuple[int, int]]):
+        # horizon size
+        horizon_size = sum(sn for _, sn in dt_factor_n_seq)
         # Starting index:
         start = self.find_next_index(current_time_ns)
-
-        # Ensure sizes match when `horizon_dts` is provided
-        if horizon_dts:
-            assert len(horizon_size) == len(
-                horizon_dts
-            ), "Size of horizon_size and horizon_dts must match."
-
-            # Instead of creating an intermediate list,
-            # directly compute the cumulative sum
-            # and use it in the loop
-            cumulative_sum = 0
-            for dt in horizon_dts:
-                cumulative_sum += dt - 1
-                yield self[start + cumulative_sum]  # Yielding on-the-fly
-        else:
-            # Generate range directly and access elements in one go
-            for i in range(horizon_size):
-                yield self[start + i]  # Yielding on-the-fly
+        indexes = self.compute_horizon_indexes(dt_factor_n_seq)
+        # check number of time steps
+        assert horizon_size == len(
+            indexes
+        ), "Size of horizon_size and horizon_dts must match."
+        print("start = ", start)
+        return [self[time_step + start] for time_step in indexes]
