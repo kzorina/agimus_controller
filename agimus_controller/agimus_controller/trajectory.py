@@ -1,6 +1,5 @@
 import bisect
 from dataclasses import dataclass
-from itertools import accumulate
 import numpy as np
 import numpy.typing as npt
 from pinocchio import SE3, Force
@@ -203,7 +202,7 @@ class TrajectoryBuffer(list):
         start = self.find_next_index(current_time_ns)
         indexes = self.compute_horizon_indexes(dt_factor_n_seq)
         # check number of time steps
-        assert horizon_size == len(
-            indexes
-        ), "Size of horizon_size and horizon_dts must match."
+        assert horizon_size == len(indexes), (
+            "Size of horizon_size and horizon_dts must match."
+        )
         return [self[time_step + start] for time_step in indexes]
