@@ -80,11 +80,15 @@ class WarmStartReference(WarmStartBase):
                 point.robot_velocity,
                 point.robot_acceleration,
             )
-            for point in reference_trajectory
+            # reduce the size of control ref by one to fit Croco way of doing things
+            for point in reference_trajectory[:-1]
         ]
-        assert np.array(u_init).shape == (len(reference_trajectory), self._rmodel.nv), (
-            f"Expected u_init shape {(len(reference_trajectory), self._rmodel.nv)}, "
-            f"from provided reference got {u_init.shape}"
+        assert np.array(u_init).shape == (
+            len(reference_trajectory) - 1,
+            self._rmodel.nv,
+        ), (
+            f"Expected u_init shape {(len(reference_trajectory) - 1, self._rmodel.nv)}, "
+            f"from provided reference got {np.array(u_init).shape}"
         )
-        # reduce the size of control ref by one to fit Croco way of doing things
-        return x0, x_init, u_init[:-1]
+
+        return x0, x_init, u_init
