@@ -54,6 +54,7 @@ class AgimusController(Node):
         self.mpc = None
         self.q0 = None
         self.robot_description_msg = None
+        self.np_sensor_msg = None
 
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
@@ -222,10 +223,11 @@ class AgimusController(Node):
 
     def send_control_msg(self, ocp_res: OCPResults) -> None:
         """Get OCP control output and publish it."""
+        assert self.np_sensor_msg is not None
         ctrl_msg = lfc_py_types.Control(
             feedback_gain=ocp_res.ricatti_gains[0],
             feedforward=ocp_res.feed_forward_terms[0].reshape(self.rmodel.nv, 1),
-            initial_state=sensor_msg_to_numpy(self.sensor_msg),
+            initial_state=self.np_sensor_msg,
         )
         self.control_publisher.publish(control_numpy_to_msg(ctrl_msg))
 
@@ -255,12 +257,12 @@ class AgimusController(Node):
             )
             return
         # start_compute_time = time.perf_counter()
-        np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
+        self.np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
 
         x0_traj_point = TrajectoryPoint(
             time_ns=self.get_clock().now().nanoseconds,
-            robot_configuration=np_sensor_msg.joint_state.position,
-            robot_velocity=np_sensor_msg.joint_state.velocity,
+            robot_configuration=self.np_sensor_msg.joint_state.position,
+            robot_velocity=self.np_sensor_msg.joint_state.velocity,
         )
         ocp_res = self.mpc.run(
             initial_state=x0_traj_point,
