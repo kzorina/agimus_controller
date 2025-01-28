@@ -76,9 +76,9 @@ class WarmStartReference(WarmStartBase):
             pin.rnea(
                 self._rmodel,
                 self._rdata,
-                np.array(point.robot_configuration),
-                np.array(point.robot_velocity),
-                np.array(point.robot_acceleration),
+                point.robot_configuration,
+                point.robot_velocity,
+                point.robot_acceleration,
             )
             for point in reference_trajectory
         ]

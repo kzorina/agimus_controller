@@ -35,17 +35,17 @@ def mpc_msg_to_weighted_traj_point(
     xyz_quat_pose = ros_pose_to_array(msg.pose)
     traj_point = TrajectoryPoint(
         time_ns=time_ns,
-        robot_configuration=msg.q,
-        robot_velocity=msg.qdot,
-        robot_acceleration=msg.qddot,
+        robot_configuration=np.array(msg.q, dtype=np.float64),
+        robot_velocity=np.array(msg.qdot, dtype=np.float64),
+        robot_acceleration=np.array(msg.qddot, dtype=np.float64),
         robot_effort=np.array(msg.robot_effort, dtype=np.float64),
         end_effector_poses={msg.ee_frame_name: pin.XYZQUATToSE3(xyz_quat_pose)},
     )
 
     traj_weights = TrajectoryPointWeights(
-        w_robot_configuration=msg.w_q,
-        w_robot_velocity=msg.w_qdot,
-        w_robot_acceleration=msg.w_qddot,
+        w_robot_configuration=np.array(msg.w_q, dtype=np.float64),
+        w_robot_velocity=np.array(msg.w_qdot, dtype=np.float64),
+        w_robot_acceleration=np.array(msg.w_qddot, dtype=np.float64),
         w_robot_effort=np.array(msg.w_robot_effort, dtype=np.float64),
         w_end_effector_poses={msg.ee_frame_name: msg.w_pose},
     )
