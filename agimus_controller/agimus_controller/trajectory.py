@@ -194,7 +194,6 @@ class TrajectoryBuffer(list):
         assert indexes[0] == 0 and "First time step must be 0"
         # increasing time steps
         assert all(t0 <= t1 for t0, t1 in zip(indexes[:-1], indexes[1:]))
-        print("indexes = ", indexes)
         return indexes
 
     def horizon(self, current_time_ns: int, dt_factor_n_seq: list[tuple[int, int]]):
@@ -207,5 +206,4 @@ class TrajectoryBuffer(list):
         assert horizon_size == len(
             indexes
         ), "Size of horizon_size and horizon_dts must match."
-        print("start = ", start)
         return [self[time_step + start] for time_step in indexes]

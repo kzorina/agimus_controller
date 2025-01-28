@@ -135,7 +135,6 @@ class TestTrajectoryBuffer(unittest.TestCase):
 
         horizon_size = 10
         time_factor = randint(0, 5)
-        print("time_factor = ", time_factor)
         current_time_ns = time_factor * self.dt_ns
         horizon = obj.horizon(
             current_time_ns=current_time_ns,
@@ -179,7 +178,6 @@ class TestTrajectoryBuffer(unittest.TestCase):
             obj.append(self.generate_random_weighted_states(time_ns))
 
         time_factor = randint(0, 5)
-        print("time_factor = ", time_factor)
         current_time_ns = time_factor * self.dt_ns
         horizon = obj.horizon(
             current_time_ns=current_time_ns,
