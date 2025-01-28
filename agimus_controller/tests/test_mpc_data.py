@@ -62,7 +62,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
                 f"Value missmatch for parameter '{key}'. Expected: '{val}', got: '{res}'",
             )
 
-    def test_ocp_debug_data(self):
+    def test_mpc_debug_data(self):
         """
         Test the initialization of the MPCDebugData class.
         """

@@ -1,6 +1,5 @@
 from copy import deepcopy
 from os import environ
-from os.path import dirname
 import unittest
 from pathlib import Path
 import example_robot_data as robex

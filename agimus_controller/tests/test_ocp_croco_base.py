@@ -1,4 +1,3 @@
-from os.path import dirname
 import unittest
 from pathlib import Path
 import crocoddyl

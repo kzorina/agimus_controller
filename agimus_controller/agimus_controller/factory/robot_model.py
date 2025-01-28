@@ -16,13 +16,13 @@ class RobotModelParameters:
     )  # Initial full configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
     moving_joint_names: list[str] = field(default_factory=list)
-    urdf: Union[
-        Path, str
-    ] = ""  # Path to the URDF file or string containing URDF as an XML
+    urdf: Union[Path, str] = (
+        ""  # Path to the URDF file or string containing URDF as an XML
+    )
     srdf: Path = Path()  # Path to the SRDF file
-    urdf_meshes_dir: Optional[
-        Path
-    ] = None  # Path to the directory containing the meshes and the URDF file.
+    urdf_meshes_dir: Optional[Path] = (
+        None  # Path to the directory containing the meshes and the URDF file.
+    )
     collision_as_capsule: bool = (
         False  # True if the collision model should be reduced to capsules.
     )
@@ -54,12 +54,12 @@ class RobotModelParameters:
             raise ValueError("URDF can not be an empty string.")
         elif isinstance(self.urdf, Path) and not self.urdf.is_file():
             raise ValueError(
-                "URDF must be a valid file path. " f"File: '{self.urdf}' doesn't exist!"
+                f"URDF must be a valid file path. File: '{self.urdf}' doesn't exist!"
             )
 
         if not self.srdf.is_file():
             raise ValueError(
-                "SRDF must be a valid file path. " f"File: '{self.srdf}' doesn't exist!"
+                f"SRDF must be a valid file path. File: '{self.srdf}' doesn't exist!"
             )
 
         if self.urdf_meshes_dir is not None and not self.urdf_meshes_dir.exists():
@@ -170,14 +170,17 @@ class RobotModels:
         for jn in self._full_robot_model.names:
             if jn == "universe":
                 continue
-            if not jn in self._params.moving_joint_names:
+            if jn not in self._params.moving_joint_names:
                 joints_to_lock.append(self._full_robot_model.getJointId(jn))
         if len(self._q0) == 0:
             self._q0 = np.zeros(self._full_robot_model.nq)
-        self._robot_model, [
-            self._collision_model,
-            self._visual_model,
-        ] = pin.buildReducedModel(
+        (
+            self._robot_model,
+            [
+                self._collision_model,
+                self._visual_model,
+            ],
+        ) = pin.buildReducedModel(
             self._full_robot_model,
             [self._collision_model, self._visual_model],
             joints_to_lock,
