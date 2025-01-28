@@ -107,7 +107,10 @@ class AgimusController(Node):
             MpcInput,
             "mpc_input",
             self.mpc_input_callback,
-            qos_profile=10,
+            qos_profile=QoSProfile(
+                depth=10,
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+            ),
         )
         self.control_publisher = self.create_publisher(
             Control,
@@ -128,9 +131,21 @@ class AgimusController(Node):
         )
         if self.params.publish_debug_data:
             self.ocp_solve_time_pub = self.create_publisher(
-                builtin_interfaces.msg.Duration, "ocp_solve_time", 10
+                builtin_interfaces.msg.Duration,
+                "ocp_solve_time",
+                qos_profile=QoSProfile(
+                    depth=10,
+                    reliability=ReliabilityPolicy.BEST_EFFORT,
+                ),
             )
-            self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
+            self.ocp_x0_pub = self.create_publisher(
+                Sensor,
+                "ocp_x0",
+                qos_profile=QoSProfile(
+                    depth=10,
+                    reliability=ReliabilityPolicy.BEST_EFFORT,
+                ),
+            )
         self.create_timer(1.0 / self.params.rate, self.run_callback)
 
     def setup_mpc(self):
