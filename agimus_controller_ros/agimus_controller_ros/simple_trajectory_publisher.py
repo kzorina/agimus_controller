@@ -9,9 +9,9 @@ import numpy as np
 from sensor_msgs.msg import JointState
 
 
-class MpcInputDummyPublisher(Node):
+class SimpleTrajectoryPublisher(Node):
     def __init__(self):
-        super().__init__("mpc_input_dummy_publisher")
+        super().__init__("simple_trajectory_publisher")
 
         self.pin_model = None
         self.pin_data = None
@@ -139,7 +139,7 @@ class MpcInputDummyPublisher(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MpcInputDummyPublisher()
+    node = SimpleTrajectoryPublisher()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
