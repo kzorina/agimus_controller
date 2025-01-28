@@ -55,6 +55,7 @@ class AgimusController(Node):
         self.q0 = None
         self.robot_description_msg = None
         self.np_sensor_msg = None
+        self.destroy_joint_sub = False
 
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
@@ -256,7 +257,8 @@ class AgimusController(Node):
                 throttle_duration_sec=5.0,
             )
             return
-        # start_compute_time = time.perf_counter()
+        if self.params.publish_debug_data:
+            start_compute_time = self.get_clock().now()
         self.np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
 
         x0_traj_point = TrajectoryPoint(
@@ -272,6 +274,10 @@ class AgimusController(Node):
             return
 
         self.send_control_msg(ocp_res)
+        if self.params.publish_debug_data:
+            compute_time = self.get_clock().now() - start_compute_time
+            self.ocp_solve_time_pub.publish(compute_time.to_msg())
+            self.ocp_x0_pub.publish(self.sensor_msg)
 
 
 def main(args=None) -> None:

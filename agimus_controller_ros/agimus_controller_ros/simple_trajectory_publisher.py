@@ -21,6 +21,7 @@ class SimpleTrajectoryPublisher(Node):
 
         self.q0 = None
         self.q = None
+        self.delay_time = 500
         self.t = 0.0
         self.dt = 0.01
         self.croco_nq = 7
@@ -59,10 +60,10 @@ class SimpleTrajectoryPublisher(Node):
         if self.q0 is None:
             jpos = np.array(joint_states_msg.position)
             # TODO fix this, temp hac to work from sim
-            if jpos[0] != 0.0:
+            if jpos[0] != 0.0 and jpos[3] != 0.0:
                 # if not np.isclose(jpos, np.zeros_like(jpos)).all():
                 self.q0 = jpos
-                self.get_logger().warn(f"Set q0 to {self.q0}.")
+                self.get_logger().warn(f"Set q0 to {[round(el, 2) for el in self.q0]}.")
                 self.load_models()
 
     def robot_description_callback(self, msg: String) -> None:
@@ -87,11 +88,14 @@ class SimpleTrajectoryPublisher(Node):
             return
         if self.q0 is None or self.q is None:
             return
+        if self.delay_time > 0:
+            self.delay_time -= 1
+            return
 
         # Currently not changing the last two joints - fingers
         # for i in range(self.pin_model.nq - 2):
-        for i in [4]:
-            self.q[i] = self.q0[i] + 0.6 * np.sin(0.5 * np.pi * self.t)
+        for i in [2]:
+            self.q[i] = self.q0[i] + 0.2 * np.sin(0.5 * np.pi * self.t)
 
         # Extract the end-effector position and orientation
         pin.forwardKinematics(self.pin_model, self.pin_data, self.q)
@@ -103,13 +107,12 @@ class SimpleTrajectoryPublisher(Node):
         u = pin.computeGeneralizedGravity(self.pin_model, self.pin_data, self.q0)
 
         # Create the message
-
         msg = MpcInput()
-        msg.w_q = [1e-1] * self.croco_nq
-        msg.w_qdot = [1e-2] * self.croco_nq
-        msg.w_qddot = [1e-4] * self.croco_nq
-        msg.w_robot_effort = [1e-3] * self.croco_nq
-        msg.w_pose = [1e-2] * 6
+        msg.w_q = [np.sqrt(1e-1)] * self.croco_nq
+        msg.w_qdot = [np.sqrt(1e-2)] * self.croco_nq
+        msg.w_qddot = [np.sqrt(1e-10)] * self.croco_nq
+        msg.w_robot_effort = [np.sqrt(1e-10)] * self.croco_nq
+        msg.w_pose = [np.sqrt(1e-10)] * 6
 
         msg.q = list(self.q[: self.croco_nq])
         msg.qdot = [
