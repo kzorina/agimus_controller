@@ -1,4 +1,4 @@
-import bisect
+from copy import deepcopy
 from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
@@ -157,25 +157,13 @@ class WeightedTrajectoryPoint:
 class TrajectoryBuffer(list):
     """List of variable size in which the HPP trajectory nodes will be."""
 
-    def clear_past(self, current_time_ns, dt_ns):
-        while len(self) > 2 and self[0].point.time_ns + 2 * dt_ns < current_time_ns:
-            self.pop(0)
+    def __init__(self, dt_factor_n_seq: list[tuple[int, int]]):
+        super().__init__(self)
+        self.dt_factor_n_seq = deepcopy(dt_factor_n_seq)
+        self.horizon_indexes = self.compute_horizon_indexes(self.dt_factor_n_seq)
 
-    def find_next_index(self, current_time_ns):
-        """
-        Use bisect_right with a key function to avoid creating a separate list
-        """
-        index = bisect.bisect_right(
-            self, current_time_ns, key=lambda w: w.point.time_ns
-        )
-
-        # Ensure that the index is within bounds
-        if index < len(self):
-            return index
-        else:
-            raise LookupError(
-                "current_time_ns is likely greater than the trajectory horizon time."
-            )
+    def clear_past(self):
+        self.pop(0)
 
     def compute_horizon_indexes(self, dt_factor_n_seq: list[tuple[int, int]]):
         indexes = [
@@ -195,14 +183,10 @@ class TrajectoryBuffer(list):
         assert all(t0 <= t1 for t0, t1 in zip(indexes[:-1], indexes[1:]))
         return indexes
 
-    def horizon(self, current_time_ns: int, dt_factor_n_seq: list[tuple[int, int]]):
-        # horizon size
-        horizon_size = sum(sn for _, sn in dt_factor_n_seq)
-        # Starting index:
-        start = self.find_next_index(current_time_ns)
-        indexes = self.compute_horizon_indexes(dt_factor_n_seq)
+    @property
+    def horizon(self):
         # check number of time steps
-        assert horizon_size == len(indexes), (
-            "Size of horizon_size and horizon_dts must match."
+        assert self.horizon_indexes[-1] < len(self) and (
+            "Size of buffer must be at least horizon_indexes[-1]."
         )
-        return [self[time_step + start] for time_step in indexes]
+        return [self[i] for i in self.horizon_indexes]

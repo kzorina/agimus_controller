@@ -22,10 +22,11 @@ class TestTrajectoryBuffer(unittest.TestCase):
         self.nv = randint(10, 100)  # Number of dof in the robot velocity
         self.nq = self.nv + 1  # Number of dof in the robot configuration
 
-        self.trajectory_size = 1000
+        self.trajectory_size = 100
+        self.horizon_size = 10
+        self.dt_factor_n_seq = [(1, self.horizon_size)]
         self.dt = 0.01
         self.dt_ns = int(1e9 * self.dt)
-        self.horizon_dts = list()
 
     def generate_random_weighted_states(self, time_ns):
         """
@@ -51,7 +52,7 @@ class TestTrajectoryBuffer(unittest.TestCase):
         """
         Test adding points to the buffer.
         """
-        obj = TrajectoryBuffer()
+        obj = TrajectoryBuffer(self.dt_factor_n_seq)
         times_ns = np.arange(
             0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
         )
@@ -64,131 +65,68 @@ class TestTrajectoryBuffer(unittest.TestCase):
         """
         Test clearing the past of the buffer.
         """
-        obj = TrajectoryBuffer()
+        obj = TrajectoryBuffer(self.dt_factor_n_seq)
         times_ns = np.arange(
             0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
         )
         for time_ns in times_ns:
             obj.append(self.generate_random_weighted_states(time_ns))
 
-        obj.clear_past(times_ns[-1] / 2, self.dt_ns)
-        self.assertEqual(len(obj), times_ns.size / 2 + 2)
-
-    def test_find_next_index(self):
-        """
-        Test find the first index from the current time.
-        """
-        obj = TrajectoryBuffer()
-        times_ns = np.arange(
-            0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
-        )
-        for time_ns in times_ns:
-            obj.append(self.generate_random_weighted_states(time_ns))
-
-        for i in range(min(10, times_ns.size)):
-            start_out = obj.find_next_index(i * self.dt_ns)
-            start_test = i + 1
-            self.assertEqual(start_out, start_test)
+        obj.clear_past()
+        self.assertEqual(len(obj), times_ns.size - 1)
+        obj.clear_past()
+        self.assertEqual(len(obj), times_ns.size - 2)
+        obj.clear_past()
+        self.assertEqual(len(obj), times_ns.size - 3)
 
     def test_compute_horizon_index(self):
         """
         Test computing the time indexes from dt_factor_n_seq.
         """
-        obj = TrajectoryBuffer()
+        obj = TrajectoryBuffer(self.dt_factor_n_seq)
         dt_factor_n_seq = [(1, 2), (2, 2), (3, 2), (4, 2), (5, 2)]
         indexes_out = obj.compute_horizon_indexes(dt_factor_n_seq)
         indexes_test = [0, 1, 3, 5, 8, 11, 15, 19, 24, 29]
         np.testing.assert_equal(indexes_out, indexes_test)
 
-    def test_horizon_with_simple_horizon_dts(self):
+    def test_horizon(self):
         """
-        Test computing the horizon from the horizon_dts format.
+        Test computing the horizon from the dt_factor_n_seq format.
         """
-        obj = TrajectoryBuffer()
+        obj = TrajectoryBuffer(self.dt_factor_n_seq)
         times_ns = np.arange(
             0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
         )
         for time_ns in times_ns:
             obj.append(self.generate_random_weighted_states(time_ns))
 
-        horizon_size = 10
-        horizon = obj.horizon(
-            current_time_ns=0,
-            dt_factor_n_seq=[(1, horizon_size)],
-        )
+        horizon = obj.horizon
         np.testing.assert_array_equal(
             deepcopy(horizon),
-            obj[1 : horizon_size + 1],
+            obj[: len(horizon)],
         )
 
-    def test_horizon_with_simple_horizon_dts_and_offsets(self):
+    def test_horizon_with_more_complex_dt_factor_n_seq(self):
         """
-        Test computing the horizon from the horizon_dts format
-        with a time offset.
+        Test computing the horizon from complex dt_factor_n_seq.
         """
-        obj = TrajectoryBuffer()
+        dt_factor_n_seq = [(1, 2), (2, 2), (3, 2), (4, 2), (5, 2)]
+        horizon_indexes = [0, 1, 3, 5, 8, 11, 15, 19, 24, 29]
+
+        obj = TrajectoryBuffer(dt_factor_n_seq)
+        self.assertEqual(horizon_indexes, obj.horizon_indexes)
+
+        # Fill the data in
         times_ns = np.arange(
             0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
         )
         for time_ns in times_ns:
             obj.append(self.generate_random_weighted_states(time_ns))
 
-        horizon_size = 10
-        time_factor = randint(0, 5)
-        current_time_ns = time_factor * self.dt_ns
-        horizon = obj.horizon(
-            current_time_ns=current_time_ns,
-            dt_factor_n_seq=[(1, horizon_size)],
-        )
+        # Get the horizon
         np.testing.assert_array_equal(
-            deepcopy(horizon),
-            obj[time_factor + 1 : time_factor + 1 + horizon_size],
-        )
-
-    def test_horizon_with_more_complex_horizon_dts(self):
-        """
-        Test computing the horizon from complex horizon_dts.
-        """
-        obj = TrajectoryBuffer()
-        times_ns = np.arange(
-            0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
-        )
-        for time_ns in times_ns:
-            obj.append(self.generate_random_weighted_states(time_ns))
-
-        horizon = obj.horizon(
-            current_time_ns=0,
-            dt_factor_n_seq=[(1, 2), (2, 2), (3, 2), (4, 2), (5, 2)],
-        )
-        np.testing.assert_array_equal(
-            deepcopy(horizon),
-            [obj[index + 1] for index in [0, 1, 3, 5, 8, 11, 15, 19, 24, 29]],
-        )
-
-    def test_horizon_with_more_complex_horizon_dts_with_offset(self):
-        """
-        Test computing the horizon from complex horizon_dts
-        with a time offset.
-        """
-        obj = TrajectoryBuffer()
-        times_ns = np.arange(
-            0, 30 * self.trajectory_size * self.dt_ns, self.dt_ns, dtype=int
-        )
-        for time_ns in times_ns:
-            obj.append(self.generate_random_weighted_states(time_ns))
-
-        time_factor = randint(0, 5)
-        current_time_ns = time_factor * self.dt_ns
-        horizon = obj.horizon(
-            current_time_ns=current_time_ns,
-            dt_factor_n_seq=[(1, 2), (2, 2), (3, 2), (4, 2), (5, 2)],
-        )
-        np.testing.assert_array_equal(
-            deepcopy(horizon),
-            [
-                obj[time_factor + 1 + index]
-                for index in [0, 1, 3, 5, 8, 11, 15, 19, 24, 29]
-            ],
+            deepcopy(obj.horizon),
+            [obj[index] for index in horizon_indexes],
         )
 
 
