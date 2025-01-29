@@ -181,16 +181,16 @@ class TrajectoryBuffer(object):
                 i += 1
 
         assert indexes[0] == 0, "First time step must be 0"
-        assert all(
-            t0 <= t1 for t0, t1 in zip(indexes[:-1], indexes[1:])
-        ), "Time steps must be increasing"
+        assert all(t0 <= t1 for t0, t1 in zip(indexes[:-1], indexes[1:])), (
+            "Time steps must be increasing"
+        )
         return indexes
 
     @property
     def horizon(self):
-        assert self.horizon_indexes[-1] < len(
-            self._buffer
-        ), "Size of buffer must be at least horizon_indexes[-1]."
+        assert self.horizon_indexes[-1] < len(self._buffer), (
+            "Size of buffer must be at least horizon_indexes[-1]."
+        )
         return [self._buffer[i] for i in self.horizon_indexes]
 
     def __len__(self):
