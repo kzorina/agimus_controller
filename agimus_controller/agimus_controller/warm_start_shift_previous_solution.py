@@ -1,6 +1,6 @@
 """This module defines the WarmStartShiftPreviousSolution class.
 
-The next warm start is generated based only on the previous warm start. It
+The next warm start is generated based only on the previous solution. It
 shifts the previous solution by the amount of the first time step.
 - It supports non-constant time steps.
 - It assumes the actuation model and the dynamics is the same all along the
@@ -32,6 +32,13 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
 
     def setup(self, rmodel: pinocchio.Model, timesteps: list[float]) -> None:
         """Build the action model to easily shift in time in `shift`.
+
+        Args:
+            rmodel (pinocchio.Model): The robot model
+            timesteps (list[float]): list of time different between consecutive nodes of the OCP
+                that produces the previous solution. It is required that:
+                - timesteps[i] >= timesteps[0]
+                - timesteps matches the OCP nodes time steps. 
         """
         state = crocoddyl.StateMultibody(rmodel)
         actuation = crocoddyl.ActuationModelFull(state)
@@ -43,6 +50,7 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
         self._integrator_data = self._integrator.createData()
         self._timesteps = timesteps
         self._dt = self._timesteps[0]
+        assert all(dt >= self._dt for dt in self._timesteps)
 
         self._ws_reference = WarmStartReference()
         self._ws_reference.setup(rmodel)
@@ -75,16 +83,16 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
         xs = self._previous_solution.states
         us = self._previous_solution.feed_forward_terms
         
-        T = len(self._timesteps)
-        assert len(xs) == T + 1
-        assert len(us) == T
+        nb_timesteps = len(self._timesteps)
+        assert len(xs) == nb_timesteps + 1
+        assert len(us) == nb_timesteps
         for i, dt in enumerate(self._timesteps):
             if dt == self._dt:
                 xs[i] = xs[i+1]
                 # for the last running model, i+1 is the terminal model.
                 # There is no control for this one. The result of the current loop is
                 # that if two last control will be equal.
-                if i < T - 1:
+                if i < nb_timesteps - 1:
                     us[i] = us[i+1]
             else:
                 assert dt > self._dt
