@@ -154,39 +154,50 @@ class WeightedTrajectoryPoint:
         return True
 
 
-class TrajectoryBuffer(list):
+class TrajectoryBuffer(object):
     """List of variable size in which the HPP trajectory nodes will be."""
 
     def __init__(self, dt_factor_n_seq: list[tuple[int, int]]):
-        super().__init__(self)
+        self._buffer = []
         self.dt_factor_n_seq = deepcopy(dt_factor_n_seq)
         self.horizon_indexes = self.compute_horizon_indexes(self.dt_factor_n_seq)
 
+    def append(self, item):
+        self._buffer.append(item)
+
+    def pop(self, index=-1):
+        return self._buffer.pop(index)
+
     def clear_past(self):
-        self.pop(0)
+        if self._buffer:
+            self._buffer.pop(0)
 
     def compute_horizon_indexes(self, dt_factor_n_seq: list[tuple[int, int]]):
-        indexes = [
-            0,
-        ] * sum(sn for _, sn in dt_factor_n_seq)
+        indexes = [0] * sum(sn for _, sn in dt_factor_n_seq)
         i = 0
         for factor, sn in dt_factor_n_seq:
             for _ in range(sn):
-                if i == 0:
-                    indexes[i] = 0
-                else:
-                    indexes[i] = factor + indexes[i - 1]
+                indexes[i] = 0 if i == 0 else factor + indexes[i - 1]
                 i += 1
-        # check first time step
-        assert indexes[0] == 0 and "First time step must be 0"
-        # increasing time steps
-        assert all(t0 <= t1 for t0, t1 in zip(indexes[:-1], indexes[1:]))
+
+        assert indexes[0] == 0, "First time step must be 0"
+        assert all(
+            t0 <= t1 for t0, t1 in zip(indexes[:-1], indexes[1:])
+        ), "Time steps must be increasing"
         return indexes
 
     @property
     def horizon(self):
-        # check number of time steps
-        assert self.horizon_indexes[-1] < len(self) and (
-            "Size of buffer must be at least horizon_indexes[-1]."
-        )
-        return [self[i] for i in self.horizon_indexes]
+        assert self.horizon_indexes[-1] < len(
+            self._buffer
+        ), "Size of buffer must be at least horizon_indexes[-1]."
+        return [self._buffer[i] for i in self.horizon_indexes]
+
+    def __len__(self):
+        return len(self._buffer)
+
+    def __getitem__(self, index):
+        return self._buffer[index]
+
+    def __setitem__(self, index, value):
+        self._buffer[index] = value
