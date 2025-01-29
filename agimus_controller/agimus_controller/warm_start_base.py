@@ -81,9 +81,7 @@ class WarmStartBase(ABC):
         """
         ...
 
-    def update_previous_solution(
-        self, previous_solution: OCPResults
-    ) -> None:
+    def update_previous_solution(self, previous_solution: OCPResults) -> None:
         """Update the stored previous solution.
 
         Stores the solution from a previous optimization cycle to be used as a reference

@@ -11,8 +11,6 @@ When there is no previous solution, the warm start is calculated using an intern
 WarmStartReference object.
 """
 
-from abc import ABC, abstractmethod
-
 import numpy as np
 import numpy.typing as npt
 import pinocchio
@@ -23,8 +21,7 @@ from agimus_controller.warm_start_base import WarmStartBase
 
 
 class WarmStartShiftPreviousSolution(WarmStartBase):
-    """Generate a warm start by shifting in time the solution of the previous OCP iteration
-    """
+    """Generate a warm start by shifting in time the solution of the previous OCP iteration"""
 
     def __init__(self) -> None:
         super().__init__()
@@ -37,7 +34,7 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
             timesteps (list[float]): list of time different between consecutive nodes of the OCP
                 that produces the previous solution. It is required that:
                 - timesteps[i] >= timesteps[0]
-                - timesteps matches the OCP nodes time steps. 
+                - timesteps matches the OCP nodes time steps.
         """
         state = crocoddyl.StateMultibody(rmodel)
         actuation = crocoddyl.ActuationModelFull(state)
@@ -51,7 +48,6 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
         self._dt = self._timesteps[0]
         assert all(dt >= self._dt for dt in self._timesteps)
 
-
     def generate(
         self,
         initial_state: TrajectoryPoint,
@@ -61,7 +57,9 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
         list[npt.NDArray[np.float64]],
         list[npt.NDArray[np.float64]],
     ]:
-        assert self._previous_solution is not None, "WarmStartBase.update_previous_solution should have been called before generate can work."
+        assert self._previous_solution is not None, (
+            "WarmStartBase.update_previous_solution should have been called before generate can work."
+        )
         self.shift()
         x0 = np.concatenate(
             [initial_state.robot_configuration, initial_state.robot_velocity]
@@ -72,22 +70,21 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
         return x0, xinit, uinit
 
     def shift(self):
-        """Shift the previous solution by self._dt by applying the forward dynamics.
-        """
+        """Shift the previous solution by self._dt by applying the forward dynamics."""
         xs = self._previous_solution.states
         us = self._previous_solution.feed_forward_terms
-        
+
         nb_timesteps = len(self._timesteps)
         assert len(xs) == nb_timesteps + 1
         assert len(us) == nb_timesteps
         for i, dt in enumerate(self._timesteps):
             if dt == self._dt:
-                xs[i] = xs[i+1]
+                xs[i] = xs[i + 1]
                 # for the last running model, i+1 is the terminal model.
                 # There is no control for this one. The result of the current loop is
                 # that if two last control will be equal.
                 if i < nb_timesteps - 1:
-                    us[i] = us[i+1]
+                    us[i] = us[i + 1]
             else:
                 assert dt > self._dt
                 self._integrator.dt = dt
