@@ -20,7 +20,6 @@ import crocoddyl
 
 from agimus_controller.trajectory import TrajectoryPoint
 from agimus_controller.warm_start_base import WarmStartBase
-from agimus_controller.warm_start_reference import WarmStartReference
 
 
 class WarmStartShiftPreviousSolution(WarmStartBase):
@@ -52,9 +51,6 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
         self._dt = self._timesteps[0]
         assert all(dt >= self._dt for dt in self._timesteps)
 
-        self._ws_reference = WarmStartReference()
-        self._ws_reference.setup(rmodel)
-
 
     def generate(
         self,
@@ -65,16 +61,14 @@ class WarmStartShiftPreviousSolution(WarmStartBase):
         list[npt.NDArray[np.float64]],
         list[npt.NDArray[np.float64]],
     ]:
-        if self._previous_solution is None:
-            x0, xinit, uinit = self._ws_reference.generate(initial_state, reference_trajectory)
-        else:
-            self.shift()
-            x0 = np.concatenate(
-                [initial_state.robot_configuration, initial_state.robot_velocity]
-            )
-            # TODO is copy needed ?
-            xinit = self._previous_solution.states[1:].copy()
-            uinit = self._previous_solution.feed_forward_terms.copy()
+        assert self._previous_solution is not None, "WarmStartBase.update_previous_solution should have been called before generate can work."
+        self.shift()
+        x0 = np.concatenate(
+            [initial_state.robot_configuration, initial_state.robot_velocity]
+        )
+        # TODO is copy needed ?
+        xinit = self._previous_solution.states[1:].copy()
+        uinit = self._previous_solution.feed_forward_terms.copy()
         return x0, xinit, uinit
 
     def shift(self):
