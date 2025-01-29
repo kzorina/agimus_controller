@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class OCPParamsBaseCroco:
+class OCPParamsBase:
     """Input data structure of the OCP."""
 
     # Data relevant to solve the OCP.
@@ -25,3 +25,9 @@ class OCPParamsBaseCroco:
     eps_rel: float = 0.0  # Relative tolerance of the solver.
     callbacks: bool = False  # Flag to enable/disable callbacks.
     use_filter_line_search = False  # Flag to enable/disable the filter line searchs.
+
+    def __post_init__(self):
+        assert (
+            self.horizon_size == sum(sn for _, sn in self.dt_factor_n_seq)
+            and "The horizon size must be equal to the sum of the time steps."
+        )

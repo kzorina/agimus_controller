@@ -5,7 +5,7 @@ import example_robot_data as robex
 import pinocchio as pin
 
 from agimus_controller.ocp.ocp_croco_goal_reaching import OCPCrocoGoalReaching
-from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+from agimus_controller.ocp_param_base import OCPParamsBase
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
 from agimus_controller.trajectory import (
     TrajectoryPoint,
@@ -50,9 +50,10 @@ class TestOCPGoalReaching(unittest.TestCase):
         solver_iters = 100
         callbacks = False
 
-        self._ocp_params = OCPParamsBaseCroco(
+        self._ocp_params = OCPParamsBase(
             dt=dt,
             horizon_size=horizon_size,
+            dt_factor_n_seq=[(1, horizon_size)],
             solver_iters=solver_iters,
             callbacks=callbacks,
         )

@@ -6,7 +6,7 @@ import numpy as np
 import pinocchio as pin
 import pickle
 from agimus_controller.ocp_base_croco import OCPBaseCroco
-from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+from agimus_controller.ocp_param_base import OCPParamsBase
 from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
 
 
@@ -135,8 +135,12 @@ class TestSimpleOCPCroco(unittest.TestCase):
         self.collision_model = self.robot_models.collision_model
 
         # Set mock parameters
-        self.ocp_params = OCPParamsBaseCroco(
-            dt=0.1, horizon_size=10, solver_iters=100, callbacks=False
+        self.ocp_params = OCPParamsBase(
+            dt=0.1,
+            horizon_size=10,
+            dt_factor_n_seq=[(1, 10)],
+            solver_iters=100,
+            callbacks=False,
         )
         self.state_reg = np.concatenate(
             (pin.neutral(self.robot_model), np.zeros(self.robot_model.nv))

@@ -8,20 +8,20 @@ import numpy.typing as npt
 from agimus_controller.factory.robot_model import RobotModels
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.ocp_base import OCPBase
-from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+from agimus_controller.ocp_param_base import OCPParamsBase
 
 
 class OCPBaseCroco(OCPBase):
     def __init__(
         self,
         robot_models: RobotModels,
-        ocp_params: OCPParamsBaseCroco,
+        ocp_params: OCPParamsBase,
     ) -> None:
         """Defines common behavior for all OCP using croccodyl. This is an abstract class with some helpers to design OCPs in a more friendly way.
 
         Args:
             robot_models (RobotModels): All models of the robot.
-            ocp_params (OCPParamsBaseCroco): Input data structure of the OCP.
+            ocp_params (OCPParamsBase): Input data structure of the OCP.
         """
         # Setting the robot model
         self._robot_models = robot_models
