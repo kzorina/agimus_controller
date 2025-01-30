@@ -31,7 +31,7 @@ class MPC(object):
         assert self._ocp is not None
         assert self._warm_start is not None
         timer1 = time.perf_counter_ns()
-        self._buffer.clear_past(current_time_ns)
+        self._buffer.clear_past()
         reference_trajectory = self._extract_horizon_from_buffer()
         self._ocp.set_reference_trajectory(reference_trajectory)
         timer2 = time.perf_counter_ns()
@@ -65,4 +65,4 @@ class MPC(object):
         self._buffer.extend(trajectory_points)
 
     def _extract_horizon_from_buffer(self):
-        return self._buffer.horizon(self._ocp.horizon_size, self._ocp.dt)
+        return self._buffer.horizon

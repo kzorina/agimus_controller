@@ -18,9 +18,9 @@ class TestOCPGoalReaching(unittest.TestCase):
     def setUp(self):
         ### LOAD ROBOT
         robot = robex.load("panda")
-        urdf = Path(robot.urdf)
-        srdf = Path(robot.urdf.replace("urdf", "srdf"))
-        urdf_meshes_dir = urdf.parent.parent.parent.parent.parent
+        urdf_path = Path(robot.urdf)
+        srdf_path = Path(robot.urdf.replace("urdf", "srdf"))
+        urdf_meshes_dir = urdf_path.parent.parent.parent.parent.parent
         free_flyer = False
         locked_joint_names = ["panda_finger_joint1", "panda_finger_joint2"]
         reduced_nq = robot.model.nq - len(locked_joint_names)
@@ -34,8 +34,8 @@ class TestOCPGoalReaching(unittest.TestCase):
             full_q0=full_q0,
             free_flyer=free_flyer,
             locked_joint_names=locked_joint_names,
-            urdf=urdf,
-            srdf=srdf,
+            urdf=urdf_path,
+            srdf=srdf_path,
             urdf_meshes_dir=urdf_meshes_dir,
             collision_as_capsule=True,
             self_collision=False,
@@ -53,6 +53,7 @@ class TestOCPGoalReaching(unittest.TestCase):
         self._ocp_params = OCPParamsBaseCroco(
             dt=dt,
             horizon_size=horizon_size,
+            dt_factor_n_seq=[(1, horizon_size)],
             solver_iters=solver_iters,
             callbacks=callbacks,
         )
