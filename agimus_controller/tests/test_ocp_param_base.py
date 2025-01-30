@@ -1,11 +1,11 @@
 import unittest
 
-from agimus_controller.ocp_param_base import OCPParamsBase
+from agimus_controller.ocp_param_base import OCPParamsBaseCroco
 
 
 class TestOCPParamsCrocoBase(unittest.TestCase):
     """
-    TestOCPParamsCrocoBase unittests parameters settters and getters of OCPParamsBase class.
+    TestOCPParamsCrocoBase unittests parameters settters and getters of OCPParamsBaseCroco class.
     """
 
     def __init__(self, methodName="runTest"):
@@ -13,7 +13,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
 
     def test_initialization(self):
         """
-        Test the initialization of the OCPParamsBase class.
+        Test the initialization of the OCPParamsBaseCroco class.
         """
         params = {
             "dt": 0.01,
@@ -26,7 +26,7 @@ class TestOCPParamsCrocoBase(unittest.TestCase):
             "eps_rel": 0,
             "callbacks": False,
         }
-        ocp_param_base_croco = OCPParamsBase(**params)
+        ocp_param_base_croco = OCPParamsBaseCroco(**params)
         for key, val in params.items():
             res = getattr(ocp_param_base_croco, key)
             self.assertEqual(

@@ -14,7 +14,7 @@ from agimus_controller.trajectory import (
 
 class TestTrajectoryBuffer(unittest.TestCase):
     """
-    TestOCPParamsCrocoBase unittests parameters settters and getters of OCPParamsBaseCroco class.
+    TestOCPParamsCrocoBase unittests parameters settters and getters of OCPParamsBaseCrocoCroco class.
     """
 
     def __init__(self, methodName="runTest"):

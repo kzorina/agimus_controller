@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class OCPParamsBase:
+class OCPParamsBaseCroco:
     """Input data structure of the OCP."""
 
     # Data relevant to solve the OCP.
