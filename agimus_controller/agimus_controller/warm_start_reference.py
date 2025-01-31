@@ -62,7 +62,7 @@ class WarmStartReference(WarmStartBase):
         x_init = np.array(
             [
                 np.hstack([point.robot_configuration, point.robot_velocity])
-                for point in reference_trajectory
+                for point in [initial_state] + reference_trajectory[:-1]
             ]
         )
         assert x_init.shape == (
@@ -81,7 +81,7 @@ class WarmStartReference(WarmStartBase):
                 point.robot_acceleration,
             )
             # reduce the size of control ref by one to fit Croco way of doing things
-            for point in reference_trajectory[:-1]
+            for point in [initial_state] + reference_trajectory[:-2]
         ]
         assert np.array(u_init).shape == (
             len(reference_trajectory) - 1,

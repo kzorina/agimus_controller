@@ -64,7 +64,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
                 running_cost_model,
             )
             running_model = crocoddyl.IntegratedActionModelEuler(
-                running_DAM,
+                running_DAM, stepTime=self.dt
             )
             running_model.differential.armature = self._robot_models.armature
 
@@ -188,7 +188,8 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
                 reference_weighted_trajectory[-1].point.robot_velocity,
             )
         )
-
+        # todo: dont push!
+        # state_reg.cost.activation.weights = 0*np.concatenate(
         state_reg.cost.activation.weights = np.concatenate(
             (
                 reference_weighted_trajectory[-1].weights.w_robot_configuration,
@@ -201,7 +202,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
             iter(reference_weighted_trajectory[-1].weights.w_end_effector_poses)
         )
         ee_name = ee_names[0]
-        ee_cost = self._solver.problem.runningModels[-1].differential.costs.costs[
+        ee_cost = self._solver.problem.terminalModel.differential.costs.costs[
             "goalTracking"
         ]
         ee_cost.cost.residual.id = ee_id

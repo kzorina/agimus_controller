@@ -21,10 +21,14 @@ class SimpleTrajectoryPublisher(Node):
 
         self.q0 = None
         self.q = None
+        self.dq = None
+        self.ddq = None
         self.delay_time = 500
         self.t = 0.0
         self.dt = 0.01
         self.croco_nq = 7
+        self.amp = 0.2
+        self.w = 0.5 * np.pi
 
         # Obtained by checking "QoS profile" values in out of:
         # ros2 topic info -v /robot_description
@@ -76,6 +80,8 @@ class SimpleTrajectoryPublisher(Node):
         self.pin_data = self.pin_model.createData()
         self.ee_frame_id = self.pin_model.getFrameId(self.ee_frame_name)
         self.q = self.q0.copy()
+        self.dq = np.zeros_like(self.q)
+        self.ddq = np.zeros_like(self.q)
         self.get_logger().warn(f"Model loaded, pin_model.nq = {self.pin_model.nq}")
 
     def publish_mpc_input(self):
@@ -94,8 +100,10 @@ class SimpleTrajectoryPublisher(Node):
 
         # Currently not changing the last two joints - fingers
         # for i in range(self.pin_model.nq - 2):
-        for i in [2]:
-            self.q[i] = self.q0[i] + 0.2 * np.sin(0.5 * np.pi * self.t)
+        for i in [2, 3]:
+            self.q[i] = self.q0[i] + self.amp * np.sin(self.w * self.t)
+            self.dq[i] = self.amp * self.w * np.cos(self.w * self.t)
+            self.ddq[i] = -self.amp * self.w * self.w * np.sin(self.w * self.t)
 
         # Extract the end-effector position and orientation
         pin.forwardKinematics(self.pin_model, self.pin_data, self.q)
@@ -108,19 +116,16 @@ class SimpleTrajectoryPublisher(Node):
 
         # Create the message
         msg = MpcInput()
-        msg.w_q = [np.sqrt(1e-1)] * self.croco_nq
-        msg.w_qdot = [np.sqrt(1e-2)] * self.croco_nq
-        msg.w_qddot = [np.sqrt(1e-10)] * self.croco_nq
-        msg.w_robot_effort = [np.sqrt(1e-10)] * self.croco_nq
-        msg.w_pose = [np.sqrt(1e-10)] * 6
+        msg.w_q = [1.0] * self.croco_nq
+        msg.w_qdot = [1e-2] * self.croco_nq
+        msg.w_qddot = [1e-6] * self.croco_nq
+        msg.w_robot_effort = [1e-4] * self.croco_nq
+        msg.w_pose = [1e-10] * 6
 
         msg.q = list(self.q[: self.croco_nq])
-        msg.qdot = [
-            0.0
-        ] * self.croco_nq  # TODO: only works for robot with only revolute joints
-        msg.qddot = [
-            0.0
-        ] * self.croco_nq  # TODO: only works for robot with only revolute joints
+        msg.qdot = list(self.dq[: self.croco_nq])
+        msg.qddot = list(self.ddq[: self.croco_nq])
+
         msg.robot_effort = list(u[: self.croco_nq])
 
         pose = Pose()

@@ -265,6 +265,7 @@ class AgimusController(Node):
             time_ns=self.get_clock().now().nanoseconds,
             robot_configuration=self.np_sensor_msg.joint_state.position,
             robot_velocity=self.np_sensor_msg.joint_state.velocity,
+            robot_acceleration=np.zeros_like(self.np_sensor_msg.joint_state.velocity),
         )
         ocp_res = self.mpc.run(
             initial_state=x0_traj_point,
