@@ -1,3 +1,4 @@
+import coal
 from copy import deepcopy
 from os import environ
 import unittest
@@ -5,6 +6,36 @@ from pathlib import Path
 import example_robot_data as robex
 import numpy as np
 import pinocchio as pin
+import yaml
+
+# optional dependencies
+try:
+    import xacro
+
+    XACRO_AVAILABLE = True
+except ImportError as e:
+    print(f"Error: {e}")  # Print the exact error
+    XACRO_AVAILABLE = False
+try:
+    from ament_index_python.packages import (
+        get_package_share_directory,
+        PackageNotFoundError,
+    )
+
+    AMENT_AVAILABLE = True
+except (ModuleNotFoundError, ImportError) as e:
+    print(f"Error: {e}")  # Print the exact error
+    AMENT_AVAILABLE = False
+if AMENT_AVAILABLE:
+    try:
+        get_package_share_directory("franka_description")
+        FRANKA_DESCRIPTION_AVAILABLE = True
+    except (OSError, PackageNotFoundError) as e:
+        print(f"Error: {e}")  # Print the exact error
+        FRANKA_DESCRIPTION_AVAILABLE = False
+else:
+    FRANKA_DESCRIPTION_AVAILABLE = False
+
 
 from agimus_controller.factory.robot_model import RobotModelParameters, RobotModels
 
@@ -169,8 +200,8 @@ class TestRobotModels(unittest.TestCase):
 
     def test_collision_pairs(self):
         """Checking that the collision model has collision pairs."""
-        self.assertTrue(
-            len(self.robot_models.collision_model.collisionPairs) == 44
+        self.assertEqual(
+            len(self.robot_models.collision_model.collisionPairs), 44
         )  # Number of collision pairs in the panda model
 
     def test_rnea(self):
@@ -180,6 +211,113 @@ class TestRobotModels(unittest.TestCase):
         a = np.zeros(self.robot_models.robot_model.nv)
         robot_data = self.robot_models.robot_model.createData()
         pin.rnea(self.robot_models.robot_model, robot_data, q, v, a)
+
+    @unittest.skipIf(
+        (
+            not XACRO_AVAILABLE
+            or not AMENT_AVAILABLE
+            or not FRANKA_DESCRIPTION_AVAILABLE
+        ),
+        f"Some dependencies amongst xacro (available ? {XACRO_AVAILABLE}) / "
+        f"franka_description (available ? {FRANKA_DESCRIPTION_AVAILABLE}) / "
+        f"ament_index_python (available ? {AMENT_AVAILABLE}) are not available",
+    )
+    def test_franka_description_collision_models(self):
+        franka_description_path = Path(
+            get_package_share_directory("franka_description")
+        )
+        srdf_path = franka_description_path / "robots" / "fer" / "fer.srdf"
+        xacro_path = str(
+            franka_description_path / "robots" / "fer" / "fer.urdf.xacro",
+        )
+        params_path = str(
+            Path(__file__).parent / "resources" / "agimus_controller_params.yaml"
+        )
+        with open(params_path, "r") as file:
+            mpc_params = yaml.safe_load(file)["agimus_controller_node"][
+                "ros__parameters"
+            ]
+        urdf_xml = xacro.process_file(
+            xacro_path,
+            mappings={"with_sc": "true"},
+        ).toxml()
+
+        # Hack for the moving joint name
+        model = pin.buildModelFromXML(urdf_xml)
+        locked_joint_names = [
+            jn
+            for jn in model.names
+            if jn not in ["universe"] + mpc_params["moving_joint_names"]
+        ]
+
+        self.params = RobotModelParameters(
+            full_q0=np.zeros(model.nq),
+            q0=np.zeros(len(mpc_params["moving_joint_names"])),
+            free_flyer=False,
+            locked_joint_names=locked_joint_names,
+            urdf=urdf_xml,
+            srdf=srdf_path,
+            collision_as_capsule=True,
+            self_collision=False,
+            armature=np.array(mpc_params["ocp"]["armature"]),
+        )
+        self.robot_models = RobotModels(self.params)
+
+        geom_obj_names_test = [
+            "fer_leftfinger_0",
+            "fer_leftfinger_1",
+            "fer_leftfinger_2",
+            "fer_leftfinger_3",
+            "fer_rightfinger_0",
+            "fer_rightfinger_1",
+            "fer_rightfinger_2",
+            "fer_rightfinger_3",
+            "fer_hand_sc_capsule_0",
+            "fer_hand_sc_capsule_1",
+            "fer_link7_sc_capsule_0",
+            "fer_link7_sc_capsule_1",
+            "fer_link6_sc_capsule_0",
+            "fer_link5_sc_capsule_0",
+            "fer_link5_sc_capsule_1",
+            "fer_link4_sc_capsule_0",
+            "fer_link3_sc_capsule_0",
+            "fer_link2_sc_capsule_0",
+            "fer_link1_sc_capsule_0",
+            "fer_link0_sc_capsule_0",
+        ]
+        geom_obj_names = [
+            geom_obj.name
+            for geom_obj in self.robot_models.collision_model.geometryObjects
+        ]
+        self.assertEqual(geom_obj_names, geom_obj_names_test)
+
+        geom_obj_types_test = [
+            coal.Box,
+            coal.Box,
+            coal.Box,
+            coal.Box,
+            coal.Box,
+            coal.Box,
+            coal.Box,
+            coal.Box,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+            coal.Capsule,
+        ]
+        geom_obj_types = [
+            type(geom_obj.geometry)
+            for geom_obj in self.robot_models.collision_model.geometryObjects
+        ]
+        self.assertEqual(geom_obj_types, geom_obj_types_test)
 
 
 if __name__ == "__main__":
