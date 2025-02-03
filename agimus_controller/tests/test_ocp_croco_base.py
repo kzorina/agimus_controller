@@ -138,7 +138,11 @@ class TestSimpleOCPCroco(unittest.TestCase):
 
         # Set mock parameters
         self.ocp_params = OCPParamsBaseCroco(
-            dt=0.1, horizon_size=10, solver_iters=100, callbacks=False
+            dt=0.1,
+            horizon_size=10,
+            dt_factor_n_seq=[(1, 10)],
+            solver_iters=100,
+            callbacks=False,
         )
         self.state_reg = np.concatenate(
             (pin.neutral(self.robot_model), np.zeros(self.robot_model.nv))
