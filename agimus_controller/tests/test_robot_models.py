@@ -218,7 +218,6 @@ class TestRobotModelsAgainstExampleRobotData(unittest.TestCase):
     def test_collision_pairs(self):
         """Checking that the collision model has collision pairs."""
         self.params.collision_as_capsule = False
-        self.robot_models.load_models()
         self.assertEqual(
             len(self.robot_models.collision_model.collisionPairs), 44
         )  # Number of collision pairs in the panda model
@@ -349,13 +348,11 @@ class TestRobotModelsAgainstFrankaDescription(unittest.TestCase):
         np.testing.assert_array_equal(self.robot_models.q0, self.params.q0)
 
     def test_load_models_populates_models(self):
-        self.robot_models.load_models()
         self.assertIsNotNone(self.robot_models.full_robot_model)
         self.assertIsNotNone(self.robot_models.visual_model)
         self.assertIsNotNone(self.robot_models.collision_model)
 
     def test_reduced_robot_model(self):
-        self.robot_models.load_models()
         self.assertTrue(
             self.robot_models.robot_model.nq == len(self.params.moving_joint_names)
         )
@@ -378,8 +375,6 @@ class TestRobotModelsAgainstFrankaDescription(unittest.TestCase):
         pin.rnea(self.robot_models.robot_model, robot_data, q, v, a)
 
     def test_franka_description_collision_models(self):
-        self.robot_models.load_models()
-
         geom_obj_names_test = [
             "fer_leftfinger_0",
             "fer_leftfinger_1",
