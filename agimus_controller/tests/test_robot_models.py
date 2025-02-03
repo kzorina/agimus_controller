@@ -297,11 +297,7 @@ class TestRobotModelsAgainstFrankaDescription(unittest.TestCase):
             ]
         urdf_xml = xacro.process_file(
             xacro_path,
-            mappings={
-                "with_sc": "true",
-                "franka_controllers_params": "none",
-                "ros2_control": "false",
-            },
+            mappings={"with_sc": "true"},
         ).toxml()
         # Hack for the moving joint name
         model = pin.buildModelFromXML(urdf_xml)
