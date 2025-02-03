@@ -148,7 +148,7 @@ class WeightedTrajectoryPoint:
         if self.point != other.point:
             return False
 
-        if self.weight != other.weight:
+        if self.weights != other.weights:
             return False
 
         return True

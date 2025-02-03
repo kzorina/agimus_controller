@@ -69,12 +69,11 @@ class TestOCPGoalReaching(unittest.TestCase):
         ee_pose = pin.SE3(np.eye(3), np.array([0.5, 0.2, 0.5]))
         for i in range(1, self._ocp_params.horizon_size):
             u_ref = np.zeros(self.robot_models.robot_model.nv)
-            q_t = q0.copy()
             trajectory_points.append(
                 WeightedTrajectoryPoint(
                     TrajectoryPoint(
                         robot_configuration=q0,
-                        robot_velocity=q0,
+                        robot_velocity=np.zeros(self.robot_models.robot_model.nv),
                         robot_effort=u_ref,
                         end_effector_poses={"panda_hand_tcp": ee_pose},
                     ),
@@ -96,7 +95,7 @@ class TestOCPGoalReaching(unittest.TestCase):
                 )
             )
             state_warmstart.append(
-                np.concatenate((q_t, np.zeros(self.robot_models.robot_model.nv)))
+                np.concatenate((q0, np.zeros(self.robot_models.robot_model.nv)))
             )
             control_warmstart.append(u_ref)
 
