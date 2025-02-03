@@ -21,7 +21,7 @@ class MPC(object):
         self,
         ocp: OCPBase,
         warm_start: WarmStartBase,
-        buffer: TrajectoryBuffer = TrajectoryBuffer(),
+        buffer: TrajectoryBuffer,
     ) -> None:
         self._ocp = ocp
         self._warm_start = warm_start

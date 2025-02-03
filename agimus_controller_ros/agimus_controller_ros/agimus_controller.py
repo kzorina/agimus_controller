@@ -47,7 +47,7 @@ class AgimusController(Node):
         self.param_listener = agimus_controller_params.ParamListener(self)
         self.params = self.param_listener.get_params()
         self.params.ocp.armature = np.array(self.params.ocp.armature)
-        self.traj_buffer = TrajectoryBuffer()
+        self.traj_buffer = TrajectoryBuffer([(1, self.params.ocp.horizon_size)])
         self.last_point = None
         self.first_run_done = False
         self.rmodel = None
@@ -159,13 +159,14 @@ class AgimusController(Node):
             solver_iters=self.params.ocp.max_iter,
             callbacks=self.params.ocp.activate_callback,
             qp_iters=self.params.ocp.max_qp_iter,
+            dt_factor_n_seq=[(1, self.params.ocp.horizon_size)],
         )
 
         ocp = OCPCrocoGoalReaching(self.robot_models, ocp_params)
         ws = WarmStartReference()
         ws.setup(self.robot_models._robot_model)
         self.mpc = MPC()
-        self.mpc.setup(ocp, ws, self.traj_buffer)
+        self.mpc.setup(ocp=ocp, warm_start=ws, buffer=self.traj_buffer)
 
     def sensor_callback(self, sensor_msg: Sensor) -> None:
         """Update the sensor_msg attribute of the class."""
