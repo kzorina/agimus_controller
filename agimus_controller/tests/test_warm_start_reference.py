@@ -23,8 +23,11 @@ class TestWarmStart(unittest.TestCase):
 
         initial_q = np.random.randn(rmodel.nq)
         initial_v = np.random.randn(rmodel.nv)
+        initial_a = np.random.randn(rmodel.nv)
         initial_state = TrajectoryPoint(
-            robot_configuration=initial_q, robot_velocity=initial_v
+            robot_configuration=initial_q,
+            robot_velocity=initial_v,
+            robot_acceleration=initial_a,
         )
 
         random_qs = np.random.randn(num_points, rmodel.nq)
@@ -39,12 +42,13 @@ class TestWarmStart(unittest.TestCase):
 
         # Create the expected stacked array
         expected_x0 = np.concatenate([initial_q, initial_v])
-        expected_x_init = np.hstack((random_qs, random_vs))
+        expected_x_init = np.hstack((random_qs[:-1], random_vs[:-1]))
         expected_u_init = np.array(
-            [
+            [pin.rnea(rmodel, rdata, initial_q, initial_v, initial_a)]
+            + [
                 pin.rnea(rmodel, rdata, q, v, a)
                 for q, v, a in zip(random_qs, random_vs, random_acs)
-            ]
+            ][:-2]
         )
 
         # Act

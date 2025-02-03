@@ -11,14 +11,11 @@ import pinocchio as pin
 
 @dataclass
 class RobotModelParameters:
-    full_q0: npt.NDArray[np.float64] = field(
-        default_factory=lambda: np.array([], dtype=np.float64)
-    )  # Initial full configuration of the robot
     q0: npt.NDArray[np.float64] = field(
         default_factory=lambda: np.array([], dtype=np.float64)
-    )  # Initial reduced configuration of the robot
+    )  # Initial full configuration of the robot
     free_flyer: bool = False  # True if the robot has a free flyer
-    locked_joint_names: list[str] = field(default_factory=list)
+    moving_joint_names: list[str] = field(default_factory=list)
     urdf: Union[Path, str] = (
         ""  # Path to the URDF file or string containing URDF as an XML
     )
@@ -39,26 +36,17 @@ class RobotModelParameters:
     )  # Red color for the collision model
 
     def __post_init__(self):
-        # Check full_q0 is not empty
-        if len(self.full_q0) == 0:
-            raise ValueError("full_q0 cannot be empty.")
-
-        # Check q0 is not empty or if there is no reduced model, q0 is the full configuration
-        if len(self.q0) == 0 and not len(self.locked_joint_names) == 0:
-            raise ValueError("q0 cannot be empty while reducing the model.")
-        elif len(self.q0) == 0:
-            self.q0 = self.full_q0
         # Handle armature:
         if self.armature.size == 0:
-            # Use a default armature filled with 0s, based on the size of q0
-            self.armature = np.zeros(len(self.q0), dtype=np.float64)
+            # Use a default armature filled with 0s, based on the size of moving_joint_names
+            self.armature = np.zeros(len(self.moving_joint_names), dtype=np.float64)
 
-        # Ensure armature has the same shape as q0
+        # Ensure armature has the same shape as moving_joint_names
         if (
-            self.armature.shape != self.q0.shape and not self.free_flyer
+            len(self.armature) != len(self.moving_joint_names) and not self.free_flyer
         ):  #! TODO: Do the same for free flyer
             raise ValueError(
-                f"Armature must have the same shape as q0. Got {self.armature.shape} and {self.q0.shape}."
+                f"Armature must have the same shape as moving_joint_names. Got {self.armature.shape} and {len(self.moving_joint_names)}."
             )
 
         # Ensure URDF and SRDF are valid
@@ -96,7 +84,6 @@ class RobotModels:
         self._collision_model = None
         self._visual_model = None
         self._q0 = deepcopy(self._params.q0)
-        self._full_q0 = deepcopy(self._params.full_q0)
         self.load_models()  # Populate models
 
     @property
@@ -127,20 +114,10 @@ class RobotModels:
             raise AttributeError("Colision model has not been computed yet.")
         return self._collision_model
 
-    @property
-    def q0(self) -> np.array:
-        """Initial configuration of the robot."""
-        return self._q0
-
-    @property
-    def full_q0(self) -> np.array:
-        """Initial full configuration of the robot."""
-        return self._full_q0
-
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
         self._load_full_pinocchio_models()
-        self._apply_locked_joints()
+        self._lock_joints()
         if self._params.collision_as_capsule:
             self._update_collision_model_to_capsules()
         if self._params.self_collision:
@@ -187,15 +164,16 @@ class RobotModels:
                 f"Failed to load URDF models from {self._params.urdf}: {e}"
             )
 
-    def _apply_locked_joints(self) -> None:
+    def _lock_joints(self) -> None:
         """Apply locked joints."""
         joints_to_lock = []
-        for jn in self._params.locked_joint_names:
-            if self._full_robot_model.existJointName(jn):
+        for jn in self._full_robot_model.names:
+            if jn == "universe":
+                continue
+            if jn not in self._params.moving_joint_names:
                 joints_to_lock.append(self._full_robot_model.getJointId(jn))
-            else:
-                raise ValueError(f"Joint {jn} not found in the robot model.")
-
+        if len(self._q0) == 0:
+            self._q0 = np.zeros(self._full_robot_model.nq)
         (
             self._robot_model,
             [
@@ -206,7 +184,7 @@ class RobotModels:
             self._full_robot_model,
             [self._collision_model, self._visual_model],
             joints_to_lock,
-            self._full_q0,
+            self._q0,
         )
 
     def _update_collision_model_to_capsules(self) -> None:

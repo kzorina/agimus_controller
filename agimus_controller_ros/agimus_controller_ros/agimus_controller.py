@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 import numpy as np
-import numpy.typing as npt
-import time
-import pinocchio as pin
+
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from rclpy.duration import Duration
+from rcl_interfaces.srv import GetParameters
+from rcl_interfaces.msg import ParameterValue
 
 from std_msgs.msg import String
 from agimus_msgs.msg import MpcInput
 import builtin_interfaces
+import os
+from ament_index_python.packages import get_package_share_directory
 
 import linear_feedback_controller_msgs_py.lfc_py_types as lfc_py_types
 from linear_feedback_controller_msgs_py.numpy_conversions import (
@@ -19,12 +21,20 @@ from linear_feedback_controller_msgs_py.numpy_conversions import (
     control_numpy_to_msg,
 )
 from linear_feedback_controller_msgs.msg import Control, Sensor
+from sensor_msgs.msg import JointState
+
+from agimus_controller.mpc import MPC
+from agimus_controller.mpc_data import OCPResults
+from agimus_controller.ocp.ocp_croco_goal_reaching import OCPCrocoGoalReaching
+from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+from agimus_controller.warm_start_reference import WarmStartReference
+from agimus_controller.factory.robot_model import RobotModels, RobotModelParameters
+
 
 from agimus_controller_ros.ros_utils import mpc_msg_to_weighted_traj_point
-from agimus_controller.mpc import MPC
-from agimus_controller.ocps.ocp_croco_hpp import OCPCrocoHPP
 
-from agimus_controller.trajectory import TrajectoryBuffer
+
+from agimus_controller.trajectory import TrajectoryBuffer, TrajectoryPoint
 from agimus_controller_ros.agimus_controller_parameters import agimus_controller_params
 
 
@@ -37,17 +47,45 @@ class AgimusController(Node):
         self.param_listener = agimus_controller_params.ParamListener(self)
         self.params = self.param_listener.get_params()
         self.params.ocp.armature = np.array(self.params.ocp.armature)
-        self.traj_buffer = TrajectoryBuffer()
+        self.traj_buffer = TrajectoryBuffer([(1, self.params.ocp.horizon_size)])
         self.last_point = None
         self.first_run_done = False
+        self.rmodel = None
+        self.mpc = None
+        self.q0 = None
+        self.robot_description_msg = None
+        self.np_sensor_msg = None
+        self.destroy_joint_sub = False
 
         self.initialize_ros_attributes()
         self.get_logger().info("Init done")
+
+    def get_param_from_node(self, node_name: str, param_name: str) -> ParameterValue:
+        """Returns parameter from the node"""
+        param_client = self.create_client(GetParameters, f"/{node_name}/get_parameters")
+        while not param_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("Service not available, waiting again...")
+        request = GetParameters.Request()
+        request.names = [param_name]
+
+        future = param_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future)
+
+        if future.result() is not None:
+            return future.result().values[0]
+        else:
+            raise ValueError("Failed to load moving joint names from LFC")
 
     def initialize_ros_attributes(self) -> None:
         """Initialize ROS related attributes such as Publishers, Subscribers and Timers"""
         self.sensor_msg = None
         self.control_msg = None
+
+        # Get moving joint names from LFC
+        self.moving_joint_names = self.get_param_from_node(
+            "linear_feedback_controller", "moving_joint_names"
+        ).string_array_value
+
         self.state_subscriber = self.create_subscription(
             Sensor,
             "sensor",
@@ -71,7 +109,10 @@ class AgimusController(Node):
             MpcInput,
             "mpc_input",
             self.mpc_input_callback,
-            qos_profile=10,
+            qos_profile=QoSProfile(
+                depth=10,
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+            ),
         )
         self.control_publisher = self.create_publisher(
             Control,
@@ -81,68 +122,99 @@ class AgimusController(Node):
                 reliability=ReliabilityPolicy.BEST_EFFORT,
             ),
         )
+        self.state_subscriber = self.create_subscription(
+            JointState,
+            "joint_states",
+            self.joint_states_callback,
+            qos_profile=QoSProfile(
+                depth=10,
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+            ),
+        )
         if self.params.publish_debug_data:
             self.ocp_solve_time_pub = self.create_publisher(
-                builtin_interfaces.msg.Duration, "ocp_solve_time", 10
+                builtin_interfaces.msg.Duration,
+                "ocp_solve_time",
+                qos_profile=QoSProfile(
+                    depth=10,
+                    reliability=ReliabilityPolicy.BEST_EFFORT,
+                ),
             )
-            self.ocp_x0_pub = self.create_publisher(Sensor, "ocp_x0", 10)
+            self.ocp_x0_pub = self.create_publisher(
+                Sensor,
+                "ocp_x0",
+                qos_profile=QoSProfile(
+                    depth=10,
+                    reliability=ReliabilityPolicy.BEST_EFFORT,
+                ),
+            )
         self.create_timer(1.0 / self.params.rate, self.run_callback)
+
+    def setup_mpc(self):
+        """Creates mpc, ocp, warmstart"""
+
+        ocp_params = OCPParamsBaseCroco(
+            dt=self.params.ocp.dt,
+            horizon_size=self.params.ocp.horizon_size,
+            solver_iters=self.params.ocp.max_iter,
+            callbacks=self.params.ocp.activate_callback,
+            qp_iters=self.params.ocp.max_qp_iter,
+            dt_factor_n_seq=[(1, self.params.ocp.horizon_size)],
+        )
+
+        ocp = OCPCrocoGoalReaching(self.robot_models, ocp_params)
+        ws = WarmStartReference()
+        ws.setup(self.robot_models._robot_model)
+        self.mpc = MPC()
+        self.mpc.setup(ocp=ocp, warm_start=ws, buffer=self.traj_buffer)
 
     def sensor_callback(self, sensor_msg: Sensor) -> None:
         """Update the sensor_msg attribute of the class."""
         self.sensor_msg = sensor_msg
 
+    def joint_states_callback(self, joint_states_msg: JointState) -> None:
+        """Set joint state reference."""
+        if self.robot_description_msg is None:
+            return
+        if self.q0 is None:
+            self.q0 = np.array(joint_states_msg.position)
+            self.create_robot_models()
+
     def mpc_input_callback(self, msg: MpcInput) -> None:
         """Fill the new point msg in the trajectory buffer."""
-        w_traj_point = mpc_msg_to_weighted_traj_point(msg)
+        w_traj_point = mpc_msg_to_weighted_traj_point(
+            msg, self.get_clock().now().nanoseconds
+        )
         self.traj_buffer.append(w_traj_point)
         self.params.ocp.effector_frame_name = msg.ee_frame_name
         self.effector_frame_name = msg.ee_frame_name
 
     def robot_description_callback(self, msg: String) -> None:
         """Create the models of the robot from the urdf string."""
-        # Initialize models from URDF String
-        self.rmodel = pin.buildModelFromXML(msg.data)
-        self.cmodel = pin.buildGeomFromUrdfString(
-            self.rmodel, msg.data, geom_type=pin.COLLISION
-        )
-        self.rdata = self.rmodel.createData()
-        self.nq = self.rmodel.nq
-        self.nv = self.rmodel.nv
-        self.nx = self.nq + self.nv
-        self.x_plan = np.zeros([self.params.ocp.horizon_size, self.nx])
-        self.a_plan = np.zeros([self.params.ocp.horizon_size, self.nv])
-        self.weight_q = np.zeros([self.params.ocp.horizon_size, self.nq])
-        self.weight_qdot = np.zeros([self.params.ocp.horizon_size, self.nv])
-        self.weight_pose = np.zeros([self.params.ocp.horizon_size, 6])
+        self.robot_description_msg = msg
 
-        # Build reduced models
-        locked_joint_names = [
-            name
-            for name in self.rmodel.names
-            if name not in self.params.moving_joint_names and name != "universe"
-        ]
-        locked_joint_ids = [self.rmodel.getJointId(name) for name in locked_joint_names]
-        self.rmodel, geometric_models_reduced = pin.buildReducedModel(
-            self.rmodel,
-            list_of_geom_models=[self.cmodel],
-            list_of_joints_to_lock=locked_joint_ids,
-            reference_configuration=np.zeros(self.rmodel.nq),
+    def create_robot_models(self) -> None:
+        # TODO: fix, just hardcoded the thing: should exist in the demo folder?
+        # add as a ros parameter in the yaml file srdf_path
+        temp_srdf_path = os.path.join(
+            get_package_share_directory("franka_description"),
+            "robots/fer/fer.srdf",
         )
-        self.cmodel = geometric_models_reduced[0]
+
+        params = RobotModelParameters(
+            urdf=self.robot_description_msg.data,
+            srdf=Path(temp_srdf_path),
+            free_flyer=self.params.free_flyer,
+            collision_as_capsule=self.params.collision_as_capsule,
+            self_collision=self.params.self_collision,
+            armature=self.params.ocp.armature,
+            moving_joint_names=self.moving_joint_names,
+        )
+
+        self.robot_models = RobotModels(params)
+        self.rmodel = self.robot_models._robot_model
+
         self.get_logger().info("Robot Models initialized")
-
-    def set_weighted_traj_attributes(self) -> None:
-        """Set attributes to setup OCP from the weighted trajectory buffer."""
-        for idx_point in range(self.params.ocp.horizon_size):
-            traj_point = self.traj_buffer.popleft()
-            self.x_plan[idx_point, :] = np.concatenate(
-                [traj_point.point.robot_configuration, traj_point.point.robot_velocity]
-            )
-            self.a_plan[idx_point, :] = traj_point.point.robot_acceleration
-            self.weight_q[idx_point, :] = traj_point.weights.w_robot_configuration
-            self.weight_qdot[idx_point, :] = traj_point.weights.w_robot_velocity
-            self.weight_pose[idx_point, :] = traj_point.weights.w_end_effector_poses
 
     def buffer_has_twice_horizon_points(self) -> bool:
         """
@@ -151,36 +223,13 @@ class AgimusController(Node):
         """
         return len(self.traj_buffer) >= 2 * self.params.ocp.horizon_size
 
-    def first_solve(self, x0: npt.NDArray[np.float64]) -> None:
-        """Initialize OCP, then do the first solve."""
-        # Initialize OCP
-        self.set_weighted_traj_attributes()
-        self.ocp = OCPCrocoHPP(self.rmodel, self.cmodel, self.params.ocp)
-        self.ocp.set_planning_variables(self.x_plan, self.a_plan)
-        self.ocp.set_weights_variables(
-            self.weight_q, self.weight_qdot, self.weight_pose
-        )
-
-        # First solve
-        self.mpc = MPC(self.ocp, self.x_plan, self.a_plan, self.rmodel, self.cmodel)
-        us_init = self.mpc.ocp.u_plan[: self.params.ocp.horizon_size - 1]
-        self.mpc.mpc_first_step(self.x_plan, us_init, x0)
-        self.next_node_idx = self.params.ocp.horizon_size
-        self.get_logger().info("First solve done ")
-
-    def solve(self, x0: npt.NDArray[np.float64]) -> None:
-        """get new trajectory point, reset and solve the OCP problem."""
-        if len(self.traj_buffer) > 0:
-            self.last_point = self.traj_buffer.popleft()
-        self.mpc.mpc_step(x0, self.last_point, self.effector_frame_name)
-
-    def send_control_msg(self, sensor_msg: Sensor) -> None:
+    def send_control_msg(self, ocp_res: OCPResults) -> None:
         """Get OCP control output and publish it."""
-        _, tau, K_ricatti = self.mpc.get_mpc_output()
+        assert self.np_sensor_msg is not None
         ctrl_msg = lfc_py_types.Control(
-            feedback_gain=K_ricatti,
-            feedforward=tau.reshape(self.rmodel.nv, 1),
-            initial_state=sensor_msg,
+            feedback_gain=ocp_res.ricatti_gains[0],
+            feedforward=ocp_res.feed_forward_terms[0].reshape(self.rmodel.nv, 1),
+            initial_state=self.np_sensor_msg,
         )
         self.control_publisher.publish(control_numpy_to_msg(ctrl_msg))
 
@@ -195,26 +244,41 @@ class AgimusController(Node):
                 throttle_duration_sec=5.0,
             )
             return
-        start_compute_time = time.perf_counter()
-        np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
-        x0 = np.concatenate(
-            [np_sensor_msg.joint_state.position, np_sensor_msg.joint_state.velocity]
-        )
-        if not self.first_run_done:
-            if not self.buffer_has_twice_horizon_points():
-                self.get_logger().warn(
-                    "Waiting for buffer to be filled...",
-                    throttle_duration_sec=5.0,
-                )
-                return
-            self.first_solve(x0)
-            self.first_run_done = True
-        else:
-            self.solve(x0)
-        self.send_control_msg(np_sensor_msg)
-        compute_time = time.perf_counter() - start_compute_time
+        if self.rmodel is None:
+            self.get_logger().warn(
+                "Waiting for robot model to arrive...",
+                throttle_duration_sec=5.0,
+            )
+            return
+        if self.mpc is None:
+            self.setup_mpc()
+        if not self.buffer_has_twice_horizon_points():
+            self.get_logger().warn(
+                f"Waiting for buffer to be filled... Current size {len(self.traj_buffer)}",
+                throttle_duration_sec=5.0,
+            )
+            return
         if self.params.publish_debug_data:
-            self.ocp_solve_time_pub.publish(Duration(seconds=compute_time).to_msg())
+            start_compute_time = self.get_clock().now()
+        self.np_sensor_msg: lfc_py_types.Sensor = sensor_msg_to_numpy(self.sensor_msg)
+
+        x0_traj_point = TrajectoryPoint(
+            time_ns=self.get_clock().now().nanoseconds,
+            robot_configuration=self.np_sensor_msg.joint_state.position,
+            robot_velocity=self.np_sensor_msg.joint_state.velocity,
+            robot_acceleration=np.zeros_like(self.np_sensor_msg.joint_state.velocity),
+        )
+        ocp_res = self.mpc.run(
+            initial_state=x0_traj_point,
+            current_time_ns=self.get_clock().now().nanoseconds,
+        )
+        if ocp_res is None:
+            return
+
+        self.send_control_msg(ocp_res)
+        if self.params.publish_debug_data:
+            compute_time = self.get_clock().now() - start_compute_time
+            self.ocp_solve_time_pub.publish(compute_time.to_msg())
             self.ocp_x0_pub.publish(self.sensor_msg)
 
 

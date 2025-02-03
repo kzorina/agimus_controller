@@ -40,7 +40,7 @@ class TestTrajectoryBuffer(unittest.TestCase):
                 robot_acceleration=np.random.random(self.nv),
                 robot_effort=np.random.random(self.nv),
             ),
-            weight=TrajectoryPointWeights(
+            weights=TrajectoryPointWeights(
                 w_robot_configuration=np.random.random(self.nv),
                 w_robot_velocity=np.random.random(self.nv),
                 w_robot_acceleration=np.random.random(self.nv),

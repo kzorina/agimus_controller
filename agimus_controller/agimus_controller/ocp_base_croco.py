@@ -9,6 +9,7 @@ from agimus_controller.factory.robot_model import RobotModels
 from agimus_controller.mpc_data import OCPResults, OCPDebugData
 from agimus_controller.ocp_base import OCPBase
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+from agimus_controller.trajectory import TrajectoryPoint
 
 
 class OCPBaseCroco(OCPBase):
@@ -35,7 +36,8 @@ class OCPBaseCroco(OCPBase):
         # Setting the OCP parameters
         self._ocp_params = ocp_params
         self._solver = None
-        self._ocp_results = None
+        self._ocp_results: OCPResults = None
+        self._debug_data: OCPDebugData = None
 
         # Create the running models
         self._running_model_list = self.create_running_model_list()
@@ -102,8 +104,26 @@ class OCPBaseCroco(OCPBase):
         # Set the initial state
         self._problem.x0 = x0
         # Solve the OCP
-        self._solver.solve(
+        res = self._solver.solve(
             [x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters
+        )
+        solution = [
+            TrajectoryPoint(
+                time_ns=-1,
+                robot_configuration=state[: self._robot_models.robot_model.nq],
+                robot_velocity=state[self._robot_models.robot_model.nq :],
+                robot_acceleration=np.zeros_like(
+                    state[self._robot_models.robot_model.nq :]
+                ),
+            )
+            for state in self._solver.xs
+        ]
+        self._debug_data = OCPDebugData(
+            problem_solved=res,
+            result=solution,
+            references=None,
+            kkt_norms=None,
+            collision_distance_residuals=None,
         )
 
         # Store the results
@@ -133,8 +153,8 @@ class OCPBaseCroco(OCPBase):
 
     @property
     def debug_data(self) -> OCPDebugData:
-        pass
+        return self._debug_data
 
     @debug_data.setter
     def debug_data(self, value: OCPDebugData) -> None:
-        pass
+        self._debug_data = value
