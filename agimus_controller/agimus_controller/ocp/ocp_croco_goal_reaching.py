@@ -188,8 +188,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
                 reference_weighted_trajectory[-1].point.robot_velocity,
             )
         )
-        # todo: dont push!
-        # state_reg.cost.activation.weights = 0*np.concatenate(
+
         state_reg.cost.activation.weights = np.concatenate(
             (
                 reference_weighted_trajectory[-1].weights.w_robot_configuration,
