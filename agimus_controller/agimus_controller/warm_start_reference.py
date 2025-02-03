@@ -59,18 +59,17 @@ class WarmStartReference(WarmStartBase):
             f"Expected x0 shape {(self._nx)},from provided reference got {x0.shape}"
         )
 
-        x_init = np.array(
-            [
-                np.hstack([point.robot_configuration, point.robot_velocity])
-                for point in reference_trajectory
-            ]
-        )
-        assert x_init.shape == (
+        x_init = [
+            np.hstack([point.robot_configuration, point.robot_velocity])
+            for point in reference_trajectory
+        ]
+
+        assert np.array(x_init).shape == (
             len(reference_trajectory),
             self._nx,
         ), (
             f"Expected x_init shape {(len(reference_trajectory), self._nx)}, "
-            f"from provided reference got {x_init.shape}"
+            f"from provided reference got {np.array(x_init).shape}"
         )
         u_init = [
             pin.rnea(
@@ -81,13 +80,13 @@ class WarmStartReference(WarmStartBase):
                 point.robot_acceleration,
             )
             # reduce the size of control ref by one to fit Croco way of doing things
-            for point in [initial_state] + reference_trajectory[:-1]
+            for point in [initial_state] + reference_trajectory[:-2]
         ]
         assert np.array(u_init).shape == (
-            len(reference_trajectory),
+            len(reference_trajectory) - 1,
             self._rmodel.nv,
         ), (
-            f"Expected u_init shape {(len(reference_trajectory), self._rmodel.nv)}, "
+            f"Expected u_init shape {(len(reference_trajectory) - 1, self._rmodel.nv)}, "
             f"from provided reference got {np.array(u_init).shape}"
         )
 
