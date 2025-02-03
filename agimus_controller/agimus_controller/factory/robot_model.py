@@ -190,16 +190,16 @@ class RobotModels:
     def _update_collision_model_to_capsules(self) -> None:
         """Update the collision model to capsules."""
         list_names_capsules = []
-        cmodel = self._collision_model.geometryObjects.copy()
+        geom_model = self._collision_model.geometryObjects.copy()
         # Iterate through geometry objects in the collision model
-        for geom_object in cmodel:
+        for geom_object in geom_model:
             geometry = geom_object.geometry
             # Convert cylinders to capsules
             if isinstance(geometry, coal.Cylinder):
                 # Remove superfluous suffix from the name
                 split_name = geom_object.name.split("_")
                 base_name = "_".join(split_name[:-1])
-                if sum(1 for obj in cmodel if base_name in obj.name) < 3:
+                if sum(1 for obj in geom_model if base_name in obj.name) < 3:
                     continue
                 id = int(split_name[-1])
                 name = self._generate_capsule_name(base_name, list_names_capsules)
