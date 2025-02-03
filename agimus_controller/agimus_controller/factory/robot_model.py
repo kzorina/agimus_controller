@@ -38,7 +38,8 @@ class RobotModelParameters:
     def __post_init__(self):
         # Handle armature:
         if self.armature.size == 0:
-            # Use a default armature filled with 0s, based on the size of moving_joint_names
+            # Use a default armature filled with 0s,
+            # based on the size of moving_joint_names
             self.armature = np.zeros(len(self.moving_joint_names), dtype=np.float64)
 
         # Ensure armature has the same shape as moving_joint_names
@@ -46,7 +47,8 @@ class RobotModelParameters:
             len(self.armature) != len(self.moving_joint_names) and not self.free_flyer
         ):  #! TODO: Do the same for free flyer
             raise ValueError(
-                f"Armature must have the same shape as moving_joint_names. Got {self.armature.shape} and {len(self.moving_joint_names)}."
+                f"Armature must have the same shape as moving_joint_names. "
+                f"Got {self.armature.shape} and {len(self.moving_joint_names)}."
             )
 
         # Ensure URDF and SRDF are valid
@@ -83,7 +85,6 @@ class RobotModels:
         self._robot_model = None
         self._collision_model = None
         self._visual_model = None
-        self._q0 = deepcopy(self._params.q0)
         self.load_models()  # Populate models
 
     @property
@@ -116,6 +117,7 @@ class RobotModels:
 
     def load_models(self) -> None:
         """Load and prepare robot models based on parameters."""
+        self._q0 = deepcopy(self._params.q0)
         self._load_full_pinocchio_models()
         self._lock_joints()
         if self._params.collision_as_capsule:
@@ -166,6 +168,11 @@ class RobotModels:
 
     def _lock_joints(self) -> None:
         """Apply locked joints."""
+        # Sanity check.
+        for jn in self._params.moving_joint_names:
+            if jn not in self._full_robot_model.names:
+                raise ValueError(jn + " not in the model.")
+        # Find the joints to lock.
         joints_to_lock = []
         for jn in self._full_robot_model.names:
             if jn == "universe":

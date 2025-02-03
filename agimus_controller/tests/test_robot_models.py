@@ -192,7 +192,11 @@ class TestRobotModelsAgainstExampleRobotData(unittest.TestCase):
         )
 
     def test_initial_configuration(self):
-        np.testing.assert_array_equal(self.robot_models._q0, self.params.q0)
+        q0_test = self.params.q0.copy()
+        np.testing.assert_array_equal(self.robot_models._q0, q0_test)
+        self.params.q0 = np.array([], dtype=np.float64)
+        self.robot_models.load_models()
+        np.testing.assert_array_equal(self.robot_models._q0, q0_test)
 
     def test_load_models_populates_models(self):
         self.assertIsNotNone(self.robot_models.full_robot_model)
@@ -201,16 +205,14 @@ class TestRobotModelsAgainstExampleRobotData(unittest.TestCase):
 
     def test_reduced_robot_model(self):
         self.assertTrue(
-            self.robot_models.robot_model.nq
-            == self.robot_models.full_robot_model.nq
-            - len(self.params.locked_joint_names)
+            self.robot_models.robot_model.nq == len(self.params.moving_joint_names)
         )
 
     def test_invalid_joint_name_raises_value_error(self):
         # Modify a fresh instance of parameters for this test
-        self.params.locked_joint_names = ["InvalidJoint"]
+        self.params.moving_joint_names = ["InvalidJoint"]
         with self.assertRaises(ValueError):
-            self.robot_models._apply_locked_joints()
+            self.robot_models._lock_joints()
 
     def test_armature_property(self):
         np.testing.assert_array_equal(self.robot_models.armature, self.params.armature)
@@ -218,6 +220,7 @@ class TestRobotModelsAgainstExampleRobotData(unittest.TestCase):
     def test_collision_pairs(self):
         """Checking that the collision model has collision pairs."""
         self.params.collision_as_capsule = False
+        self.robot_models.load_models()
         self.assertEqual(
             len(self.robot_models.collision_model.collisionPairs), 44
         )  # Number of collision pairs in the panda model
@@ -300,16 +303,15 @@ class TestRobotModelsAgainstFrankaDescription(unittest.TestCase):
         ).toxml()
         # Hack for the moving joint name
         model = pin.buildModelFromXML(urdf_xml)
-        locked_joint_names = [
+        cls.locked_joint_names = [
             jn
             for jn in model.names
             if jn not in ["universe"] + mpc_params["moving_joint_names"]
         ]
         cls.params = RobotModelParameters(
-            full_q0=np.zeros(model.nq),
-            q0=np.zeros(len(mpc_params["moving_joint_names"])),
+            q0=np.zeros(model.nq),
             free_flyer=False,
-            locked_joint_names=locked_joint_names,
+            moving_joint_names=mpc_params["moving_joint_names"],
             urdf=urdf_xml,
             srdf=srdf_path,
             collision_as_capsule=True,
@@ -345,7 +347,11 @@ class TestRobotModelsAgainstFrankaDescription(unittest.TestCase):
         environ["AMENT_PREFIX_PATH"] = previous_ament_prefix_path
 
     def test_initial_configuration(self):
-        np.testing.assert_array_equal(self.robot_models.q0, self.params.q0)
+        q0_test = self.params.q0.copy()
+        np.testing.assert_array_equal(self.robot_models._q0, q0_test)
+        self.params.q0 = np.array([], dtype=np.float64)
+        self.robot_models.load_models()
+        np.testing.assert_array_equal(self.robot_models._q0, q0_test)
 
     def test_load_models_populates_models(self):
         self.assertIsNotNone(self.robot_models.full_robot_model)
