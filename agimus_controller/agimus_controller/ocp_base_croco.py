@@ -105,7 +105,7 @@ class OCPBaseCroco(OCPBase):
         self._problem.x0 = x0
         # Solve the OCP
         res = self._solver.solve(
-            x_warmstart, u_warmstart, self._ocp_params.solver_iters
+            [x0] + x_warmstart, u_warmstart, self._ocp_params.solver_iters
         )
         solution = [
             TrajectoryPoint(

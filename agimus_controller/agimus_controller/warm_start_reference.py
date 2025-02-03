@@ -61,14 +61,14 @@ class WarmStartReference(WarmStartBase):
 
         x_init = [
             np.hstack([point.robot_configuration, point.robot_velocity])
-            for point in reference_trajectory
+            for point in reference_trajectory[:-1]
         ]
 
         assert np.array(x_init).shape == (
-            len(reference_trajectory),
+            len(reference_trajectory) - 1,
             self._nx,
         ), (
-            f"Expected x_init shape {(len(reference_trajectory), self._nx)}, "
+            f"Expected x_init shape {(len(reference_trajectory) - 1, self._nx)}, "
             f"from provided reference got {np.array(x_init).shape}"
         )
         u_init = [
