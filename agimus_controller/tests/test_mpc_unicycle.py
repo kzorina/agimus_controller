@@ -9,6 +9,7 @@ from agimus_controller.trajectory import (
     TrajectoryPoint,
     WeightedTrajectoryPoint,
     TrajectoryPointWeights,
+    TrajectoryBuffer,
 )
 from agimus_controller.warm_start_base import WarmStartBase
 
@@ -97,13 +98,13 @@ class WarmStartUnicycle(WarmStartBase):
         if self._previous_solution is None or len(self._previous_solution.states) == 0:
             # No previous solution. Use the reference trajectory.
             x_init = [
-                wpoint.point.robot_configuration for wpoint in reference_trajectory[1:]
+                wpoint.robot_configuration for wpoint in reference_trajectory[1:]
             ]
             us = None
         else:
             # Use the previous solution as warm start. For the last point, use the reference trajectory.
             x_init = list(self._previous_solution.states[2:]) + [
-                reference_trajectory[-1].point.robot_configuration
+                reference_trajectory[-1].robot_configuration
             ]
             us = self._previous_solution.feed_forward_terms
         return x0, x_init, us
@@ -166,20 +167,24 @@ class TestMPCUnicycle(unittest.TestCase):
 
         warm_start = WarmStartUnicycle()
         mpc = MPC()
-        mpc.setup(ocp, warm_start)
+        mpc.setup(ocp, warm_start, TrajectoryBuffer([ (1, 100, ), ]))
 
         dt_ns = int(ocp.dt * 1e9)
 
         N_iter = 500
+
+        # TODO For some reasons, the current implementation of MPC.run first uses `clear_past`
+        # before solving the OCP.solve so the first element in the loop is removed.
+        # If the behavior is changed, the k-1 below can be replaced by k.
         for k in range(N_iter + ocp.horizon_size):
             mpc.append_trajectory_point(
                 WeightedTrajectoryPoint(
                     point=TrajectoryPoint(
-                        time_ns=k * dt_ns,
-                        robot_configuration=np.array([k, 0.0, 0.0]),
+                        time_ns=(k-1) * dt_ns,
+                        robot_configuration=np.array([k-1, 0.0, 0.0]),
                         robot_velocity=np.array([0.0, 0.0, 0.0]),
                     ),
-                    weight=TrajectoryPointWeights(
+                    weights=TrajectoryPointWeights(
                         w_robot_configuration=np.array([1.0, 1.0, 1.0]),
                         w_robot_velocity=np.array([1.0, 1.0, 1.0]),
                     ),
@@ -210,7 +215,8 @@ class TestMPCUnicycle(unittest.TestCase):
 
         warm_start = WarmStartUnicycle()
         mpc = MPC()
-        mpc.setup(ocp, warm_start)
+        mpc.setup(ocp, warm_start, TrajectoryBuffer([ (1, 100, ), ]))
+
 
         dt_ns = int(ocp.dt * 1e9)
 
@@ -224,7 +230,7 @@ class TestMPCUnicycle(unittest.TestCase):
                         robot_configuration=np.array([0.0, 0.0, 0.0]),
                         robot_velocity=np.array([0.0, 0.0, 0.0]),
                     ),
-                    weight=TrajectoryPointWeights(
+                    weights=TrajectoryPointWeights(
                         w_robot_configuration=np.array([1.0, 1.0, 1.0]),
                         w_robot_velocity=np.array([1.0, 1.0, 1.0]),
                     ),
