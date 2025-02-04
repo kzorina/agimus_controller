@@ -44,7 +44,7 @@ class MPC(object):
         )
         timer3 = time.perf_counter_ns()
         self._ocp.solve(x0, x_init, u_init)
-        self._warm_start.update_previous_solution(self._ocp.debug_data.result)
+        self._warm_start.update_previous_solution(self._ocp.ocp_results)
         timer4 = time.perf_counter_ns()
 
         # Extract the solution.
