@@ -7,7 +7,7 @@ on:
     - topic/humble-devel/refactor
   pull_request:
     branches:
-    - humble-devel 
+    - humble-devel
     - topic/humble-devel/refactor
 jobs:
   nix:

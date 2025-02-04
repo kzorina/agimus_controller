@@ -5,6 +5,11 @@
     # develop because mim-solvers is not yet available in master
     nix-ros-overlay.url = "github:lopsided98/nix-ros-overlay/develop";
     nixpkgs.follows = "nix-ros-overlay/nixpkgs";
+
+    agimus-msgs = {
+      url = "github:agimus-project/agimus_msgs/humble-devel";
+      inputs.nix-ros-overlay.follows = "nix-ros-overlay";
+    };
     colmpc = {
       url = "github:agimus-project/colmpc";
       inputs.nixpkgs.follows = "nix-ros-overlay/nixpkgs";
@@ -25,6 +30,7 @@
 
   outputs =
     {
+      agimus-msgs,
       colmpc,
       linear-feedback-controller-msgs,
       nix-ros-overlay,
@@ -44,6 +50,7 @@
       in
       {
         packages = {
+          default = self.packages.${system}.agimus-controller-ros;
           agimus-controller = pkgs.python3Packages.callPackage ./agimus_controller/default.nix {
             inherit (colmpc.packages.${system}) colmpc;
           };
@@ -54,6 +61,7 @@
               };
           agimus-controller-ros = pkgs.python3Packages.callPackage ./agimus_controller_ros/default.nix {
             inherit (self.packages.${system}) agimus-controller;
+            inherit (agimus-msgs.packages.${system}) agimus-msgs;
             inherit (linear-feedback-controller-msgs.packages.${system}) linear-feedback-controller-msgs;
           };
         };

@@ -1,2 +1,4 @@
 *__pycache__*
 *.npy
+deprecated
+agimus_controller_ros/agimus_controller_ros/agimus_controller_parameters.py

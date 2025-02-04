@@ -1,5 +1,26 @@
 {
   "nodes": {
+    "agimus-msgs": {
+      "inputs": {
+        "nix-ros-overlay": [
+          "nix-ros-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1737546203,
+        "narHash": "sha256-FgaQZd0o9n3r5spb6Vg6yQUBebvK17x+ppM9DXEl4c8=",
+        "owner": "agimus-project",
+        "repo": "agimus_msgs",
+        "rev": "8cfac92bed5030f6e48cfc8132b986a3007a777c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "agimus-project",
+        "ref": "humble-devel",
+        "repo": "agimus_msgs",
+        "type": "github"
+      }
+    },
     "colmpc": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -141,6 +162,7 @@
     },
     "root": {
       "inputs": {
+        "agimus-msgs": "agimus-msgs",
         "colmpc": "colmpc",
         "linear-feedback-controller-msgs": "linear-feedback-controller-msgs",
         "nix-ros-overlay": "nix-ros-overlay",

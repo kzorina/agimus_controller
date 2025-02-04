@@ -3,13 +3,12 @@
   colmpc,
   crocoddyl,
   coal,
+  example-robot-data,
   lib,
-  matplotlib,
-  meshcat,
   mim-solvers,
   numpy,
   pinocchio,
-  #pytestCheckHook,
+  pytestCheckHook,
   rosPackages,
   rospkg,
   setuptools,
@@ -25,6 +24,7 @@ buildPythonPackage {
       ./package.xml
       ./resource
       ./setup.py
+      ./tests
     ];
   };
 
@@ -34,8 +34,7 @@ buildPythonPackage {
     colmpc
     crocoddyl
     coal
-    matplotlib
-    meshcat
+    example-robot-data
     mim-solvers
     numpy
     pinocchio
@@ -43,7 +42,7 @@ buildPythonPackage {
     rospkg
   ];
 
-  #nativeCheckInputs = [ pytestCheckHook ];
+  nativeCheckInputs = [ pytestCheckHook ];
   doCheck = true;
   pythonImportsCheck = [ "agimus_controller" ];
 
