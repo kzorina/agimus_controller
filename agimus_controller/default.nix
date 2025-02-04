@@ -4,10 +4,12 @@
   crocoddyl,
   coal,
   example-robot-data,
+  franka-description,
   lib,
   mim-solvers,
   numpy,
   pinocchio,
+  pip,
   pytestCheckHook,
   rosPackages,
   rospkg,
@@ -28,7 +30,7 @@ buildPythonPackage {
     ];
   };
 
-  build-system = [ setuptools ];
+  build-system = [ setuptools pip ];
 
   dependencies = [
     colmpc
@@ -38,13 +40,38 @@ buildPythonPackage {
     mim-solvers
     numpy
     pinocchio
+    franka-description
     rosPackages.humble.xacro
+    rosPackages.humble.ament-index-python
     rospkg
   ];
 
   nativeCheckInputs = [ pytestCheckHook ];
   doCheck = true;
   pythonImportsCheck = [ "agimus_controller" ];
+  dontWrapQtApps = true;
+
+  pytestCheckPhase = ''
+    AMENT_PREFIX_PATH=${franka-description.out}:$AMENT_PREFIX_PATH pytest -v -rs
+  '';
+  # Override the configure phase to prevent CMake from running
+  configurePhase = ''
+    runHook preConfigure
+    echo "Skipping CMake and using Python setup.py for configuration."
+    runHook postConfigure
+  '';
+
+  buildPhase = ''
+    runHook preBuild
+    python setup.py sdist bdist_wheel
+    runHook postBuild
+  '';
+
+  installPhase = ''
+    runHook preInstall
+    pip install --no-deps --prefix=$out dist/*.whl
+    runHook postInstall
+  '';
 
   meta = {
     description = "The agimus_controller package";

@@ -18,6 +18,10 @@
       url = "github:loco-3d/linear-feedback-controller-msgs/humble-devel";
       inputs.nix-ros-overlay.follows = "nix-ros-overlay";
     };
+    franka-description = {
+      url = "github:agimus-project/franka_description/humble-devel";
+      inputs.nix-ros-overlay.follows = "nix-ros-overlay";
+    };
 
     ## Patches for nixpkgs
     # init HPP v6.0.0
@@ -33,6 +37,7 @@
       agimus-msgs,
       colmpc,
       linear-feedback-controller-msgs,
+      franka-description,
       nix-ros-overlay,
       nixpkgs,
       patch-hpp,
@@ -53,6 +58,7 @@
           default = self.packages.${system}.agimus-controller-ros;
           agimus-controller = pkgs.python3Packages.callPackage ./agimus_controller/default.nix {
             inherit (colmpc.packages.${system}) colmpc;
+            inherit (franka-description.packages.${system}) franka-description;
           };
           agimus-controller-examples =
             pkgs.python3Packages.callPackage ./agimus_controller_examples/default.nix

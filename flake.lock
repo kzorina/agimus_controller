@@ -79,6 +79,27 @@
         "type": "github"
       }
     },
+    "franka-description": {
+      "inputs": {
+        "nix-ros-overlay": [
+          "nix-ros-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1738575305,
+        "narHash": "sha256-KPDQ15USDBZN/9dsxTheOr5MICVzFPQb+leZhevWZno=",
+        "owner": "agimus-project",
+        "repo": "franka_description",
+        "rev": "77a3284a94e5a7059223af0bc537f30b9aaf4607",
+        "type": "github"
+      },
+      "original": {
+        "owner": "agimus-project",
+        "ref": "humble-devel",
+        "repo": "franka_description",
+        "type": "github"
+      }
+    },
     "linear-feedback-controller-msgs": {
       "inputs": {
         "nix-ros-overlay": [
@@ -164,6 +185,7 @@
       "inputs": {
         "agimus-msgs": "agimus-msgs",
         "colmpc": "colmpc",
+        "franka-description": "franka-description",
         "linear-feedback-controller-msgs": "linear-feedback-controller-msgs",
         "nix-ros-overlay": "nix-ros-overlay",
         "nixpkgs": [
