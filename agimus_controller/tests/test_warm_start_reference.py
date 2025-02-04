@@ -15,7 +15,7 @@ class TestWarmStart(unittest.TestCase):
         # 1. Private attributes should not be used directly.
         # 2. WarmStartReference does not make use of the previous solution.
         # self.assertEqual(ws._previous_solution, None)
-        
+
     def test_generate(self):
         ws = WarmStartReference()
         num_points = 10

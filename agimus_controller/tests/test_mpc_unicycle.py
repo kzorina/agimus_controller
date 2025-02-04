@@ -97,9 +97,7 @@ class WarmStartUnicycle(WarmStartBase):
         x0 = initial_state.robot_configuration
         if self._previous_solution is None or len(self._previous_solution.states) == 0:
             # No previous solution. Use the reference trajectory.
-            x_init = [
-                wpoint.robot_configuration for wpoint in reference_trajectory[1:]
-            ]
+            x_init = [wpoint.robot_configuration for wpoint in reference_trajectory[1:]]
             us = None
         else:
             # Use the previous solution as warm start. For the last point, use the reference trajectory.
@@ -167,7 +165,18 @@ class TestMPCUnicycle(unittest.TestCase):
 
         warm_start = WarmStartUnicycle()
         mpc = MPC()
-        mpc.setup(ocp, warm_start, TrajectoryBuffer([ (1, 100, ), ]))
+        mpc.setup(
+            ocp,
+            warm_start,
+            TrajectoryBuffer(
+                [
+                    (
+                        1,
+                        100,
+                    ),
+                ]
+            ),
+        )
 
         dt_ns = int(ocp.dt * 1e9)
 
@@ -180,8 +189,8 @@ class TestMPCUnicycle(unittest.TestCase):
             mpc.append_trajectory_point(
                 WeightedTrajectoryPoint(
                     point=TrajectoryPoint(
-                        time_ns=(k-1) * dt_ns,
-                        robot_configuration=np.array([k-1, 0.0, 0.0]),
+                        time_ns=(k - 1) * dt_ns,
+                        robot_configuration=np.array([k - 1, 0.0, 0.0]),
                         robot_velocity=np.array([0.0, 0.0, 0.0]),
                     ),
                     weights=TrajectoryPointWeights(
@@ -215,8 +224,18 @@ class TestMPCUnicycle(unittest.TestCase):
 
         warm_start = WarmStartUnicycle()
         mpc = MPC()
-        mpc.setup(ocp, warm_start, TrajectoryBuffer([ (1, 100, ), ]))
-
+        mpc.setup(
+            ocp,
+            warm_start,
+            TrajectoryBuffer(
+                [
+                    (
+                        1,
+                        100,
+                    ),
+                ]
+            ),
+        )
 
         dt_ns = int(ocp.dt * 1e9)
 
