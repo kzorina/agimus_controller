@@ -10,7 +10,7 @@ from agimus_controller.trajectory import TrajectoryPoint
 
 class TestWarmStart(unittest.TestCase):
     def test_initialization(self):
-        ws = WarmStartReference()
+        WarmStartReference()
         # Not sure how relevant the following commented test is:
         # 1. Private attributes should not be used directly.
         # 2. WarmStartReference does not make use of the previous solution.

@@ -216,7 +216,7 @@ class TestMPCUnicycle(unittest.TestCase):
         )
         time_ns = 0
         for iteration in range(N_iter):
-            res = mpc.run(state, time_ns)
+            mpc.run(state, time_ns)
             time_ns += dt_ns
 
     def test_solve(self):
