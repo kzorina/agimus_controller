@@ -64,10 +64,12 @@
             pkgs.python3Packages.callPackage ./agimus_controller_examples/default.nix
               {
                 inherit (self.packages.${system}) agimus-controller;
+                inherit (franka-description.packages.${system}) franka-description;
               };
           agimus-controller-ros = pkgs.python3Packages.callPackage ./agimus_controller_ros/default.nix {
             inherit (self.packages.${system}) agimus-controller;
             inherit (agimus-msgs.packages.${system}) agimus-msgs;
+            inherit (franka-description.packages.${system}) franka-description;
             inherit (linear-feedback-controller-msgs.packages.${system}) linear-feedback-controller-msgs;
           };
         };
