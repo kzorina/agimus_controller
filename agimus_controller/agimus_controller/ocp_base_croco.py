@@ -76,7 +76,7 @@ class OCPBaseCroco(OCPBase):
     def dt(self) -> float:
         """Integration step of the OCP."""
         return self._ocp_params.dt
-    
+
     @property
     def problem(self) -> crocoddyl.ShootingProblem:
         return self._problem

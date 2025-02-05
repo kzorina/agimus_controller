@@ -35,6 +35,6 @@ class OCPParamsBaseCroco:
     @property
     def timesteps(self) -> tuple[float]:
         return sum(
-            ((self.dt*factor,) * number for factor, number in self.dt_factor_n_seq),
+            ((self.dt * factor,) * number for factor, number in self.dt_factor_n_seq),
             tuple(),
         )

@@ -11,16 +11,15 @@ When there is no previous solution, the warm start is calculated using an intern
 WarmStartReference object.
 """
 
-import typing as T
 import numpy as np
 import numpy.typing as npt
-import pinocchio
 import crocoddyl
 
 from agimus_controller.trajectory import TrajectoryPoint
 from agimus_controller.warm_start_base import WarmStartBase
 from agimus_controller.factory.robot_model import RobotModels
 from agimus_controller.ocp_param_base import OCPParamsBaseCroco
+
 
 class WarmStartShiftPreviousSolution(WarmStartBase):
     """Generate a warm start by shifting in time the solution of the previous OCP iteration"""
