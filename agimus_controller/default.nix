@@ -50,28 +50,7 @@ buildPythonPackage {
   doCheck = true;
   pythonImportsCheck = [ "agimus_controller" ];
   dontWrapQtApps = true;
-
-  pytestCheckPhase = ''
-    AMENT_PREFIX_PATH=${franka-description.out}:$AMENT_PREFIX_PATH pytest -v -rs
-  '';
-  # Override the configure phase to prevent CMake from running
-  configurePhase = ''
-    runHook preConfigure
-    echo "Skipping CMake and using Python setup.py for configuration."
-    runHook postConfigure
-  '';
-
-  buildPhase = ''
-    runHook preBuild
-    python setup.py sdist bdist_wheel
-    runHook postBuild
-  '';
-
-  installPhase = ''
-    runHook preInstall
-    pip install --no-deps --prefix=$out dist/*.whl
-    runHook postInstall
-  '';
+  dontUseCmakeConfigure = true; # Something is propagating cmake…
 
   meta = {
     description = "The agimus_controller package";
