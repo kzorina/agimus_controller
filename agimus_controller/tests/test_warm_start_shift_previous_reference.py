@@ -52,7 +52,6 @@ class TestWarmStart(unittest.TestCase):
             ws.generate(None, None)
 
     def test_generate(self):
-        dt = 0.1
         ws = WarmStartShiftPreviousSolution()
         ocp_params = OCPParamsBaseCroco(
             dt=0.1,
