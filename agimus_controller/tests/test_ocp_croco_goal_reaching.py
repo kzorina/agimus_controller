@@ -65,9 +65,12 @@ class TestOCPGoalReaching(unittest.TestCase):
         state_warmstart = []
         control_warmstart = []
         trajectory_points = []
+        state_warmstart.append(
+            np.concatenate((q0, np.zeros(self.robot_models.robot_model.nv)))
+        )
 
         ee_pose = pin.SE3(np.eye(3), np.array([0.5, 0.2, 0.5]))
-        for i in range(1, self._ocp_params.horizon_size):
+        for i in range(self._ocp_params.horizon_size):
             u_ref = np.zeros(self.robot_models.robot_model.nv)
             trajectory_points.append(
                 WeightedTrajectoryPoint(

@@ -9,7 +9,7 @@ from agimus_controller.trajectory import WeightedTrajectoryPoint
 class OCPCrocoGoalReaching(OCPBaseCroco):
     def create_running_model_list(self) -> list[crocoddyl.ActionModelAbstract]:
         running_model_list = []
-        for _ in range(self._ocp_params.horizon_size - 1):
+        for _ in range(self._ocp_params.horizon_size):
             # Running cost model
             running_cost_model = crocoddyl.CostModelSum(self._state)
 
@@ -128,7 +128,7 @@ class OCPCrocoGoalReaching(OCPBaseCroco):
         """Set the reference trajectory for the OCP."""
 
         # Modify running costs reference and weights
-        for i in range(self.horizon_size - 1):
+        for i in range(self.horizon_size):
             # Modifying the state regularization cost
             state_reg = self._solver.problem.runningModels[i].differential.costs.costs[
                 "stateReg"
